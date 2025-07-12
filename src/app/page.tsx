@@ -11,11 +11,13 @@ import { Dashboard } from '@/components/dashboard/Dashboard';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Home() {
   const [orders, setOrders] = React.useState<Order[]>(mockOrders);
   const [currentUser, setCurrentUser] = React.useState<User>(mockUsers[0]);
   const [view, setView] = React.useState<'dashboard' | 'orders'>('dashboard');
+  const { toast } = useToast();
 
   const [filters, setFilters] = React.useState<{
     status: OrderStatus | 'all';
@@ -33,6 +35,22 @@ export default function Home() {
     };
     setOrders((prevOrders) => [newOrder, ...prevOrders]);
     setView('orders');
+  };
+
+  const handleCancelOrder = (orderNumber: string) => {
+    setOrders((prevOrders) =>
+      prevOrders.map((order) =>
+        order.orderNumber === orderNumber ? { ...order, status: 'Отменен' } : order
+      )
+    );
+     toast({
+      title: 'Заказ отменен',
+      description: `Статус заказа #${orderNumber} изменен на "Отменен".`,
+    });
+  };
+
+  const findOrder = (orderNumber: string): Order | undefined => {
+    return orders.find((order) => order.orderNumber === orderNumber);
   };
 
   const filteredOrders = React.useMemo(() => {
@@ -72,7 +90,13 @@ export default function Home() {
         </div>
 
         {view === 'dashboard' ? (
-          <Dashboard user={currentUser} onNavigate={() => setView('orders')} onAddOrder={handleAddOrder} />
+          <Dashboard 
+            user={currentUser} 
+            onNavigate={() => setView('orders')} 
+            onAddOrder={handleAddOrder} 
+            onCancelOrder={handleCancelOrder}
+            findOrder={findOrder}
+          />
         ) : (
           <div className="space-y-6">
             <h2 className="text-2xl font-bold">{getOrderViewTitle()}</h2>

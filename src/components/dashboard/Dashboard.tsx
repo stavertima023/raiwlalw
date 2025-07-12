@@ -13,16 +13,18 @@ import {
   Package,
 } from 'lucide-react';
 import { OrderForm } from './OrderForm';
+import { CancelOrderDialog } from './CancelOrderDialog';
 
 interface DashboardProps {
   user: User;
   onNavigate: (view: 'orders') => void;
   onAddOrder: (order: Omit<Order, 'id' | 'orderDate'>) => void;
+  onCancelOrder: (orderNumber: string) => void;
+  findOrder: (orderNumber: string) => Order | undefined;
 }
 
 const sellerActions = [
   { label: 'Мои заказы', icon: List, action: 'view_orders' },
-  { label: 'Отменить заказ', icon: XCircle, action: 'cancel_order' },
   { label: 'Вывод оплаты', icon: DollarSign, action: 'payout' },
 ];
 
@@ -32,18 +34,15 @@ const printerActions = [
   { label: 'Все заказы', icon: Package, action: 'view_all_orders' },
 ];
 
-export function Dashboard({ user, onNavigate, onAddOrder }: DashboardProps) {
+export function Dashboard({ user, onNavigate, onAddOrder, onCancelOrder, findOrder }: DashboardProps) {
   const actions = user.role === 'Продавец' ? sellerActions : printerActions;
 
   const handleAction = (action: string) => {
-    // For now, most buttons will navigate to the order list.
-    // This can be expanded later.
     switch (action) {
       case 'view_orders':
       case 'view_all_orders':
         onNavigate('orders');
         break;
-      // Add other cases for cancel_order, payout, send_orders etc.
       default:
         console.log(`Action: ${action}`);
         break;
@@ -68,6 +67,17 @@ export function Dashboard({ user, onNavigate, onAddOrder }: DashboardProps) {
               </Button>
             </OrderForm>
           )}
+
+          <CancelOrderDialog findOrder={findOrder} onConfirmCancel={onCancelOrder}>
+              <Button
+                variant="outline"
+                className="w-full h-24 flex flex-col items-center justify-center gap-2"
+              >
+                <XCircle className="h-8 w-8" />
+                <span>Отменить заказ</span>
+              </Button>
+          </CancelOrderDialog>
+
           {actions.map(({ label, icon: Icon, action }) => (
             <Button
               key={label}
