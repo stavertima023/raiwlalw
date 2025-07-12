@@ -1,5 +1,20 @@
-import type { Order } from './types';
+import type { Order, User } from './types';
 import { v4 as uuidv4 } from 'uuid';
+
+export const mockUsers: User[] = [
+  {
+    telegramId: 'user_123',
+    name: 'Иван Петров',
+    role: 'Продавец',
+    position: 'Менеджер по продажам'
+  },
+  {
+    telegramId: 'user_456',
+    name: 'Алексей Сидоров',
+    role: 'Принтовщик',
+    position: 'Оператор печати'
+  }
+];
 
 export const mockOrders: Order[] = [
   {

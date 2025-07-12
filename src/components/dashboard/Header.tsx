@@ -2,20 +2,27 @@
 
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, ArrowLeft } from 'lucide-react';
 import { OrderForm } from './OrderForm';
 import type { Order } from '@/lib/types';
 
 interface HeaderProps {
   onAddOrder: (order: Omit<Order, 'id' | 'orderDate'>) => void;
+  onBackToDashboard: () => void;
+  showBackButton: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ onAddOrder }) => {
+const Header: React.FC<HeaderProps> = ({ onAddOrder, onBackToDashboard, showBackButton }) => {
   return (
     <header className="bg-card border-b sticky top-0 z-10">
       <div className="container mx-auto px-4 md:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-2">
+            {showBackButton && (
+              <Button variant="ghost" size="icon" onClick={onBackToDashboard} className="mr-2">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            )}
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="24"
