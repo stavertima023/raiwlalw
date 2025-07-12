@@ -159,59 +159,7 @@ export function OrderForm({ children, onSave, currentUser }: OrderFormProps) {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
              <ScrollArea className="h-[60vh] pr-6">
                 <div className="space-y-6">
-                    <FormField
-                    control={form.control}
-                    name="productType"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel className="text-base font-semibold">Тип изделия</FormLabel>
-                        <FormControl>
-                            <div className="grid grid-cols-3 gap-2 pt-2">
-                                {ProductTypeEnum.options.map((pt) => (
-                                    <Button
-                                    key={pt}
-                                    variant={field.value === pt ? 'default' : 'outline'}
-                                    onClick={() => field.onChange(pt)}
-                                    type="button"
-                                    className="h-16 text-base"
-                                    >
-                                    {pt}
-                                    </Button>
-                                ))}
-                            </div>
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-
-                    <FormField
-                    control={form.control}
-                    name="size"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel className="text-base font-semibold">Размер</FormLabel>
-                        <FormControl>
-                            <div className="grid grid-cols-4 gap-2 pt-2">
-                                {SizeEnum.options.map((s) => (
-                                    <Button
-                                    key={s}
-                                    variant={field.value === s ? 'default' : 'outline'}
-                                    onClick={() => field.onChange(s)}
-                                    type="button"
-                                    className="h-16 text-base"
-                                    >
-                                    {s}
-                                    </Button>
-                                ))}
-                            </div>
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-                
-                    <div className="space-y-4 border-t pt-6">
+                    <div className="space-y-4">
                         <FormField
                             control={form.control}
                             name="orderNumber"
@@ -266,6 +214,58 @@ export function OrderForm({ children, onSave, currentUser }: OrderFormProps) {
                     </div>
 
                     <FormField
+                    control={form.control}
+                    name="size"
+                    render={({ field }) => (
+                        <FormItem className="border-t pt-6">
+                            <FormLabel className="text-base font-semibold">Размер</FormLabel>
+                        <FormControl>
+                            <div className="grid grid-cols-4 gap-2 pt-2">
+                                {SizeEnum.options.map((s) => (
+                                    <Button
+                                    key={s}
+                                    variant={field.value === s ? 'default' : 'outline'}
+                                    onClick={() => field.onChange(s)}
+                                    type="button"
+                                    className="h-16 text-base"
+                                    >
+                                    {s}
+                                    </Button>
+                                ))}
+                            </div>
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+
+                    <FormField
+                    control={form.control}
+                    name="productType"
+                    render={({ field }) => (
+                        <FormItem className="border-t pt-6">
+                        <FormLabel className="text-base font-semibold">Тип изделия</FormLabel>
+                        <FormControl>
+                            <div className="grid grid-cols-3 gap-2 pt-2">
+                                {ProductTypeEnum.options.map((pt) => (
+                                    <Button
+                                    key={pt}
+                                    variant={field.value === pt ? 'default' : 'outline'}
+                                    onClick={() => field.onChange(pt)}
+                                    type="button"
+                                    className="h-16 text-base"
+                                    >
+                                    {pt}
+                                    </Button>
+                                ))}
+                            </div>
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                
+                    <FormField
                         control={form.control}
                         name="photos"
                         render={() => (
@@ -313,7 +313,7 @@ export function OrderForm({ children, onSave, currentUser }: OrderFormProps) {
                 </div>
              </ScrollArea>
             
-            <DialogFooter className="pt-4">
+            <DialogFooter className="pt-4 border-t">
                 <Button type="button" variant="secondary" onClick={handleClose}>
                     Отмена
                 </Button>
