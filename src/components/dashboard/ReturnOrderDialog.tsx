@@ -35,24 +35,34 @@ export function ReturnOrderDialog({
 
   const handleFindOrder = () => {
     setError(null);
+    setFoundOrder(null);
+
     if (!orderNumber) {
       setError('Пожалуйста, введите номер заказа.');
       return;
     }
     const order = findOrder(orderNumber);
     if (order) {
-        if (order.status === 'Возврат') {
-            setError(`По заказу #${orderNumber} уже оформлен возврат.`);
-            setFoundOrder(null);
-        } else if (order.status === 'Отменен') {
-             setError(`Заказ #${orderNumber} был отменен и не может быть возвращен.`);
-             setFoundOrder(null);
-        } else {
-            setFoundOrder(order);
+        switch (order.status) {
+            case 'Отправлен':
+                setFoundOrder(order);
+                break;
+            case 'Возврат':
+                setError(`По заказу #${orderNumber} уже оформлен возврат.`);
+                break;
+            case 'Отменен':
+                setError(`Заказ #${orderNumber} был отменен и не может быть возвращен.`);
+                break;
+            case 'Добавлен':
+            case 'Готов':
+            case 'Исполнен':
+                setError(`Возврат возможен только для отправленных заказов. Текущий статус: "${order.status}".`);
+                break;
+            default:
+                 setError(`Невозможно оформить возврат для заказа со статусом "${order.status}".`);
         }
     } else {
       setError(`Заказ с номером "${orderNumber}" не найден.`);
-      setFoundOrder(null);
     }
   };
 
