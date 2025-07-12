@@ -201,7 +201,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
                 <TableHead>Продавец</TableHead>
                 <TableHead className="text-right">Цена</TableHead>
                 <TableHead className="text-right">Себест.</TableHead>
-                <TableHead>Фото</TableHead>
+                <TableHead className="w-[340px]">Фото</TableHead>
                 <TableHead>
                   <span className="sr-only">Действия</span>
                 </TableHead>
@@ -227,7 +227,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
                     <TableCell className="text-right whitespace-nowrap">
                       {order.cost.toLocaleString('ru-RU')} ₽
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="w-[340px]">
                       <div className="flex items-center gap-2">
                         {order.photos && order.photos.length > 0 ? (
                           order.photos.map((photo, index) => (
