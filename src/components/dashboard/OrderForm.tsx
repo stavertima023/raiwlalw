@@ -52,7 +52,7 @@ interface OrderFormProps {
 const STEPS = [
   { name: 'Тип изделия', fields: ['productType'] },
   { name: 'Номера', fields: ['orderNumber', 'shipmentNumber'] },
-  { name: 'Цена и себестоимость', fields: ['price', 'cost'] },
+  { name: 'Цена', fields: ['price'] },
   { name: 'Размер', fields: ['size'] },
   { name: 'Фотографии', fields: ['photos'] },
   { name: 'Продавец', fields: ['seller'] },
@@ -265,9 +265,9 @@ export function OrderForm({ children, onSave, currentUserRole }: OrderFormProps)
                 </div>
               )}
               
-              {/* Step 3: Price & Cost */}
+              {/* Step 3: Price */}
               {currentStep === 2 && (
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div className="grid grid-cols-1">
                   <FormField
                     control={form.control}
                     name="price"
@@ -276,19 +276,6 @@ export function OrderForm({ children, onSave, currentUserRole }: OrderFormProps)
                         <FormLabel>Цена продажи</FormLabel>
                         <FormControl>
                           <Input type="number" placeholder="1500" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="cost"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Себестоимость</FormLabel>
-                        <FormControl>
-                          <Input type="number" placeholder="750" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -406,7 +393,6 @@ export function OrderForm({ children, onSave, currentUserRole }: OrderFormProps)
                             <div className="font-semibold">Размер:</div><div>{watchedValues.size}</div>
                             <div className="font-semibold">Продавец:</div><div>{watchedValues.seller}</div>
                             <div className="font-semibold">Цена:</div><div>{watchedValues.price?.toLocaleString('ru-RU')} ₽</div>
-                            <div className="font-semibold">Себестоимость:</div><div>{watchedValues.cost?.toLocaleString('ru-RU')} ₽</div>
                             <div className="font-semibold">Дата заказа:</div><div>{format(new Date(), 'd MMM yyyy', { locale: ru })}</div>
                         </div>
                         <div className="font-semibold">Фотографии:</div>
