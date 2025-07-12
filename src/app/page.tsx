@@ -128,7 +128,7 @@ export default function Home() {
     setView('orders');
   };
 
-  const useLargePhotos = currentUser.role === 'Принтовщик' && (filters.status === 'Добавлен' || filters.status === 'Готов');
+  const useLargeLayout = currentUser.role === 'Принтовщик' && (filters.status === 'Добавлен' || filters.status === 'Готов');
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -167,7 +167,7 @@ export default function Home() {
               orders={filteredOrders} 
               currentUser={currentUser} 
               onUpdateStatus={handleUpdateOrderStatus}
-              largePhotos={useLargePhotos}
+              useLargeLayout={useLargeLayout}
             />
           </div>
         )}

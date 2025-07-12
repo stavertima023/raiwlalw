@@ -52,7 +52,7 @@ interface OrderTableProps {
   orders: Order[];
   currentUser: User;
   onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void;
-  largePhotos?: boolean;
+  useLargeLayout?: boolean;
 }
 
 const statusConfig: Record<
@@ -77,7 +77,7 @@ const StatusBadge: React.FC<{ status: OrderStatus }> = ({ status }) => {
   );
 };
 
-export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onUpdateStatus, largePhotos = false }) => {
+export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onUpdateStatus, useLargeLayout = false }) => {
   const getAvailableActions = (orderStatus: OrderStatus): OrderStatus[] => {
     switch (orderStatus) {
       case 'Добавлен':
@@ -91,7 +91,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
     }
   };
   
-  const photoSize = largePhotos ? 100 : 60;
+  const photoSize = useLargeLayout ? 100 : 60;
 
   const renderPrinterActions = (order: Order) => {
     const actions = getAvailableActions(order.status);
@@ -185,7 +185,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
   }
 
   const renderActionsCell = (order: Order) => (
-    <TableCell className={cn(largePhotos && 'w-[100px]')}>
+    <TableCell className={cn(useLargeLayout && 'w-[100px]')}>
       {currentUser.role === 'Принтовщик' ? (
         renderPrinterActions(order)
       ) : (
@@ -221,7 +221,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
         <Table>
           <TableHeader>
             <TableRow>
-              {largePhotos && (
+              {useLargeLayout && (
                 <TableHead className="w-[100px]">
                   Действия
                 </TableHead>
@@ -234,9 +234,9 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
               <TableHead>Продавец</TableHead>
               <TableHead className="text-right">Цена</TableHead>
               <TableHead className="text-right">Себест.</TableHead>
-              <TableHead className={cn(largePhotos && 'w-[380px]')}>Фото</TableHead>
-              {largePhotos && <TableHead className="w-[400px]" />}
-              {!largePhotos && (
+              <TableHead className={cn(useLargeLayout && 'w-[380px]')}>Фото</TableHead>
+              {useLargeLayout && <TableHead className="w-[400px]" />}
+              {!useLargeLayout && (
                 <TableHead>
                   <span className="sr-only">Действия</span>
                 </TableHead>
@@ -247,7 +247,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
             {orders.length > 0 ? (
               orders.map((order) => (
                 <TableRow key={order.id}>
-                  {largePhotos && renderActionsCell(order)}
+                  {useLargeLayout && renderActionsCell(order)}
                   <TableCell className="font-medium whitespace-nowrap">
                     {format(order.orderDate, 'd MMM yyyy', { locale: ru })}
                   </TableCell>
@@ -264,7 +264,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
                   <TableCell className="text-right whitespace-nowrap">
                     {order.cost.toLocaleString('ru-RU')} ₽
                   </TableCell>
-                  <TableCell className={cn(largePhotos && 'w-[380px]')}>
+                  <TableCell className={cn(useLargeLayout && 'w-[380px]')}>
                     <div className="flex items-center gap-2">
                       {order.photos && order.photos.length > 0 ? (
                         order.photos.map((photo, index) => (
@@ -285,13 +285,13 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
                       )}
                     </div>
                   </TableCell>
-                  {largePhotos && <TableCell />}
-                  {!largePhotos && renderActionsCell(order)}
+                  {useLargeLayout && <TableCell />}
+                  {!useLargeLayout && renderActionsCell(order)}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={largePhotos ? 11 : 9} className="h-24 text-center">
+                <TableCell colSpan={useLargeLayout ? 11 : 9} className="h-24 text-center">
                   Нет заказов для отображения.
                 </TableCell>
               </TableRow>
