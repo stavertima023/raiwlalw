@@ -232,11 +232,11 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
               <TableHead>Дата</TableHead>
               <TableHead>Номер заказа</TableHead>
               <TableHead>Номер отправления</TableHead>
-              <TableHead>Статус</TableHead>
-              <TableHead className={cn(useLargeLayout && 'w-[25px] p-2')}>Тип</TableHead>
+              <TableHead className={cn(useLargeLayout && 'whitespace-nowrap w-[130px]')}>Статус</TableHead>
+              <TableHead className={cn(useLargeLayout && 'p-2 w-[25px]')}>Тип</TableHead>
               <TableHead className={cn(useLargeLayout && 'p-2 w-[20px]')}>Размер</TableHead>
               <TableHead className={cn(useLargeLayout && 'w-[80px]')}>Продавец</TableHead>
-              <TableHead className={cn('text-right', useLargeLayout && 'w-[80px] p-2')}>Цена</TableHead>
+              <TableHead className={cn('text-right', useLargeLayout && 'p-2 w-[80px]')}>Цена</TableHead>
               <TableHead className={cn(useLargeLayout && 'w-[380px]')}>Фото</TableHead>
               {useLargeLayout && <TableHead className="w-[400px]" />}
               {!useLargeLayout && (
@@ -256,7 +256,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
                   </TableCell>
                   <TableCell className="whitespace-nowrap">{order.orderNumber}</TableCell>
                   <TableCell className="whitespace-nowrap">{order.shipmentNumber || '–'}</TableCell>
-                  <TableCell>
+                  <TableCell className={cn(useLargeLayout && 'whitespace-nowrap w-[130px]')}>
                     <StatusBadge status={order.status} />
                   </TableCell>
                   <TableCell className={cn(useLargeLayout && 'p-2 w-[25px]')}>{order.productType}</TableCell>
