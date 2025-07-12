@@ -11,16 +11,19 @@ import {
   List,
   Send,
   Package,
+  Undo2,
 } from 'lucide-react';
 import { OrderForm } from './OrderForm';
 import { CancelOrderDialog } from './CancelOrderDialog';
 import { PayoutDialog } from './PayoutDialog';
+import { ReturnOrderDialog } from './ReturnOrderDialog';
 
 interface DashboardProps {
   user: User;
   onNavigate: (statusFilter: OrderStatus | 'all') => void;
   onAddOrder: (order: Omit<Order, 'id' | 'orderDate'>) => void;
   onCancelOrder: (orderNumber: string) => void;
+  onReturnOrder: (orderNumber: string) => void;
   findOrder: (orderNumber: string) => Order | undefined;
   findOrders: (orderNumbers: string[]) => Order[];
   onPayout: (orderNumbers: string[]) => void;
@@ -36,7 +39,7 @@ const printerActions = [
   { label: 'Все заказы', icon: Package, action: 'view_all_orders', filter: 'all' as const },
 ];
 
-export function Dashboard({ user, onNavigate, onAddOrder, onCancelOrder, findOrder, findOrders, onPayout }: DashboardProps) {
+export function Dashboard({ user, onNavigate, onAddOrder, onCancelOrder, onReturnOrder, findOrder, findOrders, onPayout }: DashboardProps) {
   const actions = user.role === 'Продавец' ? sellerActions : printerActions;
 
   const handleAction = (action: string, filter: OrderStatus | 'all') => {
@@ -91,6 +94,16 @@ export function Dashboard({ user, onNavigate, onAddOrder, onCancelOrder, findOrd
                     <span>Вывод оплаты</span>
                   </Button>
               </PayoutDialog>
+              
+              <ReturnOrderDialog findOrder={findOrder} onConfirmReturn={onReturnOrder}>
+                <Button
+                  variant="outline"
+                  className="w-full h-24 flex flex-col items-center justify-center gap-2"
+                >
+                  <Undo2 className="h-8 w-8" />
+                  <span>Возврат заказа</span>
+                </Button>
+              </ReturnOrderDialog>
             </>
           )}
 

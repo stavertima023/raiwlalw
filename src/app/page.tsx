@@ -49,6 +49,18 @@ export default function Home() {
       description: `Статус заказа #${orderNumber} изменен на "Отменен".`,
     });
   };
+  
+  const handleReturnOrder = (orderNumber: string) => {
+    setOrders((prevOrders) =>
+      prevOrders.map((order) =>
+        order.orderNumber === orderNumber ? { ...order, status: 'Возврат' } : order
+      )
+    );
+     toast({
+      title: 'Оформлен возврат',
+      description: `Статус заказа #${orderNumber} изменен на "Возврат".`,
+    });
+  };
 
   const handlePayout = (orderNumbers: string[]) => {
     setOrders((prevOrders) =>
@@ -137,6 +149,7 @@ export default function Home() {
             onNavigate={navigateToOrders} 
             onAddOrder={handleAddOrder} 
             onCancelOrder={handleCancelOrder}
+            onReturnOrder={handleReturnOrder}
             findOrder={findOrder}
             findOrders={findOrders}
             onPayout={handlePayout}
