@@ -22,9 +22,11 @@ export default function Home() {
   const [filters, setFilters] = React.useState<{
     status: OrderStatus | 'all';
     productType: ProductType | 'all';
+    orderNumber: string;
   }>({
     status: 'all',
     productType: 'all',
+    orderNumber: '',
   });
 
   const handleAddOrder = (newOrderData: Omit<Order, 'id' | 'orderDate'>) => {
@@ -35,7 +37,7 @@ export default function Home() {
     };
     setOrders((prevOrders) => [newOrder, ...prevOrders]);
     setView('orders');
-    setFilters({ status: 'all', productType: 'all' });
+    setFilters({ status: 'all', productType: 'all', orderNumber: '' });
   };
 
   const handleCancelOrder = (orderNumber: string) => {
@@ -102,7 +104,8 @@ export default function Home() {
         const statusMatch = filters.status === 'all' || order.status === filters.status;
         const productTypeMatch = filters.productType === 'all' || order.productType === filters.productType;
         const sellerMatch = currentUser.role === 'Продавец' ? order.seller === currentUser.telegramId : true;
-        return statusMatch && productTypeMatch && sellerMatch;
+        const orderNumberMatch = filters.orderNumber === '' || order.orderNumber.toLowerCase().includes(filters.orderNumber.toLowerCase());
+        return statusMatch && productTypeMatch && sellerMatch && orderNumberMatch;
       })
       .sort((a, b) => b.orderDate.getTime() - a.orderDate.getTime());
   }, [orders, filters, currentUser]);
@@ -110,7 +113,7 @@ export default function Home() {
   const toggleUserRole = () => {
     setCurrentUser(currentUser.role === 'Продавец' ? mockUsers[1] : mockUsers[0]);
     setView('dashboard');
-    setFilters({ status: 'all', productType: 'all' });
+    setFilters({ status: 'all', productType: 'all', orderNumber: '' });
   };
   
   const getOrderViewTitle = () => {
@@ -121,7 +124,7 @@ export default function Home() {
   }
 
   const navigateToOrders = (statusFilter: OrderStatus | 'all' = 'all') => {
-    setFilters(prev => ({ ...prev, status: statusFilter }));
+    setFilters(prev => ({ ...prev, status: statusFilter, orderNumber: '' }));
     setView('orders');
   };
 
@@ -131,7 +134,7 @@ export default function Home() {
     <div className="flex flex-col min-h-screen">
       <Header onAddOrder={handleAddOrder} onBackToDashboard={() => {
         setView('dashboard');
-        setFilters({ status: 'all', productType: 'all' });
+        setFilters({ status: 'all', productType: 'all', orderNumber: '' });
       }} showBackButton={view === 'orders'} currentUser={currentUser} />
       <main className="flex-1 container mx-auto p-4 md:p-6 lg:p-8">
         <div className="flex items-center justify-end mb-4 space-x-2">
