@@ -46,6 +46,7 @@ import {
 import type { Order, OrderStatus, User } from '@/lib/types';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 interface OrderTableProps {
   orders: Order[];
@@ -183,6 +184,8 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
     );
   }
 
+  const stickyHeaderCellStyles = "sticky right-0 z-10 bg-card";
+
   return (
     <Card>
       <CardHeader>
@@ -202,7 +205,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
                 <TableHead className="text-right">Цена</TableHead>
                 <TableHead className="text-right">Себест.</TableHead>
                 <TableHead className="w-[340px]">Фото</TableHead>
-                <TableHead>
+                <TableHead className={stickyHeaderCellStyles}>
                   <span className="sr-only">Действия</span>
                 </TableHead>
               </TableRow>
@@ -248,7 +251,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className={cn(stickyHeaderCellStyles, "border-l")}>
                       {currentUser.role === 'Принтовщик' ? (
                         renderPrinterActions(order)
                       ) : (
