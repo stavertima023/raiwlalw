@@ -230,6 +230,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
               )}
               <TableHead>Дата</TableHead>
               <TableHead>Номер заказа</TableHead>
+              <TableHead>Номер отправления</TableHead>
               <TableHead>Статус</TableHead>
               <TableHead className={cn(useLargeLayout && 'w-[25px] p-2')}>Тип</TableHead>
               <TableHead className={cn(useLargeLayout && 'w-[25px] p-2')}>Размер</TableHead>
@@ -253,6 +254,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
                     {format(order.orderDate, 'd MMM yyyy', { locale: ru })}
                   </TableCell>
                   <TableCell className="whitespace-nowrap">{order.orderNumber}</TableCell>
+                  <TableCell className="whitespace-nowrap">{order.shipmentNumber || '–'}</TableCell>
                   <TableCell>
                     <StatusBadge status={order.status} />
                   </TableCell>
@@ -289,7 +291,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={useLargeLayout ? 10 : 8} className="h-24 text-center">
+                <TableCell colSpan={useLargeLayout ? 11 : 9} className="h-24 text-center">
                   Нет заказов для отображения.
                 </TableCell>
               </TableRow>
