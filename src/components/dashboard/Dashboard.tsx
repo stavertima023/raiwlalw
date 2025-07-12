@@ -58,7 +58,7 @@ export function Dashboard({ user, onNavigate, onAddOrder }: DashboardProps) {
       <CardContent>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {user.role === 'Продавец' && (
-            <OrderForm onSave={onAddOrder} currentUserRole={user.role}>
+            <OrderForm onSave={onAddOrder} currentUser={user}>
               <Button
                 variant="outline"
                 className="w-full h-24 flex flex-col items-center justify-center gap-2"

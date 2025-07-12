@@ -40,7 +40,7 @@ const Header: React.FC<HeaderProps> = ({ onAddOrder, onBackToDashboard, showBack
             </svg>
             <h1 className="text-xl font-bold text-foreground">OrderFlow Factory</h1>
           </div>
-          <OrderForm onSave={onAddOrder} currentUserRole={currentUser.role}>
+          <OrderForm onSave={onAddOrder} currentUser={currentUser}>
             <Button disabled={currentUser.role !== 'Продавец'}>
               <PlusCircle className="mr-2 h-4 w-4" />
               Добавить заказ

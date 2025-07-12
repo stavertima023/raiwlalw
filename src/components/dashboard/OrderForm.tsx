@@ -31,6 +31,7 @@ import {
   ProductTypeEnum,
   SizeEnum,
   Order,
+  User,
 } from '@/lib/types';
 import { predictShipmentNumber } from '@/ai/flows/shipment-number-prediction';
 import { Loader2, Wand2, Plus, X, ArrowLeft, ArrowRight, Check } from 'lucide-react';
@@ -46,7 +47,7 @@ type OrderFormData = z.infer<typeof OrderSchema>;
 interface OrderFormProps {
   children: React.ReactNode;
   onSave: (data: Omit<Order, 'id' | 'orderDate'>) => void;
-  currentUserRole: 'Продавец' | 'Принтовщик';
+  currentUser: User;
 }
 
 const STEPS = [
@@ -55,11 +56,10 @@ const STEPS = [
   { name: 'Цена', fields: ['price'] },
   { name: 'Размер', fields: ['size'] },
   { name: 'Фотографии', fields: ['photos'] },
-  { name: 'Продавец', fields: ['seller'] },
   { name: 'Подтверждение' },
 ];
 
-export function OrderForm({ children, onSave, currentUserRole }: OrderFormProps) {
+export function OrderForm({ children, onSave, currentUser }: OrderFormProps) {
   const [isOpen, setIsOpen] = React.useState(false);
   const [isPredicting, setIsPredicting] = React.useState(false);
   const [currentStep, setCurrentStep] = React.useState(0);
@@ -73,13 +73,17 @@ export function OrderForm({ children, onSave, currentUserRole }: OrderFormProps)
       status: 'Добавлен',
       productType: undefined,
       size: undefined,
-      seller: '',
+      seller: currentUser.telegramId,
       price: 0,
       cost: 0,
       photos: [],
     },
     mode: 'onChange',
   });
+  
+  React.useEffect(() => {
+    form.setValue('seller', currentUser.telegramId);
+  }, [currentUser, form])
 
   const { trigger, getValues, watch, setValue } = form;
   const watchedValues = watch();
@@ -168,7 +172,7 @@ export function OrderForm({ children, onSave, currentUserRole }: OrderFormProps)
      setIsOpen(false);
   }
 
-  if (currentUserRole !== 'Продавец') {
+  if (currentUser.role !== 'Продавец') {
     return <>{children}</>;
   }
 
@@ -361,25 +365,9 @@ export function OrderForm({ children, onSave, currentUserRole }: OrderFormProps)
                   )}
                 />
               )}
-               {/* Step 6: Seller */}
-              {currentStep === 5 && (
-                 <FormField
-                  control={form.control}
-                  name="seller"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Продавец (Telegram ID)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Имя или Telegram ID" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
 
-              {/* Step 7: Confirmation */}
-              {currentStep === 6 && (
+              {/* Step 6: Confirmation */}
+              {currentStep === 5 && (
                 <Card>
                     <CardHeader>
                         <CardTitle>Проверьте данные заказа</CardTitle>
@@ -391,7 +379,7 @@ export function OrderForm({ children, onSave, currentUserRole }: OrderFormProps)
                             <div className="font-semibold">Статус:</div><div><Badge variant="primary">{watchedValues.status}</Badge></div>
                             <div className="font-semibold">Тип изделия:</div><div>{watchedValues.productType}</div>
                             <div className="font-semibold">Размер:</div><div>{watchedValues.size}</div>
-                            <div className="font-semibold">Продавец:</div><div>{watchedValues.seller}</div>
+                            <div className="font-semibold">Продавец:</div><div>{currentUser.name} ({currentUser.telegramId})</div>
                             <div className="font-semibold">Цена:</div><div>{watchedValues.price?.toLocaleString('ru-RU')} ₽</div>
                             <div className="font-semibold">Дата заказа:</div><div>{format(new Date(), 'd MMM yyyy', { locale: ru })}</div>
                         </div>
