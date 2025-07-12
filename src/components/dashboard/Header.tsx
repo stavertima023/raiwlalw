@@ -29,10 +29,12 @@ const Header: React.FC<HeaderProps> = ({ onAddOrder, onBackToDashboard, showBack
               width="24"
               height="24"
               viewBox="0 0 24 24"
-              fill="currentColor"
-              className="text-primary h-7 w-7"
+              className="h-7 w-7"
             >
-              <path d="M16.42.06a4.05 4.05 0 0 0-4.05 4.05v1.35c-2.22 0-4.03 1.81-4.03 4.03v.28a4.05 4.05 0 1 0 8.09 0v-.28c0-2.22-1.81-4.03-4.03-4.03h-.03V4.11a4.05 4.05 0 0 0 4.05-4.05zm-4.05 15.54a4.05 4.05 0 0 0-4.05-4.05H8.04c-2.24 0-4.05 1.81-4.05 4.05v5.33A4.05 4.05 0 0 0 8.04 24h.28a4.05 4.05 0 0 0 4.05-4.05v-4.35z"></path>
+              <circle cx="6.5" cy="6.5" r="5.5" fill="#4285F4" />
+              <circle cx="17.5" cy="6.5" r="3.5" fill="#EA4335" />
+              <circle cx="6.5" cy="17.5" r="2.5" fill="#A040A0" />
+              <circle cx="17.5"cy="17.5" r="4.5" fill="#34A853" />
             </svg>
             <h1 className="text-xl font-bold text-foreground">Avito</h1>
           </div>
