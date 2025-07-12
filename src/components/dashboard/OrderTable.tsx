@@ -231,8 +231,8 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
               <TableHead>Дата</TableHead>
               <TableHead>Номер заказа</TableHead>
               <TableHead>Статус</TableHead>
-              <TableHead className={cn(useLargeLayout && 'w-[50px] p-2')}>Тип</TableHead>
-              <TableHead className={cn(useLargeLayout && 'w-[50px] p-2')}>Размер</TableHead>
+              <TableHead className={cn(useLargeLayout && 'w-[25px] p-2')}>Тип</TableHead>
+              <TableHead className={cn(useLargeLayout && 'w-[25px] p-2')}>Размер</TableHead>
               <TableHead>Продавец</TableHead>
               <TableHead className={cn('text-right', useLargeLayout && 'w-[80px] p-2')}>Цена</TableHead>
               <TableHead className="text-right">Себест.</TableHead>
@@ -257,10 +257,10 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
                   <TableCell>
                     <StatusBadge status={order.status} />
                   </TableCell>
-                  <TableCell className={cn(useLargeLayout && 'p-2')}>{order.productType}</TableCell>
-                  <TableCell className={cn(useLargeLayout && 'p-2')}>{order.size}</TableCell>
+                  <TableCell className={cn(useLargeLayout && 'p-2 w-[25px]')}>{order.productType}</TableCell>
+                  <TableCell className={cn(useLargeLayout && 'p-2 w-[25px]')}>{order.size}</TableCell>
                   <TableCell className="whitespace-nowrap">{order.seller}</TableCell>
-                  <TableCell className={cn('text-right whitespace-nowrap', useLargeLayout && 'p-2')}>
+                  <TableCell className={cn('text-right whitespace-nowrap', useLargeLayout && 'p-2 w-[80px]')}>
                     {order.price.toLocaleString('ru-RU')} ₽
                   </TableCell>
                   <TableCell className="text-right whitespace-nowrap">
