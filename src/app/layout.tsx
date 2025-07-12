@@ -3,8 +3,8 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: 'OrderFlow Factory',
-  description: 'Профессиональный Telegram WebApp для управления заказами в формате фабрики-онлайн.',
+  title: 'Avito',
+  description: 'Профессиональный Telegram WebApp для управления заказами.',
 };
 
 export default function RootLayout({

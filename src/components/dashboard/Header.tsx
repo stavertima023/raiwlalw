@@ -29,16 +29,12 @@ const Header: React.FC<HeaderProps> = ({ onAddOrder, onBackToDashboard, showBack
               width="24"
               height="24"
               viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="text-primary h-6 w-6"
+              fill="currentColor"
+              className="text-primary h-7 w-7"
             >
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+              <path d="M16.42.06a4.05 4.05 0 0 0-4.05 4.05v1.35c-2.22 0-4.03 1.81-4.03 4.03v.28a4.05 4.05 0 1 0 8.09 0v-.28c0-2.22-1.81-4.03-4.03-4.03h-.03V4.11a4.05 4.05 0 0 0 4.05-4.05zm-4.05 15.54a4.05 4.05 0 0 0-4.05-4.05H8.04c-2.24 0-4.05 1.81-4.05 4.05v5.33A4.05 4.05 0 0 0 8.04 24h.28a4.05 4.05 0 0 0 4.05-4.05v-4.35z"></path>
             </svg>
-            <h1 className="text-xl font-bold text-foreground">OrderFlow Factory</h1>
+            <h1 className="text-xl font-bold text-foreground">Avito</h1>
           </div>
           <OrderForm onSave={onAddOrder} currentUser={currentUser}>
             <Button disabled={currentUser.role !== 'Продавец'}>
