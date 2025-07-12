@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { OrderForm } from './OrderForm';
 import { CancelOrderDialog } from './CancelOrderDialog';
+import { PayoutDialog } from './PayoutDialog';
 
 interface DashboardProps {
   user: User;
@@ -21,11 +22,12 @@ interface DashboardProps {
   onAddOrder: (order: Omit<Order, 'id' | 'orderDate'>) => void;
   onCancelOrder: (orderNumber: string) => void;
   findOrder: (orderNumber: string) => Order | undefined;
+  findOrders: (orderNumbers: string[]) => Order[];
+  onPayout: (orderNumbers: string[]) => void;
 }
 
 const sellerActions = [
   { label: 'Мои заказы', icon: List, action: 'view_orders' },
-  { label: 'Вывод оплаты', icon: DollarSign, action: 'payout' },
 ];
 
 const printerActions = [
@@ -34,7 +36,7 @@ const printerActions = [
   { label: 'Все заказы', icon: Package, action: 'view_all_orders' },
 ];
 
-export function Dashboard({ user, onNavigate, onAddOrder, onCancelOrder, findOrder }: DashboardProps) {
+export function Dashboard({ user, onNavigate, onAddOrder, onCancelOrder, findOrder, findOrders, onPayout }: DashboardProps) {
   const actions = user.role === 'Продавец' ? sellerActions : printerActions;
 
   const handleAction = (action: string) => {
@@ -57,26 +59,38 @@ export function Dashboard({ user, onNavigate, onAddOrder, onCancelOrder, findOrd
       <CardContent>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {user.role === 'Продавец' && (
-            <OrderForm onSave={onAddOrder} currentUser={user}>
-              <Button
-                variant="outline"
-                className="w-full h-24 flex flex-col items-center justify-center gap-2"
-              >
-                <PlusCircle className="h-8 w-8" />
-                <span>Добавить заказ</span>
-              </Button>
-            </OrderForm>
-          )}
+            <>
+              <OrderForm onSave={onAddOrder} currentUser={user}>
+                <Button
+                  variant="outline"
+                  className="w-full h-24 flex flex-col items-center justify-center gap-2"
+                >
+                  <PlusCircle className="h-8 w-8" />
+                  <span>Добавить заказ</span>
+                </Button>
+              </OrderForm>
 
-          <CancelOrderDialog findOrder={findOrder} onConfirmCancel={onCancelOrder}>
-              <Button
-                variant="outline"
-                className="w-full h-24 flex flex-col items-center justify-center gap-2"
-              >
-                <XCircle className="h-8 w-8" />
-                <span>Отменить заказ</span>
-              </Button>
-          </CancelOrderDialog>
+              <CancelOrderDialog findOrder={findOrder} onConfirmCancel={onCancelOrder}>
+                  <Button
+                    variant="outline"
+                    className="w-full h-24 flex flex-col items-center justify-center gap-2"
+                  >
+                    <XCircle className="h-8 w-8" />
+                    <span>Отменить заказ</span>
+                  </Button>
+              </CancelOrderDialog>
+              
+              <PayoutDialog findOrders={findOrders} onConfirmPayout={onPayout} >
+                 <Button
+                    variant="outline"
+                    className="w-full h-24 flex flex-col items-center justify-center gap-2"
+                  >
+                    <DollarSign className="h-8 w-8" />
+                    <span>Вывод оплаты</span>
+                  </Button>
+              </PayoutDialog>
+            </>
+          )}
 
           {actions.map(({ label, icon: Icon, action }) => (
             <Button

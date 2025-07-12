@@ -49,9 +49,27 @@ export default function Home() {
     });
   };
 
+  const handlePayout = (orderNumbers: string[]) => {
+    setOrders((prevOrders) =>
+      prevOrders.map((order) =>
+        orderNumbers.includes(order.orderNumber)
+          ? { ...order, status: 'Исполнен' }
+          : order
+      )
+    );
+    toast({
+      title: 'Оплата проведена',
+      description: `${orderNumbers.length} заказ(а/ов) были отмечены как "Исполнен".`,
+    });
+  };
+
   const findOrder = (orderNumber: string): Order | undefined => {
     return orders.find((order) => order.orderNumber === orderNumber);
   };
+  
+  const findOrders = (orderNumbers: string[]): Order[] => {
+    return orders.filter(order => orderNumbers.includes(order.orderNumber));
+  }
 
   const filteredOrders = React.useMemo(() => {
     return orders
@@ -96,6 +114,8 @@ export default function Home() {
             onAddOrder={handleAddOrder} 
             onCancelOrder={handleCancelOrder}
             findOrder={findOrder}
+            findOrders={findOrders}
+            onPayout={handlePayout}
           />
         ) : (
           <div className="space-y-6">
