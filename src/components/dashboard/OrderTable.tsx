@@ -235,7 +235,6 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
               <TableHead className={cn(useLargeLayout && 'w-[25px] p-2')}>Размер</TableHead>
               <TableHead>Продавец</TableHead>
               <TableHead className={cn('text-right', useLargeLayout && 'w-[80px] p-2')}>Цена</TableHead>
-              <TableHead className="text-right">Себест.</TableHead>
               <TableHead className={cn(useLargeLayout && 'w-[380px]')}>Фото</TableHead>
               {useLargeLayout && <TableHead className="w-[400px]" />}
               {!useLargeLayout && (
@@ -262,9 +261,6 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
                   <TableCell className="whitespace-nowrap">{order.seller}</TableCell>
                   <TableCell className={cn('text-right whitespace-nowrap', useLargeLayout && 'p-2 w-[80px]')}>
                     {order.price.toLocaleString('ru-RU')} ₽
-                  </TableCell>
-                  <TableCell className="text-right whitespace-nowrap">
-                    {order.cost.toLocaleString('ru-RU')} ₽
                   </TableCell>
                   <TableCell className={cn(useLargeLayout && 'w-[380px]')}>
                     <div className="flex items-center gap-2">
@@ -293,7 +289,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={useLargeLayout ? 11 : 9} className="h-24 text-center">
+                <TableCell colSpan={useLargeLayout ? 10 : 8} className="h-24 text-center">
                   Нет заказов для отображения.
                 </TableCell>
               </TableRow>
