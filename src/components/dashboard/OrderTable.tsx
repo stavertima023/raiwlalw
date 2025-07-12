@@ -202,6 +202,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
               <TableHead className="text-right">Цена</TableHead>
               <TableHead className="text-right">Себест.</TableHead>
               <TableHead className={cn(largePhotos && 'w-[380px]')}>Фото</TableHead>
+              {largePhotos && <TableHead className="w-[200px]" />}
               <TableHead className={cn(largePhotos && 'w-[100px]')}>
                 <span className="sr-only">Действия</span>
               </TableHead>
@@ -248,6 +249,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
                       )}
                     </div>
                   </TableCell>
+                  {largePhotos && <TableCell />}
                   <TableCell className={cn(largePhotos && 'w-[100px]')}>
                     {currentUser.role === 'Принтовщик' ? (
                       renderPrinterActions(order)
@@ -277,7 +279,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={10} className="h-24 text-center">
+                <TableCell colSpan={largePhotos ? 11 : 10} className="h-24 text-center">
                   Нет заказов для отображения.
                 </TableCell>
               </TableRow>
