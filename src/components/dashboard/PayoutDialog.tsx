@@ -59,12 +59,16 @@ export function PayoutDialog({
     const invalid: { number: string; reason: string }[] = [];
 
     found.forEach(order => {
-      if (order.status === 'Исполнен') {
+      if (order.status === 'Готов' || order.status === 'Отправлен') {
+        valid.push(order);
+      } else if (order.status === 'Исполнен') {
         invalid.push({ number: order.orderNumber, reason: 'уже исполнен' });
       } else if (order.status === 'Отменен') {
         invalid.push({ number: order.orderNumber, reason: 'отменен' });
+      } else if (order.status === 'Возврат') {
+        invalid.push({ number: order.orderNumber, reason: 'возврат' });
       } else {
-        valid.push(order);
+         invalid.push({ number: order.orderNumber, reason: `статус "${order.status}"` });
       }
     });
 
