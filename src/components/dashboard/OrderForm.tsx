@@ -59,7 +59,7 @@ export function OrderForm({ children, onSave, currentUser }: OrderFormProps) {
       productType: undefined,
       size: undefined,
       seller: currentUser.telegramId,
-      price: 0,
+      price: '' as any, // Set initial value to empty string
       photos: [],
     },
     mode: 'onChange',
