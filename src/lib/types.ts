@@ -34,10 +34,22 @@ export const OrderSchema = z.object({
   status: OrderStatusEnum,
   productType: ProductTypeEnum,
   size: SizeEnum,
-  seller: z.string().min(1, 'Продавец обязателен'),
+  seller: z.string().min(1, 'Продавец обязателен'), // This will store the User's telegramId
   price: z.coerce.number().positive('Цена должна быть положительной'),
   cost: z.coerce.number().positive('Себестоимость должна быть положительной'),
   photos: z.array(z.string().url()).max(3).optional().default([]),
 });
 
 export type Order = z.infer<typeof OrderSchema>;
+
+export const RoleEnum = z.enum(['Продавец', 'Принтовщик']);
+export type Role = z.infer<typeof RoleEnum>;
+
+export const UserSchema = z.object({
+  telegramId: z.string(),
+  name: z.string(),
+  role: RoleEnum,
+  position: z.string(),
+});
+
+export type User = z.infer<typeof UserSchema>;
