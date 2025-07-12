@@ -125,6 +125,38 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
         )
     }
 
+    if (order.status === 'Готов') {
+        return (
+            <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => onUpdateStatus(order.id, 'Отправлен')}>
+                    <Send className="mr-2 h-4 w-4" /> Отправлен
+                </Button>
+                 <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button size="icon" variant="destructive">
+                      <X className="h-4 w-4" />
+                      <span className="sr-only">Отменить</span>
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Вы собираетесь отменить заказ #{order.orderNumber}. Это действие нельзя будет отменить.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Закрыть</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => onUpdateStatus(order.id, 'Отменен')}>
+                        Подтвердить отмену
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+            </div>
+        )
+    }
+
     // Fallback to dropdown for other statuses for now
     return (
        <DropdownMenu>
