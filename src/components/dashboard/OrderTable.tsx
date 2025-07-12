@@ -188,7 +188,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
   }
 
   const renderActionsCell = (order: Order) => (
-    <TableCell className={cn(useLargeLayout && 'w-[180px]')}>
+    <TableCell className={cn(useLargeLayout && 'w-[100px]')}>
       {currentUser.role === 'Принтовщик' ? (
         renderPrinterActions(order)
       ) : (
@@ -225,20 +225,19 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
           <TableHeader>
             <TableRow>
               {useLargeLayout && (
-                <TableHead className="w-[180px]">
+                <TableHead className="w-[100px]">
                   Действия
                 </TableHead>
               )}
               <TableHead>Дата</TableHead>
               <TableHead>Номер заказа</TableHead>
               <TableHead>Номер отправления</TableHead>
-              <TableHead className={cn(useLargeLayout && 'whitespace-nowrap w-[120px]')}>Статус</TableHead>
-              <TableHead className={cn(useLargeLayout && 'p-2 w-[25px]')}>Тип</TableHead>
-              <TableHead className={cn(useLargeLayout && 'p-2 w-[20px]')}>Размер</TableHead>
-              <TableHead className={cn(useLargeLayout && 'w-[80px]')}>Продавец</TableHead>
-              <TableHead className={cn('text-right', useLargeLayout && 'p-2 w-[80px]')}>Цена</TableHead>
-              <TableHead className={cn(useLargeLayout && 'w-[380px]')}>Фото</TableHead>
-              {useLargeLayout && <TableHead className="w-[400px]" />}
+              <TableHead className={cn(useLargeLayout && 'whitespace-nowrap w-[90px]')}>Статус</TableHead>
+              <TableHead className={cn(useLargeLayout && 'p-2 w-[15px]')}>Тип</TableHead>
+              <TableHead className={cn(useLargeLayout && 'p-2 w-[10px]')}>Размер</TableHead>
+              <TableHead className={cn(useLargeLayout && 'w-[60px]')}>Продавец</TableHead>
+              <TableHead className={cn('text-right', useLargeLayout && 'p-2 w-[60px]')}>Цена</TableHead>
+              <TableHead>Фото</TableHead>
               {!useLargeLayout && (
                 <TableHead>
                   <span className="sr-only">Действия</span>
@@ -256,16 +255,16 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
                   </TableCell>
                   <TableCell className="whitespace-nowrap">{order.orderNumber}</TableCell>
                   <TableCell className="whitespace-nowrap">{order.shipmentNumber || '–'}</TableCell>
-                  <TableCell className={cn(useLargeLayout && 'whitespace-nowrap w-[120px]')}>
+                  <TableCell className={cn(useLargeLayout && 'whitespace-nowrap w-[90px]')}>
                     <StatusBadge status={order.status} useLargeLayout={useLargeLayout} />
                   </TableCell>
-                  <TableCell className={cn(useLargeLayout && 'p-2 w-[25px]')}>{order.productType}</TableCell>
-                  <TableCell className={cn(useLargeLayout && 'p-2 w-[20px]')}>{order.size}</TableCell>
-                  <TableCell className={cn("whitespace-nowrap", useLargeLayout && 'w-[80px]')}>{order.seller}</TableCell>
-                  <TableCell className={cn('text-right whitespace-nowrap', useLargeLayout && 'p-2 w-[80px]')}>
+                  <TableCell className={cn(useLargeLayout && 'p-2 w-[15px]')}>{order.productType}</TableCell>
+                  <TableCell className={cn(useLargeLayout && 'p-2 w-[10px]')}>{order.size}</TableCell>
+                  <TableCell className={cn("whitespace-nowrap", useLargeLayout && 'w-[60px]')}>{order.seller}</TableCell>
+                  <TableCell className={cn('text-right whitespace-nowrap', useLargeLayout && 'p-2 w-[60px]')}>
                     {order.price.toLocaleString('ru-RU')} ₽
                   </TableCell>
-                  <TableCell className={cn(useLargeLayout && 'w-[380px]')}>
+                  <TableCell>
                     <div className="flex items-center gap-2">
                       {order.photos && order.photos.length > 0 ? (
                         order.photos.map((photo, index) => (
@@ -286,13 +285,12 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
                       )}
                     </div>
                   </TableCell>
-                  {useLargeLayout && <TableCell className="w-[400px]" />}
                   {!useLargeLayout && renderActionsCell(order)}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={useLargeLayout ? 11 : 9} className="h-24 text-center">
+                <TableCell colSpan={useLargeLayout ? 10 : 9} className="h-24 text-center">
                   Нет заказов для отображения.
                 </TableCell>
               </TableRow>
