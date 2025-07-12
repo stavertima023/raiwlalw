@@ -184,110 +184,106 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
     );
   }
 
-  const stickyHeaderCellStyles = "sticky right-0 z-10 bg-card";
-
   return (
     <Card>
       <CardHeader>
         <CardTitle>Список заказов</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="relative w-full overflow-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Дата</TableHead>
-                <TableHead>Номер заказа</TableHead>
-                <TableHead>Статус</TableHead>
-                <TableHead>Тип</TableHead>
-                <TableHead>Размер</TableHead>
-                <TableHead>Продавец</TableHead>
-                <TableHead className="text-right">Цена</TableHead>
-                <TableHead className="text-right">Себест.</TableHead>
-                <TableHead className="w-[340px]">Фото</TableHead>
-                <TableHead className={stickyHeaderCellStyles}>
-                  <span className="sr-only">Действия</span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {orders.length > 0 ? (
-                orders.map((order) => (
-                  <TableRow key={order.id}>
-                    <TableCell className="font-medium whitespace-nowrap">
-                      {format(order.orderDate, 'd MMM yyyy', { locale: ru })}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">{order.orderNumber}</TableCell>
-                    <TableCell>
-                      <StatusBadge status={order.status} />
-                    </TableCell>
-                    <TableCell>{order.productType}</TableCell>
-                    <TableCell>{order.size}</TableCell>
-                    <TableCell className="whitespace-nowrap">{order.seller}</TableCell>
-                    <TableCell className="text-right whitespace-nowrap">
-                      {order.price.toLocaleString('ru-RU')} ₽
-                    </TableCell>
-                    <TableCell className="text-right whitespace-nowrap">
-                      {order.cost.toLocaleString('ru-RU')} ₽
-                    </TableCell>
-                    <TableCell className="w-[340px]">
-                      <div className="flex items-center gap-2">
-                        {order.photos && order.photos.length > 0 ? (
-                          order.photos.map((photo, index) => (
-                            <Image
-                              key={index}
-                              src={photo}
-                              alt={`Фото ${index + 1}`}
-                              width={photoSize}
-                              height={photoSize}
-                              className="rounded-md object-cover"
-                              data-ai-hint="product photo"
-                            />
-                          ))
-                        ) : (
-                          <div className="rounded-md bg-muted flex items-center justify-center text-muted-foreground text-xs" style={{ height: photoSize, width: photoSize }}>
-                            Нет фото
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className={cn(stickyHeaderCellStyles, "border-l")}>
-                      {currentUser.role === 'Принтовщик' ? (
-                        renderPrinterActions(order)
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Дата</TableHead>
+              <TableHead>Номер заказа</TableHead>
+              <TableHead>Статус</TableHead>
+              <TableHead>Тип</TableHead>
+              <TableHead>Размер</TableHead>
+              <TableHead>Продавец</TableHead>
+              <TableHead className="text-right">Цена</TableHead>
+              <TableHead className="text-right">Себест.</TableHead>
+              <TableHead className="w-[340px]">Фото</TableHead>
+              <TableHead>
+                <span className="sr-only">Действия</span>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {orders.length > 0 ? (
+              orders.map((order) => (
+                <TableRow key={order.id}>
+                  <TableCell className="font-medium whitespace-nowrap">
+                    {format(order.orderDate, 'd MMM yyyy', { locale: ru })}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">{order.orderNumber}</TableCell>
+                  <TableCell>
+                    <StatusBadge status={order.status} />
+                  </TableCell>
+                  <TableCell>{order.productType}</TableCell>
+                  <TableCell>{order.size}</TableCell>
+                  <TableCell className="whitespace-nowrap">{order.seller}</TableCell>
+                  <TableCell className="text-right whitespace-nowrap">
+                    {order.price.toLocaleString('ru-RU')} ₽
+                  </TableCell>
+                  <TableCell className="text-right whitespace-nowrap">
+                    {order.cost.toLocaleString('ru-RU')} ₽
+                  </TableCell>
+                  <TableCell className="w-[340px]">
+                    <div className="flex items-center gap-2">
+                      {order.photos && order.photos.length > 0 ? (
+                        order.photos.map((photo, index) => (
+                          <Image
+                            key={index}
+                            src={photo}
+                            alt={`Фото ${index + 1}`}
+                            width={photoSize}
+                            height={photoSize}
+                            className="rounded-md object-cover"
+                            data-ai-hint="product photo"
+                          />
+                        ))
                       ) : (
-                        <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button aria-haspopup="true" size="icon" variant="ghost" disabled={currentUser.role !== 'Продавец'}>
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                           <DropdownMenuItem>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Редактировать
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive">
-                            <XCircle className="mr-2 h-4 w-4" />
-                            Отменить заказ
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                        <div className="rounded-md bg-muted flex items-center justify-center text-muted-foreground text-xs" style={{ height: photoSize, width: photoSize }}>
+                          Нет фото
+                        </div>
                       )}
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={10} className="h-24 text-center">
-                    Нет заказов для отображения.
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {currentUser.role === 'Принтовщик' ? (
+                      renderPrinterActions(order)
+                    ) : (
+                      <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button aria-haspopup="true" size="icon" variant="ghost" disabled={currentUser.role !== 'Продавец'}>
+                          <MoreHorizontal className="h-4 w-4" />
+                          <span className="sr-only">Toggle menu</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                         <DropdownMenuItem>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Редактировать
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-destructive">
+                          <XCircle className="mr-2 h-4 w-4" />
+                          Отменить заказ
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    )}
                   </TableCell>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={10} className="h-24 text-center">
+                  Нет заказов для отображения.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       </CardContent>
     </Card>
   );
