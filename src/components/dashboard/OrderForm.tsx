@@ -52,8 +52,7 @@ interface OrderFormProps {
 
 const STEPS = [
   { name: 'Тип изделия', fields: ['productType'] },
-  { name: 'Номера', fields: ['orderNumber', 'shipmentNumber'] },
-  { name: 'Цена', fields: ['price'] },
+  { name: 'Детали заказа', fields: ['orderNumber', 'shipmentNumber', 'price'] },
   { name: 'Размер', fields: ['size'] },
   { name: 'Фотографии', fields: ['photos'] },
   { name: 'Подтверждение' },
@@ -102,7 +101,7 @@ export function OrderForm({ children, onSave, currentUser }: OrderFormProps) {
 
   const prevStep = () => {
     if (currentStep > 0) {
-      setCurrentStep((step) => step - 1);
+      setCurrentStep((step) => step + 1);
     }
   };
 
@@ -225,7 +224,7 @@ export function OrderForm({ children, onSave, currentUser }: OrderFormProps) {
                 />
               )}
 
-              {/* Step 2: Order & Shipment Number */}
+              {/* Step 2: Order Details */}
               {currentStep === 1 && (
                 <div className="space-y-4">
                   <FormField
@@ -266,13 +265,7 @@ export function OrderForm({ children, onSave, currentUser }: OrderFormProps) {
                       </FormItem>
                     )}
                   />
-                </div>
-              )}
-              
-              {/* Step 3: Price */}
-              {currentStep === 2 && (
-                 <div className="grid grid-cols-1">
-                  <FormField
+                   <FormField
                     control={form.control}
                     name="price"
                     render={({ field }) => (
@@ -288,8 +281,8 @@ export function OrderForm({ children, onSave, currentUser }: OrderFormProps) {
                 </div>
               )}
 
-              {/* Step 4: Size */}
-              {currentStep === 3 && (
+              {/* Step 3: Size */}
+              {currentStep === 2 && (
                 <FormField
                   control={form.control}
                   name="size"
@@ -317,8 +310,8 @@ export function OrderForm({ children, onSave, currentUser }: OrderFormProps) {
                 />
               )}
 
-              {/* Step 5: Photos */}
-              {currentStep === 4 && (
+              {/* Step 4: Photos */}
+              {currentStep === 3 && (
                 <FormField
                   control={form.control}
                   name="photos"
@@ -366,8 +359,8 @@ export function OrderForm({ children, onSave, currentUser }: OrderFormProps) {
                 />
               )}
 
-              {/* Step 6: Confirmation */}
-              {currentStep === 5 && (
+              {/* Step 5: Confirmation */}
+              {currentStep === 4 && (
                 <Card>
                     <CardHeader>
                         <CardTitle>Проверьте данные заказа</CardTitle>
