@@ -35,6 +35,7 @@ export default function Home() {
     };
     setOrders((prevOrders) => [newOrder, ...prevOrders]);
     setView('orders');
+    setFilters({ status: 'all', productType: 'all' });
   };
 
   const handleCancelOrder = (orderNumber: string) => {
@@ -62,6 +63,18 @@ export default function Home() {
       description: `${orderNumbers.length} заказ(а/ов) были отмечены как "Исполнен".`,
     });
   };
+  
+  const handleUpdateOrderStatus = (orderId: string, newStatus: OrderStatus) => {
+    setOrders(prevOrders =>
+      prevOrders.map(order =>
+        order.id === orderId ? { ...order, status: newStatus } : order
+      )
+    );
+    toast({
+      title: 'Статус заказа обновлен',
+      description: `Заказ получил новый статус: "${newStatus}".`,
+    });
+  };
 
   const findOrder = (orderNumber: string): Order | undefined => {
     return orders.find((order) => order.orderNumber === orderNumber);
@@ -85,16 +98,27 @@ export default function Home() {
   const toggleUserRole = () => {
     setCurrentUser(currentUser.role === 'Продавец' ? mockUsers[1] : mockUsers[0]);
     setView('dashboard');
+    setFilters({ status: 'all', productType: 'all' });
   };
   
   const getOrderViewTitle = () => {
      if (currentUser.role === 'Продавец') return 'Мои заказы';
+     if (filters.status === 'Добавлен') return 'Новые заказы';
+     if (filters.status === 'Готов') return 'Готовые к отправке';
      return 'Все заказы';
   }
 
+  const navigateToOrders = (statusFilter: OrderStatus | 'all' = 'all') => {
+    setFilters(prev => ({ ...prev, status: statusFilter }));
+    setView('orders');
+  };
+
   return (
     <div className="flex flex-col min-h-screen">
-      <Header onAddOrder={handleAddOrder} onBackToDashboard={() => setView('dashboard')} showBackButton={view === 'orders'} currentUser={currentUser} />
+      <Header onAddOrder={handleAddOrder} onBackToDashboard={() => {
+        setView('dashboard');
+        setFilters({ status: 'all', productType: 'all' });
+      }} showBackButton={view === 'orders'} currentUser={currentUser} />
       <main className="flex-1 container mx-auto p-4 md:p-6 lg:p-8">
         <div className="flex items-center justify-end mb-4 space-x-2">
             <Label htmlFor="role-switch">
@@ -110,7 +134,7 @@ export default function Home() {
         {view === 'dashboard' ? (
           <Dashboard 
             user={currentUser} 
-            onNavigate={() => setView('orders')} 
+            onNavigate={navigateToOrders} 
             onAddOrder={handleAddOrder} 
             onCancelOrder={handleCancelOrder}
             findOrder={findOrder}
@@ -120,8 +144,12 @@ export default function Home() {
         ) : (
           <div className="space-y-6">
             <h2 className="text-2xl font-bold">{getOrderViewTitle()}</h2>
-            <Filters onFilterChange={setFilters} />
-            <OrderTable orders={filteredOrders} />
+            <Filters onFilterChange={setFilters} currentFilters={filters} />
+            <OrderTable 
+              orders={filteredOrders} 
+              currentUser={currentUser} 
+              onUpdateStatus={handleUpdateOrderStatus} 
+            />
           </div>
         )}
       </main>

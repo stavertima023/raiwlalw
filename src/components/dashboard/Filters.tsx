@@ -16,11 +16,20 @@ interface FiltersProps {
     status: OrderStatus | 'all';
     productType: ProductType | 'all';
   }) => void;
+  currentFilters: {
+    status: OrderStatus | 'all';
+    productType: ProductType | 'all';
+  };
 }
 
-const Filters: React.FC<FiltersProps> = ({ onFilterChange }) => {
-  const [status, setStatus] = React.useState<OrderStatus | 'all'>('all');
-  const [productType, setProductType] = React.useState<ProductType | 'all'>('all');
+const Filters: React.FC<FiltersProps> = ({ onFilterChange, currentFilters }) => {
+  const [status, setStatus] = React.useState<OrderStatus | 'all'>(currentFilters.status);
+  const [productType, setProductType] = React.useState<ProductType | 'all'>(currentFilters.productType);
+
+  React.useEffect(() => {
+    setStatus(currentFilters.status);
+    setProductType(currentFilters.productType);
+  }, [currentFilters]);
 
   React.useEffect(() => {
     onFilterChange({ status, productType });

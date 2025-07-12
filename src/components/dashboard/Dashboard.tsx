@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { User, Order } from '@/lib/types';
+import { User, Order, OrderStatus } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -18,7 +18,7 @@ import { PayoutDialog } from './PayoutDialog';
 
 interface DashboardProps {
   user: User;
-  onNavigate: (view: 'orders') => void;
+  onNavigate: (statusFilter: OrderStatus | 'all') => void;
   onAddOrder: (order: Omit<Order, 'id' | 'orderDate'>) => void;
   onCancelOrder: (orderNumber: string) => void;
   findOrder: (orderNumber: string) => Order | undefined;
@@ -27,23 +27,25 @@ interface DashboardProps {
 }
 
 const sellerActions = [
-  { label: 'Мои заказы', icon: List, action: 'view_orders' },
+  { label: 'Мои заказы', icon: List, action: 'view_orders', filter: 'all' as const },
 ];
 
 const printerActions = [
-  { label: 'Список заказов', icon: List, action: 'view_orders' },
-  { label: 'Отправка заказов', icon: Send, action: 'send_orders' },
-  { label: 'Все заказы', icon: Package, action: 'view_all_orders' },
+  { label: 'Список заказов', icon: List, action: 'view_new_orders', filter: 'Добавлен' as const },
+  { label: 'Отправка заказов', icon: Send, action: 'view_ready_orders', filter: 'Готов' as const },
+  { label: 'Все заказы', icon: Package, action: 'view_all_orders', filter: 'all' as const },
 ];
 
 export function Dashboard({ user, onNavigate, onAddOrder, onCancelOrder, findOrder, findOrders, onPayout }: DashboardProps) {
   const actions = user.role === 'Продавец' ? sellerActions : printerActions;
 
-  const handleAction = (action: string) => {
+  const handleAction = (action: string, filter: OrderStatus | 'all') => {
     switch (action) {
       case 'view_orders':
+      case 'view_new_orders':
+      case 'view_ready_orders':
       case 'view_all_orders':
-        onNavigate('orders');
+        onNavigate(filter);
         break;
       default:
         console.log(`Action: ${action}`);
@@ -92,12 +94,12 @@ export function Dashboard({ user, onNavigate, onAddOrder, onCancelOrder, findOrd
             </>
           )}
 
-          {actions.map(({ label, icon: Icon, action }) => (
+          {actions.map(({ label, icon: Icon, action, filter }) => (
             <Button
               key={label}
               variant="outline"
               className="w-full h-24 flex flex-col items-center justify-center gap-2"
-              onClick={() => handleAction(action)}
+              onClick={() => handleAction(action, filter)}
             >
               <Icon className="h-8 w-8" />
               <span>{label}</span>

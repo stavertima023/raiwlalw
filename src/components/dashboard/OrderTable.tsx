@@ -17,6 +17,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import {
@@ -27,13 +28,16 @@ import {
   PackageCheck,
   XCircle,
   Undo2,
+  Edit,
 } from 'lucide-react';
-import type { Order, OrderStatus } from '@/lib/types';
+import type { Order, OrderStatus, User } from '@/lib/types';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
 interface OrderTableProps {
   orders: Order[];
+  currentUser: User;
+  onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void;
 }
 
 const statusConfig: Record<
@@ -58,7 +62,20 @@ const StatusBadge: React.FC<{ status: OrderStatus }> = ({ status }) => {
   );
 };
 
-export const OrderTable: React.FC<OrderTableProps> = ({ orders }) => {
+export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onUpdateStatus }) => {
+  const getAvailableActions = (orderStatus: OrderStatus): OrderStatus[] => {
+    switch (orderStatus) {
+      case 'Добавлен':
+        return ['Готов', 'Отменен'];
+      case 'Готов':
+        return ['Отправлен', 'Отменен'];
+      case 'Отправлен':
+        return ['Возврат'];
+      default:
+        return [];
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -125,18 +142,46 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders }) => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <DropdownMenu>
+                      {currentUser.role === 'Принтовщик' ? (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button aria-haspopup="true" size="icon" variant="ghost">
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="sr-only">Toggle menu</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {getAvailableActions(order.status).map((actionStatus) => (
+                              <DropdownMenuItem
+                                key={actionStatus}
+                                onClick={() => onUpdateStatus(order.id, actionStatus)}
+                              >
+                                Изменить на "{actionStatus}"
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : (
+                        <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button aria-haspopup="true" size="icon" variant="ghost">
+                          <Button aria-haspopup="true" size="icon" variant="ghost" disabled={currentUser.role !== 'Продавец'}>
                             <MoreHorizontal className="h-4 w-4" />
                             <span className="sr-only">Toggle menu</span>
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>Редактировать</DropdownMenuItem>
-                          <DropdownMenuItem>Удалить</DropdownMenuItem>
+                           <DropdownMenuItem>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Редактировать
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-destructive">
+                            <XCircle className="mr-2 h-4 w-4" />
+                            Отменить заказ
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))
