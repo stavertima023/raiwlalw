@@ -36,7 +36,7 @@ import {
 import { predictShipmentNumber } from '@/ai/flows/shipment-number-prediction';
 import { Loader2, Wand2, Plus, X, ArrowLeft, ArrowRight, Check } from 'lucide-react';
 import Image from 'next/image';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '../ui/badge';
 import { format } from 'date-fns';
@@ -66,7 +66,7 @@ export function OrderForm({ children, onSave, currentUser }: OrderFormProps) {
   const { toast } = useToast();
 
   const form = useForm<OrderFormData>({
-    resolver: zodResolver(OrderSchema.omit({ id: true, orderDate: true })),
+    resolver: zodResolver(OrderSchema.omit({ id: true, orderDate: true, cost: true })),
     defaultValues: {
       orderNumber: '',
       shipmentNumber: '',
@@ -75,7 +75,6 @@ export function OrderForm({ children, onSave, currentUser }: OrderFormProps) {
       size: undefined,
       seller: currentUser.telegramId,
       price: 0,
-      cost: 0,
       photos: [],
     },
     mode: 'onChange',
@@ -155,8 +154,9 @@ export function OrderForm({ children, onSave, currentUser }: OrderFormProps) {
     setValue('photos', newPhotos, { shouldValidate: true });
   };
 
-  const onSubmit = (data: Omit<Order, 'id' | 'orderDate'>) => {
-    onSave(data);
+  const onSubmit = (data: Omit<Order, 'id' | 'orderDate' | 'cost'>) => {
+    const finalData = { ...data, cost: data.price / 2 };
+    onSave(finalData);
     form.reset();
     setCurrentStep(0);
     setIsOpen(false);
