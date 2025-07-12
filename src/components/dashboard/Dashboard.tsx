@@ -68,7 +68,7 @@ export function Dashboard({ user, onNavigate, onAddOrder, onCancelOrder, onRetur
               <OrderForm onSave={onAddOrder} currentUser={user}>
                 <Button
                   variant="outline"
-                  className="w-full h-32 flex flex-col items-center justify-center gap-2"
+                  className="w-full h-48 flex flex-col items-center justify-center gap-2"
                 >
                   <PlusCircle className="h-8 w-8" />
                   <span>Добавить заказ</span>
@@ -78,7 +78,7 @@ export function Dashboard({ user, onNavigate, onAddOrder, onCancelOrder, onRetur
               <CancelOrderDialog findOrder={findOrder} onConfirmCancel={onCancelOrder}>
                   <Button
                     variant="outline"
-                    className="w-full h-32 flex flex-col items-center justify-center gap-2"
+                    className="w-full h-48 flex flex-col items-center justify-center gap-2"
                   >
                     <XCircle className="h-8 w-8" />
                     <span>Отменить заказ</span>
@@ -88,7 +88,7 @@ export function Dashboard({ user, onNavigate, onAddOrder, onCancelOrder, onRetur
               <PayoutDialog findOrders={findOrders} onConfirmPayout={onPayout} >
                  <Button
                     variant="outline"
-                    className="w-full h-32 flex flex-col items-center justify-center gap-2"
+                    className="w-full h-48 flex flex-col items-center justify-center gap-2"
                   >
                     <DollarSign className="h-8 w-8" />
                     <span>Вывод оплаты</span>
@@ -98,7 +98,7 @@ export function Dashboard({ user, onNavigate, onAddOrder, onCancelOrder, onRetur
               <ReturnOrderDialog findOrder={findOrder} onConfirmReturn={onReturnOrder}>
                 <Button
                   variant="outline"
-                  className="w-full h-32 flex flex-col items-center justify-center gap-2"
+                  className="w-full h-48 flex flex-col items-center justify-center gap-2"
                 >
                   <Undo2 className="h-8 w-8" />
                   <span>Возврат заказа</span>
@@ -111,7 +111,7 @@ export function Dashboard({ user, onNavigate, onAddOrder, onCancelOrder, onRetur
             <Button
               key={label}
               variant="outline"
-              className="w-full h-32 flex flex-col items-center justify-center gap-2"
+              className="w-full h-48 flex flex-col items-center justify-center gap-2"
               onClick={() => handleAction(action, filter)}
             >
               <Icon className="h-8 w-8" />
