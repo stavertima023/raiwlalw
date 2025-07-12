@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import type { z } from 'zod';
 import {
   Dialog,
@@ -27,20 +27,15 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import {
   OrderSchema,
-  OrderStatusEnum,
   ProductTypeEnum,
   SizeEnum,
   Order,
   User,
 } from '@/lib/types';
 import { predictShipmentNumber } from '@/ai/flows/shipment-number-prediction';
-import { Loader2, Wand2, Plus, X, ArrowLeft, ArrowRight, Check } from 'lucide-react';
+import { Loader2, Wand2, Plus, X, Check } from 'lucide-react';
 import Image from 'next/image';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { Badge } from '../ui/badge';
-import { format } from 'date-fns';
-import { ru } from 'date-fns/locale';
+import { ScrollArea } from '../ui/scroll-area';
 
 type OrderFormData = z.infer<typeof OrderSchema>;
 
@@ -50,18 +45,9 @@ interface OrderFormProps {
   currentUser: User;
 }
 
-const STEPS = [
-  { name: 'Тип изделия', fields: ['productType'] },
-  { name: 'Детали заказа', fields: ['orderNumber', 'shipmentNumber', 'price'] },
-  { name: 'Размер', fields: ['size'] },
-  { name: 'Фотографии', fields: ['photos'] },
-  { name: 'Подтверждение' },
-];
-
 export function OrderForm({ children, onSave, currentUser }: OrderFormProps) {
   const [isOpen, setIsOpen] = React.useState(false);
   const [isPredicting, setIsPredicting] = React.useState(false);
-  const [currentStep, setCurrentStep] = React.useState(0);
   const { toast } = useToast();
 
   const form = useForm<OrderFormData>({
@@ -83,27 +69,8 @@ export function OrderForm({ children, onSave, currentUser }: OrderFormProps) {
     form.setValue('seller', currentUser.telegramId);
   }, [currentUser, form])
 
-  const { trigger, getValues, watch, setValue } = form;
+  const { getValues, watch, setValue } = form;
   const watchedValues = watch();
-
-  const nextStep = async () => {
-    const fields = STEPS[currentStep].fields;
-    const output = await trigger(fields as (keyof OrderFormData)[], {
-      shouldFocus: true,
-    });
-
-    if (!output) return;
-
-    if (currentStep < STEPS.length - 1) {
-      setCurrentStep((step) => step + 1);
-    }
-  };
-
-  const prevStep = () => {
-    if (currentStep > 0) {
-      setCurrentStep((step) => step + 1);
-    }
-  };
 
   const handlePredictShipment = async () => {
     const seller = getValues('seller');
@@ -157,7 +124,6 @@ export function OrderForm({ children, onSave, currentUser }: OrderFormProps) {
     const finalData = { ...data, cost: data.price / 2 };
     onSave(finalData);
     form.reset();
-    setCurrentStep(0);
     setIsOpen(false);
     toast({
       title: 'Заказ создан',
@@ -167,7 +133,6 @@ export function OrderForm({ children, onSave, currentUser }: OrderFormProps) {
 
   const handleClose = () => {
      form.reset();
-     setCurrentStep(0);
      setIsOpen(false);
   }
 
@@ -186,239 +151,175 @@ export function OrderForm({ children, onSave, currentUser }: OrderFormProps) {
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Новый заказ (Шаг {currentStep + 1} из {STEPS.length})</DialogTitle>
-          <DialogDescription>{STEPS[currentStep].name}</DialogDescription>
+          <DialogTitle>Новый заказ</DialogTitle>
+          <DialogDescription>Заполните все поля для создания нового заказа.</DialogDescription>
         </DialogHeader>
-
-        <Progress value={((currentStep + 1) / STEPS.length) * 100} className="w-full" />
         
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="min-h-[300px] py-4">
-              {/* Step 1: Product Type */}
-              {currentStep === 0 && (
-                <FormField
-                  control={form.control}
-                  name="productType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-lg font-semibold">Выберите тип изделия</FormLabel>
-                       <FormControl>
-                        <div className="grid grid-cols-3 gap-2 pt-2">
-                            {ProductTypeEnum.options.map((pt) => (
-                                <Button
-                                key={pt}
-                                variant={field.value === pt ? 'default' : 'outline'}
-                                onClick={() => field.onChange(pt)}
-                                type="button"
-                                className="h-16 text-base"
-                                >
-                                {pt}
-                                </Button>
-                            ))}
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-
-              {/* Step 2: Order Details */}
-              {currentStep === 1 && (
-                <div className="space-y-4">
-                  <FormField
+             <ScrollArea className="h-[60vh] pr-6">
+                <div className="space-y-6">
+                    <FormField
                     control={form.control}
-                    name="orderNumber"
+                    name="productType"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Номер заказа</FormLabel>
+                        <FormItem>
+                        <FormLabel className="text-base font-semibold">Тип изделия</FormLabel>
                         <FormControl>
-                          <Input placeholder="ORD-001" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="shipmentNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Номер отправления</FormLabel>
-                        <div className="flex items-center gap-2">
-                          <FormControl>
-                            <Input placeholder="SHP-A1B2 (можно оставить пустым)" {...field} />
-                          </FormControl>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            onClick={handlePredictShipment}
-                            disabled={isPredicting || !watchedValues.seller || !watchedValues.productType}
-                            aria-label="Predict shipment number"
-                          >
-                            {isPredicting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
-                          </Button>
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                   <FormField
-                    control={form.control}
-                    name="price"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Цена продажи</FormLabel>
-                        <FormControl>
-                          <Input type="number" placeholder="1500" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              )}
-
-              {/* Step 3: Size */}
-              {currentStep === 2 && (
-                <FormField
-                  control={form.control}
-                  name="size"
-                  render={({ field }) => (
-                     <FormItem>
-                        <FormLabel className="text-lg font-semibold">Выберите размер</FormLabel>
-                       <FormControl>
-                        <div className="grid grid-cols-4 gap-2 pt-2">
-                            {SizeEnum.options.map((s) => (
-                                <Button
-                                key={s}
-                                variant={field.value === s ? 'default' : 'outline'}
-                                onClick={() => field.onChange(s)}
-                                type="button"
-                                className="h-16 text-base"
-                                >
-                                {s}
-                                </Button>
-                            ))}
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-
-              {/* Step 4: Photos */}
-              {currentStep === 3 && (
-                <FormField
-                  control={form.control}
-                  name="photos"
-                  render={() => (
-                     <FormItem>
-                        <FormLabel>Фотографии (до 3)</FormLabel>
-                        <FormControl>
-                           <div className="flex items-center gap-2">
-                               {watchedValues.photos.map((photo, index) => (
-                                 <div key={index} className="relative group">
-                                     <Image
-                                        src={photo}
-                                        alt={`Product photo ${index + 1}`}
-                                        width={100}
-                                        height={100}
-                                        className="rounded-md object-cover"
-                                        data-ai-hint="product photo"
-                                    />
+                            <div className="grid grid-cols-3 gap-2 pt-2">
+                                {ProductTypeEnum.options.map((pt) => (
                                     <Button
-                                        type="button"
-                                        variant="destructive"
-                                        size="icon"
-                                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                                        onClick={() => handleRemovePhoto(index)}
+                                    key={pt}
+                                    variant={field.value === pt ? 'default' : 'outline'}
+                                    onClick={() => field.onChange(pt)}
+                                    type="button"
+                                    className="h-16 text-base"
                                     >
-                                        <X className="h-4 w-4" />
+                                    {pt}
                                     </Button>
-                                 </div>
-                               ))}
-                               {watchedValues.photos.length < 3 && (
-                                   <Button
-                                       type="button"
-                                       variant="outline"
-                                       className="h-24 w-24 border-dashed"
-                                       onClick={handleAddPhoto}
-                                   >
-                                       <Plus className="h-8 w-8 text-muted-foreground" />
-                                   </Button>
-                               )}
-                           </div>
+                                ))}
+                            </div>
                         </FormControl>
-                         <FormMessage />
-                     </FormItem>
-                  )}
-                />
-              )}
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
 
-              {/* Step 5: Confirmation */}
-              {currentStep === 4 && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Проверьте данные заказа</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                         <div className="grid grid-cols-2 gap-x-8 gap-y-2">
-                            <div className="font-semibold">Номер заказа:</div><div>{watchedValues.orderNumber}</div>
-                            <div className="font-semibold">Номер отправления:</div><div>{watchedValues.shipmentNumber || 'Не указан'}</div>
-                            <div className="font-semibold">Статус:</div><div><Badge variant="primary">{watchedValues.status}</Badge></div>
-                            <div className="font-semibold">Тип изделия:</div><div>{watchedValues.productType}</div>
-                            <div className="font-semibold">Размер:</div><div>{watchedValues.size}</div>
-                            <div className="font-semibold">Продавец:</div><div>{currentUser.name} ({currentUser.telegramId})</div>
-                            <div className="font-semibold">Цена:</div><div>{watchedValues.price?.toLocaleString('ru-RU')} ₽</div>
-                            <div className="font-semibold">Дата заказа:</div><div>{format(new Date(), 'd MMM yyyy', { locale: ru })}</div>
-                        </div>
-                        <div className="font-semibold">Фотографии:</div>
-                        <div className="flex items-center gap-2">
-                        {watchedValues.photos.length > 0 ? watchedValues.photos.map((photo, index) => (
-                            <Image
-                                key={index}
-                                src={photo}
-                                alt={`Product photo ${index + 1}`}
-                                width={80}
-                                height={80}
-                                className="rounded-md object-cover"
-                            />
-                        )) : <p className="text-sm text-muted-foreground">Нет фото</p>}
-                        </div>
-                    </CardContent>
-                </Card>
-              )}
-            </div>
-            
-            <DialogFooter>
-                <div className="flex justify-between w-full">
-                    <div>
-                        <Button type="button" variant="secondary" onClick={handleClose}>
-                            Отмена
-                        </Button>
+                    <FormField
+                    control={form.control}
+                    name="size"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel className="text-base font-semibold">Размер</FormLabel>
+                        <FormControl>
+                            <div className="grid grid-cols-4 gap-2 pt-2">
+                                {SizeEnum.options.map((s) => (
+                                    <Button
+                                    key={s}
+                                    variant={field.value === s ? 'default' : 'outline'}
+                                    onClick={() => field.onChange(s)}
+                                    type="button"
+                                    className="h-16 text-base"
+                                    >
+                                    {s}
+                                    </Button>
+                                ))}
+                            </div>
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                
+                    <div className="space-y-4 border-t pt-6">
+                        <FormField
+                            control={form.control}
+                            name="orderNumber"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Номер заказа</FormLabel>
+                                <FormControl>
+                                <Input placeholder="ORD-001" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="shipmentNumber"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Номер отправления</FormLabel>
+                                <div className="flex items-center gap-2">
+                                <FormControl>
+                                    <Input placeholder="SHP-A1B2 (можно оставить пустым)" {...field} />
+                                </FormControl>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={handlePredictShipment}
+                                    disabled={isPredicting || !watchedValues.productType}
+                                    aria-label="Predict shipment number"
+                                >
+                                    {isPredicting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+                                </Button>
+                                </div>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="price"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Цена продажи</FormLabel>
+                                <FormControl>
+                                <Input type="number" placeholder="1500" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
                     </div>
-                    <div className="flex gap-2">
-                        {currentStep > 0 && (
-                            <Button type="button" variant="outline" onClick={prevStep}>
-                                <ArrowLeft className="mr-2 h-4 w-4" /> Назад
-                            </Button>
+
+                    <FormField
+                        control={form.control}
+                        name="photos"
+                        render={() => (
+                            <FormItem className="border-t pt-6">
+                            <FormLabel>Фотографии (до 3)</FormLabel>
+                            <FormControl>
+                                <div className="flex items-center gap-2">
+                                    {watchedValues.photos.map((photo, index) => (
+                                        <div key={index} className="relative group">
+                                            <Image
+                                                src={photo}
+                                                alt={`Product photo ${index + 1}`}
+                                                width={100}
+                                                height={100}
+                                                className="rounded-md object-cover"
+                                                data-ai-hint="product photo"
+                                            />
+                                            <Button
+                                                type="button"
+                                                variant="destructive"
+                                                size="icon"
+                                                className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                onClick={() => handleRemovePhoto(index)}
+                                            >
+                                                <X className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    ))}
+                                    {watchedValues.photos.length < 3 && (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            className="h-24 w-24 border-dashed"
+                                            onClick={handleAddPhoto}
+                                        >
+                                            <Plus className="h-8 w-8 text-muted-foreground" />
+                                        </Button>
+                                    )}
+                                </div>
+                            </FormControl>
+                                <FormMessage />
+                            </FormItem>
                         )}
-                        {currentStep < STEPS.length - 1 && (
-                            <Button type="button" onClick={nextStep}>
-                                Далее <ArrowRight className="ml-2 h-4 w-4" />
-                            </Button>
-                        )}
-                        {currentStep === STEPS.length - 1 && (
-                            <Button type="submit">
-                                <Check className="mr-2 h-4 w-4" /> Сохранить заказ
-                            </Button>
-                        )}
-                    </div>
+                        />
                 </div>
+             </ScrollArea>
+            
+            <DialogFooter className="pt-4">
+                <Button type="button" variant="secondary" onClick={handleClose}>
+                    Отмена
+                </Button>
+                <Button type="submit">
+                    <Check className="mr-2 h-4 w-4" /> Сохранить заказ
+                </Button>
             </DialogFooter>
           </form>
         </Form>
