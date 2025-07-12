@@ -17,8 +17,19 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import {
   MoreHorizontal,
@@ -88,9 +99,28 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
                 <Button size="sm" variant="outline" onClick={() => onUpdateStatus(order.id, 'Готов')}>
                     <Check className="mr-2 h-4 w-4" /> Готов
                 </Button>
-                 <Button size="sm" variant="destructive" onClick={() => onUpdateStatus(order.id, 'Отменен')}>
-                    <X className="mr-2 h-4 w-4" /> Отменить
-                </Button>
+                 <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button size="icon" variant="destructive">
+                      <X className="h-4 w-4" />
+                      <span className="sr-only">Отменить</span>
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Вы собираетесь отменить заказ #{order.orderNumber}. Это действие нельзя будет отменить.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Закрыть</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => onUpdateStatus(order.id, 'Отменен')}>
+                        Подтвердить отмену
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
             </div>
         )
     }
