@@ -29,6 +29,8 @@ import {
   XCircle,
   Undo2,
   Edit,
+  Check,
+  X,
 } from 'lucide-react';
 import type { Order, OrderStatus, User } from '@/lib/types';
 import { format } from 'date-fns';
@@ -75,6 +77,46 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
         return [];
     }
   };
+
+  const renderPrinterActions = (order: Order) => {
+    const actions = getAvailableActions(order.status);
+    if (!actions.length) return null;
+
+    if (order.status === 'Добавлен') {
+        return (
+            <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => onUpdateStatus(order.id, 'Готов')}>
+                    <Check className="mr-2 h-4 w-4" /> Готов
+                </Button>
+                 <Button size="sm" variant="destructive" onClick={() => onUpdateStatus(order.id, 'Отменен')}>
+                    <X className="mr-2 h-4 w-4" /> Отменить
+                </Button>
+            </div>
+        )
+    }
+
+    // Fallback to dropdown for other statuses for now
+    return (
+       <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+            <Button aria-haspopup="true" size="icon" variant="ghost">
+            <MoreHorizontal className="h-4 w-4" />
+            <span className="sr-only">Toggle menu</span>
+            </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+            {actions.map((actionStatus) => (
+            <DropdownMenuItem
+                key={actionStatus}
+                onClick={() => onUpdateStatus(order.id, actionStatus)}
+            >
+                Изменить на "{actionStatus}"
+            </DropdownMenuItem>
+            ))}
+        </DropdownMenuContent>
+        </DropdownMenu>
+    );
+  }
 
   return (
     <Card>
@@ -143,24 +185,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
                     </TableCell>
                     <TableCell>
                       {currentUser.role === 'Принтовщик' ? (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button aria-haspopup="true" size="icon" variant="ghost">
-                              <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">Toggle menu</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            {getAvailableActions(order.status).map((actionStatus) => (
-                              <DropdownMenuItem
-                                key={actionStatus}
-                                onClick={() => onUpdateStatus(order.id, actionStatus)}
-                              >
-                                Изменить на "{actionStatus}"
-                              </DropdownMenuItem>
-                            ))}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        renderPrinterActions(order)
                       ) : (
                         <DropdownMenu>
                         <DropdownMenuTrigger asChild>
