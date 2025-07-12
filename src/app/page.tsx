@@ -58,7 +58,7 @@ export default function Home() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <Header onAddOrder={handleAddOrder} onBackToDashboard={() => setView('dashboard')} showBackButton={view === 'orders'} />
+      <Header onAddOrder={handleAddOrder} onBackToDashboard={() => setView('dashboard')} showBackButton={view === 'orders'} currentUser={currentUser} />
       <main className="flex-1 container mx-auto p-4 md:p-6 lg:p-8">
         <div className="flex items-center justify-end mb-4 space-x-2">
             <Label htmlFor="role-switch">
