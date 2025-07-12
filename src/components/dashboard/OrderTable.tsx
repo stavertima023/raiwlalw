@@ -201,8 +201,8 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
               <TableHead>Продавец</TableHead>
               <TableHead className="text-right">Цена</TableHead>
               <TableHead className="text-right">Себест.</TableHead>
-              <TableHead className={cn(largePhotos && 'w-[340px]')}>Фото</TableHead>
-              <TableHead className={cn(largePhotos && 'w-[180px]')}>
+              <TableHead className={cn(largePhotos && 'w-[380px]')}>Фото</TableHead>
+              <TableHead className={cn(largePhotos && 'w-[200px]')}>
                 <span className="sr-only">Действия</span>
               </TableHead>
             </TableRow>
@@ -227,7 +227,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
                   <TableCell className="text-right whitespace-nowrap">
                     {order.cost.toLocaleString('ru-RU')} ₽
                   </TableCell>
-                  <TableCell className={cn(largePhotos && 'w-[340px]')}>
+                  <TableCell className={cn(largePhotos && 'w-[380px]')}>
                     <div className="flex items-center gap-2">
                       {order.photos && order.photos.length > 0 ? (
                         order.photos.map((photo, index) => (
@@ -248,7 +248,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className={cn(largePhotos && 'w-[180px]')}>
+                  <TableCell className={cn(largePhotos && 'w-[200px]')}>
                     {currentUser.role === 'Принтовщик' ? (
                       renderPrinterActions(order)
                     ) : (
