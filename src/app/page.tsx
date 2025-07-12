@@ -125,6 +125,8 @@ export default function Home() {
     setView('orders');
   };
 
+  const useLargePhotos = currentUser.role === 'Принтовщик' && (filters.status === 'Добавлен' || filters.status === 'Готов');
+
   return (
     <div className="flex flex-col min-h-screen">
       <Header onAddOrder={handleAddOrder} onBackToDashboard={() => {
@@ -161,7 +163,8 @@ export default function Home() {
             <OrderTable 
               orders={filteredOrders} 
               currentUser={currentUser} 
-              onUpdateStatus={handleUpdateOrderStatus} 
+              onUpdateStatus={handleUpdateOrderStatus}
+              largePhotos={useLargePhotos}
             />
           </div>
         )}

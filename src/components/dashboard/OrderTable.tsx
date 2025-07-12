@@ -51,6 +51,7 @@ interface OrderTableProps {
   orders: Order[];
   currentUser: User;
   onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void;
+  largePhotos?: boolean;
 }
 
 const statusConfig: Record<
@@ -75,7 +76,7 @@ const StatusBadge: React.FC<{ status: OrderStatus }> = ({ status }) => {
   );
 };
 
-export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onUpdateStatus }) => {
+export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onUpdateStatus, largePhotos = false }) => {
   const getAvailableActions = (orderStatus: OrderStatus): OrderStatus[] => {
     switch (orderStatus) {
       case 'Добавлен':
@@ -88,6 +89,8 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
         return [];
     }
   };
+  
+  const photoSize = largePhotos ? 100 : 60;
 
   const renderPrinterActions = (order: Order) => {
     const actions = getAvailableActions(order.status);
@@ -232,14 +235,14 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
                               key={index}
                               src={photo}
                               alt={`Фото ${index + 1}`}
-                              width={60}
-                              height={60}
+                              width={photoSize}
+                              height={photoSize}
                               className="rounded-md object-cover"
                               data-ai-hint="product photo"
                             />
                           ))
                         ) : (
-                          <div className="h-16 w-16 rounded-md bg-muted flex items-center justify-center text-muted-foreground text-xs">
+                          <div className="rounded-md bg-muted flex items-center justify-center text-muted-foreground text-xs" style={{ height: photoSize, width: photoSize }}>
                             Нет фото
                           </div>
                         )}
