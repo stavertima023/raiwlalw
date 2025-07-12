@@ -128,7 +128,7 @@ export default function Home() {
     setView('orders');
   };
 
-  const useLargeLayout = currentUser.role === 'Принтовщик' && (filters.status === 'Добавлен' || filters.status === 'Готов');
+  const useLargeLayout = currentUser.role === 'Принтовщик' && (filters.status === 'Добавлен' || filters.status === 'Готов' || filters.status === 'all');
 
   return (
     <div className="flex flex-col min-h-screen">
