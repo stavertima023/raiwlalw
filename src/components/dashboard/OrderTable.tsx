@@ -100,8 +100,9 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
     if (order.status === 'Добавлен') {
         return (
             <div className="flex gap-2">
-                <Button size="sm" variant="success" onClick={() => onUpdateStatus(order.id, 'Готов')}>
-                    <Check className="mr-2 h-4 w-4" /> Готов
+                <Button size="icon" variant="success" onClick={() => onUpdateStatus(order.id, 'Готов')}>
+                    <Check className="h-4 w-4" />
+                    <span className="sr-only">Готов</span>
                 </Button>
                  <AlertDialog>
                   <AlertDialogTrigger asChild>
@@ -132,8 +133,9 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
     if (order.status === 'Готов') {
         return (
             <div className="flex gap-2">
-                <Button size="sm" variant="success" onClick={() => onUpdateStatus(order.id, 'Отправлен')}>
-                    <Send className="mr-2 h-4 w-4" /> Отправлен
+                <Button size="icon" variant="success" onClick={() => onUpdateStatus(order.id, 'Отправлен')}>
+                    <Send className="h-4 w-4" />
+                     <span className="sr-only">Отправлен</span>
                 </Button>
                  <AlertDialog>
                   <AlertDialogTrigger asChild>
