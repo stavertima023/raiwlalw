@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 export const mockUsers: User[] = [
   {
     telegramId: 'user_123',
-    name: 'Иван Петров',
+    name: 'Тимофей Сергеевич',
     role: 'Продавец',
     position: 'Менеджер по продажам'
   },
