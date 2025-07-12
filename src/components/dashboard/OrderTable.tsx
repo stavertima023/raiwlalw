@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -233,8 +234,8 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
               <TableHead>Номер отправления</TableHead>
               <TableHead>Статус</TableHead>
               <TableHead className={cn(useLargeLayout && 'w-[25px] p-2')}>Тип</TableHead>
-              <TableHead className={cn(useLargeLayout && 'w-[25px] p-2')}>Размер</TableHead>
-              <TableHead>Продавец</TableHead>
+              <TableHead className={cn(useLargeLayout && 'p-2 w-[20px]')}>Размер</TableHead>
+              <TableHead className={cn(useLargeLayout && 'w-[80px]')}>Продавец</TableHead>
               <TableHead className={cn('text-right', useLargeLayout && 'w-[80px] p-2')}>Цена</TableHead>
               <TableHead className={cn(useLargeLayout && 'w-[380px]')}>Фото</TableHead>
               {useLargeLayout && <TableHead className="w-[400px]" />}
@@ -259,8 +260,8 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
                     <StatusBadge status={order.status} />
                   </TableCell>
                   <TableCell className={cn(useLargeLayout && 'p-2 w-[25px]')}>{order.productType}</TableCell>
-                  <TableCell className={cn(useLargeLayout && 'p-2 w-[25px]')}>{order.size}</TableCell>
-                  <TableCell className="whitespace-nowrap">{order.seller}</TableCell>
+                  <TableCell className={cn(useLargeLayout && 'p-2 w-[20px]')}>{order.size}</TableCell>
+                  <TableCell className={cn("whitespace-nowrap", useLargeLayout && 'w-[80px]')}>{order.seller}</TableCell>
                   <TableCell className={cn('text-right whitespace-nowrap', useLargeLayout && 'p-2 w-[80px]')}>
                     {order.price.toLocaleString('ru-RU')} ₽
                   </TableCell>
@@ -285,7 +286,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
                       )}
                     </div>
                   </TableCell>
-                  {useLargeLayout && <TableCell />}
+                  {useLargeLayout && <TableCell className="w-[400px]" />}
                   {!useLargeLayout && renderActionsCell(order)}
                 </TableRow>
               ))
