@@ -68,11 +68,11 @@ const statusConfig: Record<
   Возврат: { label: 'Возврат', color: 'outline', icon: Undo2 },
 };
 
-const StatusBadge: React.FC<{ status: OrderStatus }> = ({ status }) => {
+const StatusBadge: React.FC<{ status: OrderStatus; useLargeLayout?: boolean }> = ({ status, useLargeLayout }) => {
   const { label, color, icon: Icon } = statusConfig[status] || {};
   return (
     <Badge variant={color} className="capitalize whitespace-nowrap">
-      <Icon className="mr-2 h-3.5 w-3.5" />
+      {!useLargeLayout && <Icon className="mr-2 h-3.5 w-3.5" />}
       {label}
     </Badge>
   );
@@ -188,7 +188,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
   }
 
   const renderActionsCell = (order: Order) => (
-    <TableCell className={cn(useLargeLayout && 'w-[100px]')}>
+    <TableCell className={cn(useLargeLayout && 'w-[180px]')}>
       {currentUser.role === 'Принтовщик' ? (
         renderPrinterActions(order)
       ) : (
@@ -225,14 +225,14 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
           <TableHeader>
             <TableRow>
               {useLargeLayout && (
-                <TableHead className="w-[100px]">
+                <TableHead className="w-[180px]">
                   Действия
                 </TableHead>
               )}
               <TableHead>Дата</TableHead>
               <TableHead>Номер заказа</TableHead>
               <TableHead>Номер отправления</TableHead>
-              <TableHead className={cn(useLargeLayout && 'whitespace-nowrap w-[130px]')}>Статус</TableHead>
+              <TableHead className={cn(useLargeLayout && 'whitespace-nowrap w-[120px]')}>Статус</TableHead>
               <TableHead className={cn(useLargeLayout && 'p-2 w-[25px]')}>Тип</TableHead>
               <TableHead className={cn(useLargeLayout && 'p-2 w-[20px]')}>Размер</TableHead>
               <TableHead className={cn(useLargeLayout && 'w-[80px]')}>Продавец</TableHead>
@@ -256,8 +256,8 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
                   </TableCell>
                   <TableCell className="whitespace-nowrap">{order.orderNumber}</TableCell>
                   <TableCell className="whitespace-nowrap">{order.shipmentNumber || '–'}</TableCell>
-                  <TableCell className={cn(useLargeLayout && 'whitespace-nowrap w-[130px]')}>
-                    <StatusBadge status={order.status} />
+                  <TableCell className={cn(useLargeLayout && 'whitespace-nowrap w-[120px]')}>
+                    <StatusBadge status={order.status} useLargeLayout={useLargeLayout} />
                   </TableCell>
                   <TableCell className={cn(useLargeLayout && 'p-2 w-[25px]')}>{order.productType}</TableCell>
                   <TableCell className={cn(useLargeLayout && 'p-2 w-[20px]')}>{order.size}</TableCell>
