@@ -96,7 +96,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
     if (order.status === 'Добавлен') {
         return (
             <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => onUpdateStatus(order.id, 'Готов')}>
+                <Button size="sm" variant="success" onClick={() => onUpdateStatus(order.id, 'Готов')}>
                     <Check className="mr-2 h-4 w-4" /> Готов
                 </Button>
                  <AlertDialog>
