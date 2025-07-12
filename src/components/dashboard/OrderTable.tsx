@@ -232,14 +232,14 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
                               key={index}
                               src={photo}
                               alt={`Фото ${index + 1}`}
-                              width={40}
-                              height={40}
+                              width={60}
+                              height={60}
                               className="rounded-md object-cover"
                               data-ai-hint="product photo"
                             />
                           ))
                         ) : (
-                          <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center text-muted-foreground text-xs">
+                          <div className="h-16 w-16 rounded-md bg-muted flex items-center justify-center text-muted-foreground text-xs">
                             Нет фото
                           </div>
                         )}
