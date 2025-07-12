@@ -184,6 +184,34 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
     );
   }
 
+  const renderActionsCell = (order: Order) => (
+    <TableCell className={cn(largePhotos && 'w-[100px]')}>
+      {currentUser.role === 'Принтовщик' ? (
+        renderPrinterActions(order)
+      ) : (
+        <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button aria-haspopup="true" size="icon" variant="ghost" disabled={currentUser.role !== 'Продавец'}>
+            <MoreHorizontal className="h-4 w-4" />
+            <span className="sr-only">Toggle menu</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+           <DropdownMenuItem>
+            <Edit className="mr-2 h-4 w-4" />
+            Редактировать
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem className="text-destructive">
+            <XCircle className="mr-2 h-4 w-4" />
+            Отменить заказ
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      )}
+    </TableCell>
+  );
+
   return (
     <Card>
       <CardHeader>
@@ -193,6 +221,11 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
         <Table>
           <TableHeader>
             <TableRow>
+              {largePhotos && (
+                <TableHead className="w-[100px]">
+                  Действия
+                </TableHead>
+              )}
               <TableHead>Дата</TableHead>
               <TableHead>Номер заказа</TableHead>
               <TableHead>Статус</TableHead>
@@ -203,15 +236,18 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
               <TableHead className="text-right">Себест.</TableHead>
               <TableHead className={cn(largePhotos && 'w-[380px]')}>Фото</TableHead>
               {largePhotos && <TableHead className="w-[400px]" />}
-              <TableHead className={cn(largePhotos && 'w-[100px]')}>
-                <span className="sr-only">Действия</span>
-              </TableHead>
+              {!largePhotos && (
+                <TableHead>
+                  <span className="sr-only">Действия</span>
+                </TableHead>
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>
             {orders.length > 0 ? (
               orders.map((order) => (
                 <TableRow key={order.id}>
+                  {largePhotos && renderActionsCell(order)}
                   <TableCell className="font-medium whitespace-nowrap">
                     {format(order.orderDate, 'd MMM yyyy', { locale: ru })}
                   </TableCell>
@@ -250,31 +286,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
                     </div>
                   </TableCell>
                   {largePhotos && <TableCell />}
-                  <TableCell className={cn(largePhotos && 'w-[100px]')}>
-                    {currentUser.role === 'Принтовщик' ? (
-                      renderPrinterActions(order)
-                    ) : (
-                      <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button aria-haspopup="true" size="icon" variant="ghost" disabled={currentUser.role !== 'Продавец'}>
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Toggle menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                         <DropdownMenuItem>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Редактировать
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive">
-                          <XCircle className="mr-2 h-4 w-4" />
-                          Отменить заказ
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    )}
-                  </TableCell>
+                  {!largePhotos && renderActionsCell(order)}
                 </TableRow>
               ))
             ) : (
