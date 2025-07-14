@@ -21,6 +21,13 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -34,7 +41,6 @@ import {
 import { Button } from '@/components/ui/button';
 import {
   MoreHorizontal,
-  PlusCircle,
   CheckCircle2,
   Send,
   PackageCheck,
@@ -60,7 +66,7 @@ const statusConfig: Record<
   OrderStatus,
   { label: string; color: 'primary' | 'secondary' | 'destructive' | 'outline' | 'default', icon: React.ElementType }
 > = {
-  Добавлен: { label: 'Добавлен', color: 'primary', icon: PlusCircle },
+  Добавлен: { label: 'Добавлен', color: 'primary', icon: CheckCircle2 },
   Готов: { label: 'Готов', color: 'default', icon: CheckCircle2 },
   Отправлен: { label: 'Отправлен', color: 'default', icon: Send },
   Исполнен: { label: 'Исполнен', color: 'default', icon: PackageCheck },
@@ -69,10 +75,9 @@ const statusConfig: Record<
 };
 
 const StatusBadge: React.FC<{ status: OrderStatus; useLargeLayout?: boolean }> = ({ status, useLargeLayout }) => {
-  const { label, color, icon: Icon } = statusConfig[status] || {};
+  const { label, color } = statusConfig[status] || {};
   return (
     <Badge variant={color} className="capitalize whitespace-nowrap">
-      {!useLargeLayout && <Icon className="mr-2 h-3.5 w-3.5" />}
       {label}
     </Badge>
   );
@@ -188,7 +193,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
   }
 
   const renderActionsCell = (order: Order) => (
-    <TableCell className={cn(useLargeLayout && 'w-[100px]')}>
+    <TableCell className={cn(useLargeLayout && 'w-[180px]')}>
       {currentUser.role === 'Принтовщик' ? (
         renderPrinterActions(order)
       ) : (
@@ -225,7 +230,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
           <TableHeader>
             <TableRow>
               {useLargeLayout && (
-                <TableHead className="w-[100px]">
+                <TableHead className="w-[180px]">
                   Действия
                 </TableHead>
               )}
@@ -237,7 +242,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
               <TableHead className={cn(useLargeLayout && 'p-2 w-[10px]')}>Размер</TableHead>
               <TableHead className={cn(useLargeLayout && 'w-[60px]')}>Продавец</TableHead>
               <TableHead className={cn('text-right', useLargeLayout && 'p-2 w-[60px]')}>Цена</TableHead>
-              <TableHead>Фото</TableHead>
+              <TableHead className={cn(useLargeLayout && 'p-0 w-[100px]')}>Фото</TableHead>
               {!useLargeLayout && (
                 <TableHead>
                   <span className="sr-only">Действия</span>
@@ -264,19 +269,39 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
                   <TableCell className={cn('text-right whitespace-nowrap', useLargeLayout && 'p-2 w-[60px]')}>
                     {order.price.toLocaleString('ru-RU')} ₽
                   </TableCell>
-                  <TableCell>
+                  <TableCell className={cn(useLargeLayout && 'p-0 w-[100px]')}>
                     <div className="flex items-center gap-2">
                       {order.photos && order.photos.length > 0 ? (
                         order.photos.map((photo, index) => (
-                          <Image
-                            key={index}
-                            src={photo}
-                            alt={`Фото ${index + 1}`}
-                            width={photoSize}
-                            height={photoSize}
-                            className="rounded-md object-cover"
-                            data-ai-hint="product photo"
-                          />
+                          <Dialog key={index}>
+                            <DialogTrigger asChild>
+                              <button>
+                                <Image
+                                  src={photo}
+                                  alt={`Фото ${index + 1}`}
+                                  width={photoSize}
+                                  height={photoSize}
+                                  className="rounded-md object-cover cursor-pointer"
+                                  data-ai-hint="product photo"
+                                />
+                              </button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-md p-2 sm:max-w-lg md:max-w-2xl">
+                              <DialogHeader>
+                                <DialogTitle>Фото заказа #{order.orderNumber}</DialogTitle>
+                              </DialogHeader>
+                              <div className="flex justify-center">
+                                <Image
+                                  src={photo}
+                                  alt={`Фото ${index + 1}`}
+                                  width={800}
+                                  height={800}
+                                  className="rounded-md object-contain max-h-[80vh]"
+                                  data-ai-hint="product photo"
+                                />
+                              </div>
+                            </DialogContent>
+                          </Dialog>
                         ))
                       ) : (
                         <div className="rounded-md bg-muted flex items-center justify-center text-muted-foreground text-xs" style={{ height: photoSize, width: photoSize }}>
@@ -290,7 +315,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={useLargeLayout ? 10 : 9} className="h-24 text-center">
+                <TableCell colSpan={10} className="h-24 text-center">
                   Нет заказов для отображения.
                 </TableCell>
               </TableRow>
