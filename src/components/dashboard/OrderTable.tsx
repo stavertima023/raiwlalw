@@ -261,25 +261,22 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
   );
   
   const renderCommentCell = (order: Order) => {
-    if (useLargeLayout) {
-      return (
-        <TableCell className="w-[40px] p-2 text-center">
-            {order.comment ? (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <MessageSquareText className="h-5 w-5 mx-auto text-muted-foreground" />
-                  </TooltipTrigger>
-                  <TooltipContent align="start" className="max-w-xs">
-                    <p>{order.comment}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            ) : null}
-        </TableCell>
-      );
-    }
-    return null;
+    return (
+      <TableCell className={cn(useLargeLayout ? 'w-[40px] p-2' : 'w-[20px] p-1', "text-center")}>
+          {order.comment ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <MessageSquareText className="h-5 w-5 mx-auto text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent align="start" className="max-w-xs">
+                  <p>{order.comment}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : null}
+      </TableCell>
+    );
   }
 
   return (
@@ -305,9 +302,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
               <TableHead className={cn(useLargeLayout && 'w-[60px]')}>Продавец</TableHead>
               <TableHead className={cn('text-right', useLargeLayout && 'p-2 w-[60px]')}>Цена</TableHead>
               <TableHead className={cn(useLargeLayout && 'p-0 w-[100px]')}>Фото</TableHead>
-               {useLargeLayout && (
-                <TableHead className="w-[40px] p-2 text-center">Комм.</TableHead>
-              )}
+              <TableHead className={cn(useLargeLayout ? 'w-[40px] p-2' : 'w-[20px] p-1', 'text-center')}>Комм.</TableHead>
               {!useLargeLayout && (
                 <TableHead>
                   <span className="sr-only">Действия</span>
@@ -324,21 +319,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
                     {format(order.orderDate, 'd MMM yyyy', { locale: ru })}
                   </TableCell>
                   <TableCell className="whitespace-nowrap">
-                    <div className='flex items-center gap-1.5'>
                     {order.orderNumber}
-                     {!useLargeLayout && order.comment && (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <MessageSquareText className="h-4 w-4 text-muted-foreground" />
-                            </TooltipTrigger>
-                            <TooltipContent align="start" className="max-w-xs">
-                              <p>{order.comment}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      )}
-                    </div>
                   </TableCell>
                   <TableCell className="whitespace-nowrap">{order.shipmentNumber || '–'}</TableCell>
                   <TableCell className={cn(useLargeLayout && 'whitespace-nowrap w-[90px]')}>
@@ -397,7 +378,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={11} className="h-24 text-center">
+                <TableCell colSpan={12} className="h-24 text-center">
                   Нет заказов для отображения.
                 </TableCell>
               </TableRow>
