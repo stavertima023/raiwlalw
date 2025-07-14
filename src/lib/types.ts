@@ -76,3 +76,10 @@ export const ExpenseSchema = z.object({
 });
 
 export type Expense = z.infer<typeof ExpenseSchema>;
+
+export type SortDirection = 'asc' | 'desc';
+
+export interface SortDescriptor {
+  column: keyof Order;
+  direction: SortDirection;
+}

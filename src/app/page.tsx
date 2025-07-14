@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Dashboard } from '@/components/dashboard/Dashboard';
 import { OrderTable } from '@/components/dashboard/OrderTable';
+import { AdminOrderList } from '@/components/admin/AdminOrderList';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 export default function Home() {
@@ -156,7 +157,7 @@ export default function Home() {
         if (currentUser.role === 'Администратор') {
           switch (activeView) {
             case 'admin-orders':
-              return <PlaceholderComponent title="Список заказов" description="Просмотр и управление всеми заказами в системе." />;
+              return <AdminOrderList allOrders={orders} allUsers={mockUsers} />;
             case 'admin-expenses':
               return <PlaceholderComponent title="Расходы" description="Отслеживание и управление расходами." />;
             case 'admin-analytics':
