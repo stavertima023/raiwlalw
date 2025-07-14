@@ -64,14 +64,14 @@ interface OrderTableProps {
 
 const statusConfig: Record<
   OrderStatus,
-  { label: string; color: 'primary' | 'secondary' | 'destructive' | 'outline' | 'default', icon: React.ElementType }
+  { label: string; color: 'primary' | 'secondary' | 'destructive' | 'outline' | 'default' }
 > = {
-  Добавлен: { label: 'Добавлен', color: 'primary', icon: CheckCircle2 },
-  Готов: { label: 'Готов', color: 'default', icon: CheckCircle2 },
-  Отправлен: { label: 'Отправлен', color: 'default', icon: Send },
-  Исполнен: { label: 'Исполнен', color: 'default', icon: PackageCheck },
-  Отменен: { label: 'Отменен', color: 'destructive', icon: XCircle },
-  Возврат: { label: 'Возврат', color: 'outline', icon: Undo2 },
+  Добавлен: { label: 'Добавлен', color: 'primary' },
+  Готов: { label: 'Готов', color: 'default' },
+  Отправлен: { label: 'Отправлен', color: 'default' },
+  Исполнен: { label: 'Исполнен', color: 'default'},
+  Отменен: { label: 'Отменен', color: 'destructive' },
+  Возврат: { label: 'Возврат', color: 'outline' },
 };
 
 const StatusBadge: React.FC<{ status: OrderStatus; useLargeLayout?: boolean }> = ({ status, useLargeLayout }) => {
@@ -106,10 +106,28 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
     if (order.status === 'Добавлен') {
         return (
             <div className="flex gap-2">
-                <Button size="icon" variant="success" onClick={() => onUpdateStatus(order.id, 'Готов')}>
-                    <Check className="h-4 w-4" />
-                    <span className="sr-only">Готов</span>
-                </Button>
+                 <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button size="icon" variant="success">
+                      <Check className="h-4 w-4" />
+                      <span className="sr-only">Готов</span>
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Вы собираетесь изменить статус заказа #{order.orderNumber} на "Готов".
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Закрыть</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => onUpdateStatus(order.id, 'Готов')}>
+                        Подтвердить
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
                  <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button size="icon" variant="destructive">
@@ -139,10 +157,28 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
     if (order.status === 'Готов') {
         return (
             <div className="flex gap-2">
-                <Button size="icon" variant="success" onClick={() => onUpdateStatus(order.id, 'Отправлен')}>
-                    <Send className="h-4 w-4" />
-                     <span className="sr-only">Отправлен</span>
-                </Button>
+                 <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button size="icon" variant="success">
+                      <Send className="h-4 w-4" />
+                      <span className="sr-only">Отправлен</span>
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Вы собираетесь изменить статус заказа #{order.orderNumber} на "Отправлен".
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Закрыть</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => onUpdateStatus(order.id, 'Отправлен')}>
+                        Подтвердить
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
                  <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button size="icon" variant="destructive">
@@ -193,7 +229,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
   }
 
   const renderActionsCell = (order: Order) => (
-    <TableCell className={cn(useLargeLayout && 'w-[180px]')}>
+    <TableCell className={cn(useLargeLayout && 'w-[120px]')}>
       {currentUser.role === 'Принтовщик' ? (
         renderPrinterActions(order)
       ) : (
@@ -230,7 +266,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
           <TableHeader>
             <TableRow>
               {useLargeLayout && (
-                <TableHead className="w-[180px]">
+                <TableHead className="w-[120px]">
                   Действия
                 </TableHead>
               )}
@@ -238,7 +274,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
               <TableHead>Номер заказа</TableHead>
               <TableHead>Номер отправления</TableHead>
               <TableHead className={cn(useLargeLayout && 'whitespace-nowrap w-[90px]')}>Статус</TableHead>
-              <TableHead className={cn(useLargeLayout && 'p-2 w-[15px]')}>Тип</TableHead>
+              <TableHead className={cn(useLargeLayout && 'p-2 w-[10px]')}>Тип</TableHead>
               <TableHead className={cn(useLargeLayout && 'p-2 w-[10px]')}>Размер</TableHead>
               <TableHead className={cn(useLargeLayout && 'w-[60px]')}>Продавец</TableHead>
               <TableHead className={cn('text-right', useLargeLayout && 'p-2 w-[60px]')}>Цена</TableHead>
@@ -263,7 +299,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
                   <TableCell className={cn(useLargeLayout && 'whitespace-nowrap w-[90px]')}>
                     <StatusBadge status={order.status} useLargeLayout={useLargeLayout} />
                   </TableCell>
-                  <TableCell className={cn(useLargeLayout && 'p-2 w-[15px]')}>{order.productType}</TableCell>
+                  <TableCell className={cn(useLargeLayout && 'p-2 w-[10px]')}>{order.productType}</TableCell>
                   <TableCell className={cn(useLargeLayout && 'p-2 w-[10px]')}>{order.size}</TableCell>
                   <TableCell className={cn("whitespace-nowrap", useLargeLayout && 'w-[60px]')}>{order.seller}</TableCell>
                   <TableCell className={cn('text-right whitespace-nowrap', useLargeLayout && 'p-2 w-[60px]')}>
