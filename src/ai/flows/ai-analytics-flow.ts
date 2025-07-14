@@ -40,7 +40,7 @@ const AIAnalyticsOutputSchema = z.object({
   chartData: z.array(ChartDataItemSchema).optional().describe('Data structured for creating a bar or line chart. Should be omitted if a chart is not relevant.'),
   chartType: z.enum(['bar', 'line', 'pie']).optional().describe("The recommended type of chart for the data. Defaults to 'bar' if not specified."),
   chartKeys: z.array(z.string()).optional().describe('An array of keys used in the chartData objects (e.g., ["доход", "расход"]). Should be omitted if a chart is not relevant.'),
-  tableData: z.array(z.record(z.any())).optional().describe("Data structured for a table view. Use this to provide detailed, row-level information."),
+  tableData: z.array(z.record(z.string(), z.any())).optional().describe("Data structured for a table view. Use this to provide detailed, row-level information."),
   tableColumns: z.array(TableColumnSchema).optional().describe("Definitions for the table columns, including keys and labels. Must be provided if 'tableData' is present."),
 });
 export type AIAnalyticsOutput = z.infer<typeof AIAnalyticsOutputSchema>;
