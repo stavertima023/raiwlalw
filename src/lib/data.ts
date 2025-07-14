@@ -144,7 +144,8 @@ export const mockExpenses: Expense[] = [
     amount: 5000,
     category: 'Аренда',
     responsible: 'admin_789',
-    comment: 'Аренда офиса за Октябрь'
+    comment: 'Аренда офиса за Октябрь',
+    receiptPhoto: 'https://placehold.co/400x600.png'
   },
   {
     id: uuidv4(),
@@ -160,6 +161,7 @@ export const mockExpenses: Expense[] = [
     amount: 3500,
     category: 'Маркетинг',
     responsible: 'seller_123',
-    comment: 'Рекламная кампания в Telegram'
+    comment: 'Рекламная кампания в Telegram',
+    receiptPhoto: 'https://placehold.co/400x600.png'
   },
 ]

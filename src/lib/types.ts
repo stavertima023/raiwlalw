@@ -69,10 +69,11 @@ export type ExpenseCategory = z.infer<typeof ExpenseCategoryEnum>;
 export const ExpenseSchema = z.object({
   id: z.string(),
   date: z.date(),
-  amount: z.number().positive('Сумма должна быть положительной'),
+  amount: z.coerce.number().positive('Сумма должна быть положительной'),
   category: ExpenseCategoryEnum,
   responsible: z.string(), // User's telegramId
   comment: z.string().optional(),
+  receiptPhoto: z.string().url().optional(),
 });
 
 export type Expense = z.infer<typeof ExpenseSchema>;

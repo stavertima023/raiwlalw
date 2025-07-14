@@ -2,6 +2,7 @@
 'use client';
 
 import * as React from 'react';
+import Image from 'next/image';
 import {
   Table,
   TableBody,
@@ -11,6 +12,13 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ArrowUpDown } from 'lucide-react';
 import type { Expense, User, ExpenseCategory } from '@/lib/types';
@@ -119,6 +127,7 @@ export const ExpensesList: React.FC<ExpensesListProps> = ({ allExpenses, allUser
                 {renderSortableHeader('category', 'Категория')}
                 {renderSortableHeader('responsible', 'Ответственный')}
                 <TableHead>Комментарий</TableHead>
+                <TableHead>Чек</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -136,11 +145,48 @@ export const ExpensesList: React.FC<ExpensesListProps> = ({ allExpenses, allUser
                     <TableCell className="min-w-[200px] max-w-[400px] whitespace-pre-wrap break-words">
                         {expense.comment || '–'}
                     </TableCell>
+                    <TableCell>
+                      {expense.receiptPhoto ? (
+                         <Dialog>
+                              <DialogTrigger asChild>
+                                <button>
+                                  <Image
+                                    src={expense.receiptPhoto}
+                                    alt="Фото чека"
+                                    width={40}
+                                    height={40}
+                                    className="rounded-md object-cover cursor-pointer"
+                                    data-ai-hint="receipt photo"
+                                  />
+                                </button>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-md p-2 sm:max-w-lg md:max-w-2xl">
+                                <DialogHeader>
+                                  <DialogTitle>Фото чека</DialogTitle>
+                                </DialogHeader>
+                                <div className="flex justify-center">
+                                  <Image
+                                    src={expense.receiptPhoto}
+                                    alt="Фото чека"
+                                    width={800}
+                                    height={800}
+                                    className="rounded-md object-contain max-h-[80vh]"
+                                     data-ai-hint="receipt photo"
+                                  />
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+                      ) : (
+                        <div className="rounded-md bg-muted flex items-center justify-center text-muted-foreground text-xs h-10 w-10">
+                            Нет
+                        </div>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
+                  <TableCell colSpan={6} className="h-24 text-center">
                     Нет расходов для отображения по заданным фильтрам.
                   </TableCell>
                 </TableRow>
