@@ -12,6 +12,7 @@ import { OrderTable } from '@/components/dashboard/OrderTable';
 import { AdminOrderList } from '@/components/admin/AdminOrderList';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ExpensesList } from '@/components/admin/ExpensesList';
+import AIAnalytics from '@/components/admin/AIAnalytics';
 
 export default function Home() {
   const [orders, setOrders] = React.useState<Order[]>(mockOrders);
@@ -168,7 +169,7 @@ export default function Home() {
             case 'admin-analytics':
               return <PlaceholderComponent title="Аналитика" description="Интерактивные дашборды и графики." />;
             case 'admin-ai-analytics':
-               return <PlaceholderComponent title="AI-аналитика" description="Интеллектуальный анализ данных и прогнозы." />;
+               return <AIAnalytics orders={orders} expenses={expenses} />;
             default:
               return <AdminOrderList allOrders={orders} allUsers={mockUsers} />;
           }

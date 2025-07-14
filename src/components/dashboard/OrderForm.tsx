@@ -77,20 +77,19 @@ export function OrderForm({ children, onSave, currentUser }: OrderFormProps) {
   const watchedValues = watch();
 
   const handlePredictShipment = async () => {
-    const seller = getValues('seller');
     const productType = getValues('productType');
-    if (!seller || !productType) {
+    if (!productType) {
       toast({
         variant: 'destructive',
         title: 'Ошибка',
         description:
-          'Пожалуйста, укажите продавца и тип продукта для предсказания.',
+          'Пожалуйста, укажите тип продукта для предсказания.',
       });
       return;
     }
     setIsPredicting(true);
     try {
-      const result = await predictShipmentNumber({ seller, productType });
+      const result = await predictShipmentNumber({ seller: currentUser.telegramId, productType });
       setValue('shipmentNumber', result.shipmentNumber, {
         shouldValidate: true,
       });
