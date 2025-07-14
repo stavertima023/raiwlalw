@@ -228,26 +228,21 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
     <TableCell className={cn(useLargeLayout && 'w-[120px]')}>
       {currentUser.role === 'Принтовщик' ? (
         renderPrinterActions(order)
-      ) : (
+      ) : currentUser.role === 'Продавец' ? null : (
         <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button aria-haspopup="true" size="icon" variant="ghost" disabled={currentUser.role !== 'Продавец'}>
-            <MoreHorizontal className="h-4 w-4" />
-            <span className="sr-only">Toggle menu</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-           <DropdownMenuItem>
-            <Edit className="mr-2 h-4 w-4" />
-            Редактировать
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem className="text-destructive">
-            <XCircle className="mr-2 h-4 w-4" />
-            Отменить заказ
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button aria-haspopup="true" size="icon" variant="ghost">
+              <MoreHorizontal className="h-4 w-4" />
+              <span className="sr-only">Toggle menu</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem>
+              <Edit className="mr-2 h-4 w-4" />
+              Редактировать
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       )}
     </TableCell>
   );
