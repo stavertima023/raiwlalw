@@ -29,6 +29,7 @@ export const mockOrders: Order[] = [
     price: 1500,
     cost: 750,
     photos: ['https://placehold.co/100x100.png'],
+    comment: 'Срочный заказ',
   },
   {
     id: uuidv4(),
@@ -74,6 +75,7 @@ export const mockOrders: Order[] = [
       'https://placehold.co/100x100.png',
       'https://placehold.co/100x100.png',
     ],
+    comment: 'Подарочная упаковка',
   },
   {
     id: uuidv4(),
@@ -125,5 +127,6 @@ export const mockOrders: Order[] = [
     price: 1650,
     cost: 825,
     photos: ['https://placehold.co/100x100.png'],
+    comment: 'Клиент просит связаться перед доставкой',
   },
 ];

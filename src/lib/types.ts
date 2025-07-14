@@ -38,6 +38,7 @@ export const OrderSchema = z.object({
   price: z.coerce.number().positive('Цена должна быть положительной'),
   cost: z.coerce.number().positive('Себестоимость должна быть положительной'),
   photos: z.array(z.string().url()).max(3).optional().default([]),
+  comment: z.string().optional(),
 });
 
 export type Order = z.infer<typeof OrderSchema>;

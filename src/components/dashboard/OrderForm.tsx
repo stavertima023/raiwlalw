@@ -37,6 +37,7 @@ import { predictShipmentNumber } from '@/ai/flows/shipment-number-prediction';
 import { Loader2, Wand2, Plus, X, Check } from 'lucide-react';
 import Image from 'next/image';
 import { ScrollArea } from '../ui/scroll-area';
+import { Textarea } from '../ui/textarea';
 
 type OrderFormData = z.infer<typeof OrderSchema>;
 
@@ -63,6 +64,7 @@ export function OrderForm({ children, onSave, currentUser }: OrderFormProps) {
       seller: currentUser.telegramId,
       price: '' as any, // Set initial value to empty string
       photos: [],
+      comment: '',
     },
     mode: 'onChange',
   });
@@ -250,6 +252,23 @@ export function OrderForm({ children, onSave, currentUser }: OrderFormProps) {
                                 <FormMessage />
                             </FormItem>
                             )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="comment"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Комментарий</FormLabel>
+                              <FormControl>
+                                <Textarea
+                                  placeholder="Например, особенности заказа или пожелания"
+                                  className="resize-none"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
                         />
                     </div>
 
