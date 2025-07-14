@@ -36,7 +36,7 @@ const AIAnalyticsOutputSchema = z.object({
   chartData: z.array(ChartDataItemSchema).optional().describe('Data structured for creating a bar or line chart. Should be omitted if a chart is not relevant.'),
   chartType: z.enum(['bar', 'line', 'pie']).optional().describe("The recommended type of chart for the data. Defaults to 'bar' if not specified."),
   chartKeys: z.array(z.string()).optional().describe('An array of keys used in the chartData objects (e.g., ["доход", "расход"]). Should be omitted if a chart is not relevant.'),
-  tableData: z.array(z.array(z.union([z.string(), z.number()]))).optional().describe("Data structured for a table view as an array of arrays (like a CSV). The first inner array should be the headers. Example: [[\"Order Number\", \"Profit\"], [\"ORD-101\", 5000], [\"ORD-102\", 4500]]"),
+  tableData: z.array(z.array(z.union([z.string(), z.number()]))).optional().describe("Data structured for a table view as an array of arrays (like a CSV). The first inner array should be the headers. Example: [[\"orderNumber\", \"profit\"], [\"ORD-101\", 5000], [\"ORD-102\", 4500]]"),
   tableColumns: z.array(z.string()).optional().describe("An array of string headers for the table. Example: [\"Номер заказа\", \"Прибыль (₽)\"]. This must be provided if 'tableData' is present and should correspond to the headers in tableData."),
 });
 export type AIAnalyticsOutput = z.infer<typeof AIAnalyticsOutputSchema>;
