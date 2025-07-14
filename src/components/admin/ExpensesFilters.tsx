@@ -16,32 +16,26 @@ import { ExpenseCategory, ExpenseCategoryEnum, User } from '@/lib/types';
 interface ExpensesFiltersProps {
   onFilterChange: (filters: {
     category: ExpenseCategory | 'all';
-    responsible: string | 'all';
   }) => void;
   currentFilters: {
     category: ExpenseCategory | 'all';
-    responsible: string | 'all';
   };
-  allUsers: User[];
   onClear: () => void;
 }
 
 export const ExpensesFilters: React.FC<ExpensesFiltersProps> = ({
   onFilterChange,
   currentFilters,
-  allUsers,
   onClear
-}) => {
+}: ExpensesFiltersProps) => {
   const [category, setCategory] = React.useState<ExpenseCategory | 'all'>(currentFilters.category);
-  const [responsible, setResponsible] = React.useState<string | 'all'>(currentFilters.responsible);
 
   React.useEffect(() => {
-    onFilterChange({ category, responsible });
-  }, [category, responsible, onFilterChange]);
+    onFilterChange({ category });
+  }, [category, onFilterChange]);
   
   const handleClear = () => {
     setCategory('all');
-    setResponsible('all');
     onClear();
   }
 
@@ -56,33 +50,16 @@ export const ExpensesFilters: React.FC<ExpensesFiltersProps> = ({
 
           <Select
             value={category}
-            onValueChange={(value) => setCategory(value as ExpenseCategory | 'all')}
+            onValueChange={(value: string) => setCategory(value as ExpenseCategory | 'all')}
           >
             <SelectTrigger>
               <SelectValue placeholder="Фильтр по категории" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Все категории</SelectItem>
-              {ExpenseCategoryEnum.options.map((cat) => (
+              {ExpenseCategoryEnum.options.map((cat: ExpenseCategory) => (
                 <SelectItem key={cat} value={cat}>
                   {cat}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select
-            value={responsible}
-            onValueChange={(value) => setResponsible(value as string | 'all')}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Фильтр по ответственному" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Все ответственные</SelectItem>
-              {allUsers.map((user) => (
-                <SelectItem key={user.telegramId} value={user.telegramId}>
-                  {user.name}
                 </SelectItem>
               ))}
             </SelectContent>

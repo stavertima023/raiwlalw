@@ -31,6 +31,7 @@ interface ExpensesListProps {
   allExpenses: Expense[];
   allUsers: User[];
   onAddExpense: (expense: Omit<Expense, 'id' | 'date'>) => void;
+  currentUser: User;
 }
 
 interface ExpenseSortDescriptor {
@@ -38,7 +39,7 @@ interface ExpenseSortDescriptor {
   direction: 'asc' | 'desc';
 }
 
-export const ExpensesList: React.FC<ExpensesListProps> = ({ allExpenses, allUsers, onAddExpense }) => {
+export const ExpensesList: React.FC<ExpensesListProps> = ({ allExpenses, allUsers, onAddExpense, currentUser }) => {
   const [filters, setFilters] = React.useState({
     category: 'all' as ExpenseCategory | 'all',
     responsible: 'all' as string | 'all',
@@ -53,13 +54,6 @@ export const ExpensesList: React.FC<ExpensesListProps> = ({ allExpenses, allUser
     const isAsc = sortDescriptor.column === column && sortDescriptor.direction === 'asc';
     setSortDescriptor({ column, direction: isAsc ? 'desc' : 'asc' });
   };
-
-  const userMap = React.useMemo(() => {
-    return allUsers.reduce((acc, user) => {
-      acc[user.telegramId] = user.name;
-      return acc;
-    }, {} as Record<string, string>);
-  }, [allUsers]);
 
   const filteredAndSortedExpenses = React.useMemo(() => {
     let filtered = [...allExpenses];
@@ -103,13 +97,13 @@ export const ExpensesList: React.FC<ExpensesListProps> = ({ allExpenses, allUser
             Отслеживайте и управляйте всеми расходами компании.
           </p>
         </div>
-        <AddExpenseForm onSave={onAddExpense} allUsers={allUsers} currentUser={allUsers.find(u => u.role === "Администратор")!} />
+        <AddExpenseForm onSave={onAddExpense} allUsers={[]} currentUser={currentUser} />
       </div>
 
       <ExpensesFilters
         onFilterChange={setFilters}
         currentFilters={filters}
-        allUsers={allUsers}
+        allUsers={[]}
         onClear={() => setFilters({ category: 'all', responsible: 'all' })}
       />
 
@@ -141,7 +135,7 @@ export const ExpensesList: React.FC<ExpensesListProps> = ({ allExpenses, allUser
                       {expense.amount.toLocaleString('ru-RU', { style: 'currency', currency: 'RUB' })}
                     </TableCell>
                     <TableCell>{expense.category}</TableCell>
-                    <TableCell>{userMap[expense.responsible] || expense.responsible}</TableCell>
+                    <TableCell>{expense.responsible}</TableCell>
                     <TableCell className="min-w-[200px] max-w-[400px] whitespace-pre-wrap break-words">
                         {expense.comment || '–'}
                     </TableCell>

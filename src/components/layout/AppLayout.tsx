@@ -7,7 +7,6 @@ import { UserNav } from './UserNav';
 import { ThemeToggle } from './ThemeToggle';
 import type { User, Role } from '@/lib/types';
 import { Home, Package, BarChart3, BotMessageSquare, Truck, Factory } from 'lucide-react';
-import { mockUsers } from '@/lib/data';
 import { Header } from '@/components/dashboard/Header';
 import { Dashboard } from '../dashboard/Dashboard';
 import { OrderTable } from '../dashboard/OrderTable';
@@ -18,7 +17,6 @@ import { Order, OrderStatus } from '@/lib/types';
 interface AppLayoutProps {
   children: (activeView: string) => React.ReactNode;
   currentUser: User;
-  onUserChange: (user: User) => void;
   onAddOrder: (order: Omit<Order, 'id' | 'orderDate'>) => void;
   onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void;
   orders: Order[];
@@ -44,7 +42,7 @@ const navConfig: Record<Role, { top: NavItem[], bottom: NavItem[] }> = {
   },
 };
 
-export function AppLayout({ children, currentUser, onUserChange, onAddOrder, onUpdateStatus, orders }: AppLayoutProps) {
+export function AppLayout({ children, currentUser, onAddOrder, onUpdateStatus, orders }: AppLayoutProps) {
   const [activeView, setActiveView] = React.useState<string>('default');
 
   React.useEffect(() => {
@@ -64,7 +62,6 @@ export function AppLayout({ children, currentUser, onUserChange, onAddOrder, onU
       <div className="flex flex-col min-h-screen">
         <Header 
           currentUser={currentUser}
-          onUserChange={onUserChange}
           onAddOrder={onAddOrder}
         />
         <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto bg-muted/40">
@@ -129,7 +126,7 @@ export function AppLayout({ children, currentUser, onUserChange, onAddOrder, onU
           <div className="flex-1"></div>
           <div className="flex items-center gap-4">
             <ThemeToggle />
-            <UserNav allUsers={mockUsers} currentUser={currentUser} onUserChange={onUserChange} />
+            <UserNav currentUser={currentUser} />
           </div>
         </header>
         <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">

@@ -7,15 +7,13 @@ import { OrderForm } from './OrderForm';
 import type { Order, User } from '@/lib/types';
 import { ThemeToggle } from '../layout/ThemeToggle';
 import { UserNav } from '../layout/UserNav';
-import { mockUsers } from '@/lib/data';
 
 interface HeaderProps {
   currentUser: User;
-  onUserChange: (user: User) => void;
   onAddOrder: (order: Omit<Order, 'id' | 'orderDate'>) => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ currentUser, onUserChange, onAddOrder }) => {
+export const Header: React.FC<HeaderProps> = ({ currentUser, onAddOrder }) => {
   return (
     <header className="bg-background border-b sticky top-0 z-10">
       <div className="flex items-center justify-between h-16 px-4 md:px-8">
@@ -63,7 +61,7 @@ export const Header: React.FC<HeaderProps> = ({ currentUser, onUserChange, onAdd
             </div>
           )}
           <ThemeToggle />
-          <UserNav allUsers={mockUsers} currentUser={currentUser} onUserChange={onUserChange} />
+          <UserNav currentUser={currentUser} />
         </div>
       </div>
     </header>

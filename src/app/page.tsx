@@ -3,7 +3,6 @@
 
 import * as React from 'react';
 import { Order, OrderStatus, User, Expense, ExpenseCategory } from '@/lib/types';
-import { mockOrders, mockUsers, mockExpenses } from '@/lib/data';
 import { v4 as uuidv4 } from 'uuid';
 import { useToast } from '@/hooks/use-toast';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -15,9 +14,15 @@ import { ExpensesList } from '@/components/admin/ExpensesList';
 import AIAnalytics from '@/components/admin/AIAnalytics';
 
 export default function Home() {
-  const [orders, setOrders] = React.useState<Order[]>(mockOrders);
-  const [expenses, setExpenses] = React.useState<Expense[]>(mockExpenses);
-  const [currentUser, setCurrentUser] = React.useState<User>(mockUsers[0]); 
+  const [orders, setOrders] = React.useState<Order[]>([]);
+  const [expenses, setExpenses] = React.useState<Expense[]>([]);
+  const [currentUser, setCurrentUser] = React.useState<User>({ 
+    id: '1', 
+    telegramId: 'admin', 
+    name: 'Admin', 
+    role: 'Администратор', 
+    payouts: [] 
+  }); 
   const { toast } = useToast();
 
   const handleAddOrder = (newOrderData: Omit<Order, 'id' | 'orderDate'>) => {
@@ -26,12 +31,12 @@ export default function Home() {
       id: uuidv4(),
       orderDate: new Date(),
     };
-    setOrders((prevOrders) => [newOrder, ...prevOrders]);
+    setOrders((prevOrders: Order[]) => [newOrder, ...prevOrders]);
   };
 
   const handleCancelOrder = (orderNumber: string) => {
-    setOrders((prevOrders) =>
-      prevOrders.map((order) =>
+    setOrders((prevOrders: Order[]) =>
+      prevOrders.map((order: Order) =>
         order.orderNumber === orderNumber ? { ...order, status: 'Отменен' } : order
       )
     );
@@ -42,8 +47,8 @@ export default function Home() {
   };
   
   const handleReturnOrder = (orderNumber: string) => {
-    setOrders((prevOrders) =>
-      prevOrders.map((order) =>
+    setOrders((prevOrders: Order[]) =>
+      prevOrders.map((order: Order) =>
         order.orderNumber === orderNumber ? { ...order, status: 'Возврат' } : order
       )
     );
@@ -54,8 +59,8 @@ export default function Home() {
   };
 
   const handlePayout = (orderNumbers: string[]) => {
-    setOrders((prevOrders) =>
-      prevOrders.map((order) =>
+    setOrders((prevOrders: Order[]) =>
+      prevOrders.map((order: Order) =>
         orderNumbers.includes(order.orderNumber)
           ? { ...order, status: 'Исполнен' }
           : order
@@ -68,8 +73,8 @@ export default function Home() {
   };
   
   const handleUpdateOrderStatus = (orderId: string, newStatus: OrderStatus) => {
-    setOrders(prevOrders =>
-      prevOrders.map(order =>
+    setOrders((prevOrders: Order[]) =>
+      prevOrders.map((order: Order) =>
         order.id === orderId ? { ...order, status: newStatus } : order
       )
     );
@@ -85,26 +90,26 @@ export default function Home() {
       id: uuidv4(),
       date: new Date(),
     };
-    setExpenses((prev) => [newExpense, ...prev]);
+    setExpenses((prev: Expense[]) => [newExpense, ...prev]);
   }
 
   const findOrder = (orderNumber: string): Order | undefined => {
-    return orders.find((order) => order.orderNumber === orderNumber);
+    return orders.find((order: Order) => order.orderNumber === orderNumber);
   };
   
   const findOrders = (orderNumbers: string[]): Order[] => {
-    return orders.filter(order => orderNumbers.includes(order.orderNumber));
+    return orders.filter((order: Order) => orderNumbers.includes(order.orderNumber));
   }
 
   const filteredOrdersForSeller = React.useMemo(() => {
     return orders
-      .filter((order) => order.seller === currentUser.telegramId)
-      .sort((a, b) => b.orderDate.getTime() - a.orderDate.getTime());
+      .filter((order: Order) => order.seller === currentUser.telegramId)
+      .sort((a: Order, b: Order) => b.orderDate.getTime() - a.orderDate.getTime());
   }, [orders, currentUser]);
 
   const allPrinterOrders = React.useMemo(() => {
     return orders
-      .sort((a, b) => b.orderDate.getTime() - a.orderDate.getTime());
+      .sort((a: Order, b: Order) => b.orderDate.getTime() - a.orderDate.getTime());
   }, [orders]);
 
 
@@ -124,12 +129,11 @@ export default function Home() {
   return (
     <AppLayout 
       currentUser={currentUser} 
-      onUserChange={setCurrentUser}
       onAddOrder={handleAddOrder}
       onUpdateStatus={handleUpdateOrderStatus}
       orders={orders}
     >
-      {(activeView) => {
+      {(activeView: string) => {
         if (currentUser.role === 'Продавец') {
            return <Dashboard 
             user={currentUser} 
@@ -155,19 +159,20 @@ export default function Home() {
         if (currentUser.role === 'Администратор') {
           switch (activeView) {
             case 'admin-orders':
-              return <AdminOrderList allOrders={orders} allUsers={mockUsers} />;
+              return <AdminOrderList allOrders={orders} allUsers={[]} />;
             case 'admin-expenses':
               return <ExpensesList 
                         allExpenses={expenses} 
-                        allUsers={mockUsers} 
-                        onAddExpense={handleAddExpense} 
+                        allUsers={[]} 
+                        onAddExpense={handleAddExpense}
+                        currentUser={currentUser} 
                       />;
             case 'admin-analytics':
               return <PlaceholderComponent title="Аналитика" description="Интерактивные дашборды и графики." />;
             case 'admin-ai-analytics':
                return <AIAnalytics orders={orders} expenses={expenses} />;
             default:
-              return <AdminOrderList allOrders={orders} allUsers={mockUsers} />;
+              return <AdminOrderList allOrders={orders} allUsers={[]} />;
           }
         }
         return null;

@@ -42,11 +42,10 @@ type ExpenseFormData = z.infer<typeof ExpenseSchema>;
 
 interface AddExpenseFormProps {
   onSave: (data: Omit<Expense, 'id' | 'date'>) => void;
-  allUsers: User[];
   currentUser: User;
 }
 
-export function AddExpenseForm({ onSave, allUsers, currentUser }: AddExpenseFormProps) {
+export function AddExpenseForm({ onSave, currentUser }: AddExpenseFormProps) {
   const [isOpen, setIsOpen] = React.useState(false);
   const { toast } = useToast();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -167,31 +166,6 @@ export function AddExpenseForm({ onSave, allUsers, currentUser }: AddExpenseForm
                             {ExpenseCategoryEnum.options.map((cat) => (
                                 <SelectItem key={cat} value={cat}>
                                 {cat}
-                                </SelectItem>
-                            ))}
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-
-                    <FormField
-                    control={form.control}
-                    name="responsible"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Ответственный</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Выберите ответственного..." />
-                            </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                            {allUsers.map((user) => (
-                                <SelectItem key={user.telegramId} value={user.telegramId}>
-                                {user.name} ({user.role})
                                 </SelectItem>
                             ))}
                             </SelectContent>
