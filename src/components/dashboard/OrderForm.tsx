@@ -220,21 +220,9 @@ export function OrderForm({ children, onSave, currentUser }: OrderFormProps) {
                             render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Номер отправления</FormLabel>
-                                <div className="flex items-center gap-2">
                                 <FormControl>
                                     <Input placeholder="SHP-A1B2 (можно оставить пустым)" {...field} />
                                 </FormControl>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={handlePredictShipment}
-                                    disabled={isPredicting || !watchedValues.productType}
-                                    aria-label="Predict shipment number"
-                                >
-                                    {isPredicting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
-                                </Button>
-                                </div>
                                 <FormMessage />
                             </FormItem>
                             )}
