@@ -37,21 +37,22 @@ export function CancelOrderDialog({
 
   const handleFindOrder = () => {
     setError(null);
+    setFoundOrder(null);
     if (!orderNumber) {
       setError('Пожалуйста, введите номер заказа.');
       return;
     }
     const order = findOrder(orderNumber);
     if (order) {
-        if (order.status === 'Отменен') {
-            setError(`Заказ #${orderNumber} уже отменен.`);
-            setFoundOrder(null);
-        } else {
+        if (order.status === 'Добавлен' || order.status === 'Готов') {
             setFoundOrder(order);
+        } else if (order.status === 'Отменен') {
+            setError(`Заказ #${orderNumber} уже отменен.`);
+        } else {
+            setError(`Невозможно отменить заказ со статусом "${order.status}". Отмена доступна только для заказов со статусом "Добавлен" или "Готов".`);
         }
     } else {
       setError(`Заказ с номером "${orderNumber}" не найден.`);
-      setFoundOrder(null);
     }
   };
 
