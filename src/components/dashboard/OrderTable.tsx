@@ -72,7 +72,7 @@ const statusConfig: Record<
 > = {
   Добавлен: { label: 'Добавлен', color: 'primary' },
   Готов: { label: 'Готов', color: 'default' },
-  Отправлен: { label: 'Отправлен', color: 'default' },
+  Отправлен: { label: 'Отправлен', color: 'default'},
   Исполнен: { label: 'Исполнен', color: 'default'},
   Отменен: { label: 'Отменен', color: 'destructive' },
   Возврат: { label: 'Возврат', color: 'outline' },
@@ -259,25 +259,6 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
       )}
     </TableCell>
   );
-  
-  const renderCommentCell = (order: Order) => {
-    return (
-      <TableCell className={cn(useLargeLayout ? 'w-[40px] p-2' : 'w-[20px] p-1', "text-center")}>
-          {order.comment ? (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <MessageSquareText className="h-5 w-5 mx-auto text-muted-foreground" />
-                </TooltipTrigger>
-                <TooltipContent align="start" className="max-w-xs">
-                  <p>{order.comment}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          ) : null}
-      </TableCell>
-    );
-  }
 
   return (
     <Card>
@@ -302,7 +283,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
               <TableHead className={cn(useLargeLayout && 'w-[60px]')}>Продавец</TableHead>
               <TableHead className={cn('text-right', useLargeLayout && 'p-2 w-[60px]')}>Цена</TableHead>
               <TableHead className={cn(useLargeLayout && 'p-0 w-[100px]')}>Фото</TableHead>
-              <TableHead className={cn(useLargeLayout ? 'w-[40px] p-2' : 'w-[20px] p-1', 'text-center')}>Комм.</TableHead>
+              <TableHead>Комментарий</TableHead>
               {!useLargeLayout && (
                 <TableHead>
                   <span className="sr-only">Действия</span>
@@ -372,7 +353,9 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
                       )}
                     </div>
                   </TableCell>
-                   {renderCommentCell(order)}
+                  <TableCell className="min-w-[150px] max-w-[300px] whitespace-pre-wrap break-words">
+                    {order.comment || '–'}
+                  </TableCell>
                   {!useLargeLayout && renderActionsCell(order)}
                 </TableRow>
               ))
