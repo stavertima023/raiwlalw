@@ -2,27 +2,50 @@
 'use client';
 
 import * as React from 'react';
-import type { Order, User, OrderStatus } from '@/lib/types';
+import type { Order, User, OrderStatus, ProductType } from '@/lib/types';
 import { OrderTable } from '@/components/dashboard/OrderTable';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from '@/components/ui/badge';
+import Filters from '@/components/dashboard/Filters';
 
 interface PrinterDashboardProps {
   currentUser: User;
   onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void;
-  ordersForProduction: Order[];
-  ordersForShipment: Order[];
   allOrders: Order[];
 }
 
 export function PrinterDashboard({
   currentUser,
   onUpdateStatus,
-  ordersForProduction,
-  ordersForShipment,
   allOrders,
 }: PrinterDashboardProps) {
+  const [filters, setFilters] = React.useState({
+    status: 'all' as OrderStatus | 'all',
+    productType: 'all' as ProductType | 'all',
+    orderNumber: '',
+  });
+
+  const filteredOrders = React.useMemo(() => {
+    return allOrders.filter(order => {
+      const statusMatch = filters.status === 'all' || order.status === filters.status;
+      const productTypeMatch = filters.productType === 'all' || order.productType === filters.productType;
+      const orderNumberMatch = filters.orderNumber === '' || order.orderNumber.toLowerCase().includes(filters.orderNumber.toLowerCase());
+      return statusMatch && productTypeMatch && orderNumberMatch;
+    });
+  }, [allOrders, filters]);
+
+  const ordersForProduction = React.useMemo(() => {
+    return filteredOrders
+      .filter(order => order.status === 'Добавлен');
+  }, [filteredOrders]);
+  
+  const ordersForShipment = React.useMemo(() => {
+    return filteredOrders
+      .filter(order => order.status === 'Готов');
+  }, [filteredOrders]);
+
+
   return (
     <div className="space-y-6">
        <Card>
@@ -33,6 +56,8 @@ export function PrinterDashboard({
           </CardDescription>
         </CardHeader>
       </Card>
+
+      <Filters onFilterChange={setFilters} currentFilters={filters} />
       
        <Tabs defaultValue="production" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
@@ -64,7 +89,7 @@ export function PrinterDashboard({
         </TabsContent>
         <TabsContent value="all">
              <OrderTable 
-                orders={allOrders} 
+                orders={filteredOrders} 
                 currentUser={currentUser} 
                 onUpdateStatus={onUpdateStatus}
                 useLargeLayout={true}

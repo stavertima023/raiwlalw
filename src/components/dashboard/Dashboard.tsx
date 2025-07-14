@@ -1,7 +1,8 @@
+
 'use client';
 
 import * as React from 'react';
-import { User, Order, OrderStatus } from '@/lib/types';
+import { User, Order, OrderStatus, ProductType } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
@@ -18,6 +19,7 @@ import { CancelOrderDialog } from './CancelOrderDialog';
 import { PayoutDialog } from './PayoutDialog';
 import { ReturnOrderDialog } from './ReturnOrderDialog';
 import { OrderTable } from './OrderTable';
+import Filters from './Filters';
 
 interface DashboardProps {
   user: User;
@@ -33,6 +35,21 @@ interface DashboardProps {
 
 
 export function Dashboard({ user, orders, onAddOrder, onCancelOrder, onReturnOrder, findOrder, findOrders, onPayout, onUpdateStatus }: DashboardProps) {
+  const [filters, setFilters] = React.useState({
+    status: 'all' as OrderStatus | 'all',
+    productType: 'all' as ProductType | 'all',
+    orderNumber: '',
+  });
+
+  const filteredOrders = React.useMemo(() => {
+    return orders.filter(order => {
+      const statusMatch = filters.status === 'all' || order.status === filters.status;
+      const productTypeMatch = filters.productType === 'all' || order.productType === filters.productType;
+      const orderNumberMatch = filters.orderNumber === '' || order.orderNumber.toLowerCase().includes(filters.orderNumber.toLowerCase());
+      return statusMatch && productTypeMatch && orderNumberMatch;
+    });
+  }, [orders, filters]);
+
 
   return (
     <div className="space-y-6">
@@ -85,9 +102,11 @@ export function Dashboard({ user, orders, onAddOrder, onCancelOrder, onReturnOrd
           </div>
         </CardContent>
       </Card>
+      
+      <Filters onFilterChange={setFilters} currentFilters={filters} />
 
       <OrderTable 
-        orders={orders} 
+        orders={filteredOrders} 
         currentUser={user} 
         onUpdateStatus={onUpdateStatus}
       />

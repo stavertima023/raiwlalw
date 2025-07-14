@@ -102,18 +102,6 @@ export default function Home() {
       .sort((a, b) => b.orderDate.getTime() - a.orderDate.getTime());
   }, [orders, currentUser]);
 
-  const ordersForProduction = React.useMemo(() => {
-    return orders
-      .filter(order => order.status === 'Добавлен')
-      .sort((a, b) => b.orderDate.getTime() - a.orderDate.getTime());
-  }, [orders]);
-  
-  const ordersForShipment = React.useMemo(() => {
-    return orders
-      .filter(order => order.status === 'Готов')
-      .sort((a, b) => b.orderDate.getTime() - a.orderDate.getTime());
-  }, [orders]);
-
   const allPrinterOrders = React.useMemo(() => {
     return orders
       .sort((a, b) => b.orderDate.getTime() - a.orderDate.getTime());
@@ -160,8 +148,6 @@ export default function Home() {
              <PrinterDashboard
                 currentUser={currentUser}
                 onUpdateStatus={handleUpdateOrderStatus}
-                ordersForProduction={ordersForProduction}
-                ordersForShipment={ordersForShipment}
                 allOrders={allPrinterOrders}
               />
           )

@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -35,10 +36,18 @@ const Filters: React.FC<FiltersProps> = ({ onFilterChange, currentFilters }) => 
     setProductType(currentFilters.productType);
     setOrderNumber(currentFilters.orderNumber);
   }, [currentFilters]);
-
+  
   React.useEffect(() => {
-    onFilterChange({ status, productType, orderNumber });
+    // Debounce filter changes
+    const handler = setTimeout(() => {
+      onFilterChange({ status, productType, orderNumber });
+    }, 300);
+
+    return () => {
+      clearTimeout(handler);
+    };
   }, [status, productType, orderNumber, onFilterChange]);
+
 
   return (
     <Card>
