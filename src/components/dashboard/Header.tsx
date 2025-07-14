@@ -7,6 +7,7 @@ import { OrderForm } from './OrderForm';
 import type { Order, User } from '@/lib/types';
 import { ThemeToggle } from '../layout/ThemeToggle';
 import { UserNav } from '../layout/UserNav';
+import { mockUsers } from '@/lib/data';
 
 interface HeaderProps {
   currentUser: User;
@@ -62,7 +63,7 @@ export const Header: React.FC<HeaderProps> = ({ currentUser, onUserChange, onAdd
             </div>
           )}
           <ThemeToggle />
-          <UserNav currentUser={currentUser} onUserChange={onUserChange} />
+          <UserNav allUsers={mockUsers} currentUser={currentUser} onUserChange={onUserChange} />
         </div>
       </div>
     </header>

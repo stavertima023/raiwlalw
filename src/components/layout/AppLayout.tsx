@@ -6,26 +6,31 @@ import { MainNav, type NavItem } from './MainNav';
 import { UserNav } from './UserNav';
 import { ThemeToggle } from './ThemeToggle';
 import type { User, Role } from '@/lib/types';
-import { Home, Package, BarChart3, BotMessageSquare, Settings, LifeBuoy, SquareUser, Truck, Factory, Users } from 'lucide-react';
+import { Home, Package, BarChart3, BotMessageSquare, Truck, Factory } from 'lucide-react';
 import { mockUsers } from '@/lib/data';
+import { Header } from '@/components/dashboard/Header';
+import { Dashboard } from '../dashboard/Dashboard';
+import { OrderTable } from '../dashboard/OrderTable';
+import { AdminOrderList } from '../admin/AdminOrderList';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
+import { Order, OrderStatus } from '@/lib/types';
 
 interface AppLayoutProps {
   children: (activeView: string) => React.ReactNode;
   currentUser: User;
   onUserChange: (user: User) => void;
+  onAddOrder: (order: Omit<Order, 'id' | 'orderDate'>) => void;
+  onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void;
+  orders: Order[];
 }
 
 const navConfig: Record<Role, { top: NavItem[], bottom: NavItem[] }> = {
   'Продавец': {
-    top: [
-      { id: 'seller-dashboard', title: 'Дашборд', icon: Home, href: '#' },
-    ],
+    top: [],
     bottom: [],
   },
   'Принтовщик': {
-    top: [
-      { id: 'printer-orders', title: 'Заказы', icon: Package, href: '#' },
-    ],
+    top: [],
     bottom: [],
   },
   'Администратор': {
@@ -39,18 +44,35 @@ const navConfig: Record<Role, { top: NavItem[], bottom: NavItem[] }> = {
   },
 };
 
-export function AppLayout({ children, currentUser, onUserChange }: AppLayoutProps) {
-  const [activeView, setActiveView] = React.useState<string>(navConfig[currentUser.role].top[0]?.id || 'default');
+export function AppLayout({ children, currentUser, onUserChange, onAddOrder, onUpdateStatus, orders }: AppLayoutProps) {
+  const [activeView, setActiveView] = React.useState<string>('default');
 
   React.useEffect(() => {
-    // Reset active view when user role changes
-    const newActiveView = navConfig[currentUser.role].top[0]?.id || 'default';
-    setActiveView(newActiveView);
+    if (currentUser.role === 'Администратор') {
+      setActiveView(navConfig[currentUser.role].top[0]?.id || 'default');
+    } else {
+        setActiveView('default');
+    }
   }, [currentUser.role]);
 
   const handleNavClick = (id: string) => {
     setActiveView(id);
   };
+
+  if (currentUser.role !== 'Администратор') {
+     return (
+      <div className="flex flex-col min-h-screen">
+        <Header 
+          currentUser={currentUser}
+          onUserChange={onUserChange}
+          onAddOrder={onAddOrder}
+        />
+        <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto bg-muted/40">
+           {children(activeView)}
+        </main>
+      </div>
+    );
+  }
 
   const navItems = navConfig[currentUser.role];
 

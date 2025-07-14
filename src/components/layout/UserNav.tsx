@@ -61,7 +61,7 @@ export function UserNav({ allUsers, currentUser, onUserChange }: UserNavProps) {
             <DropdownMenuSeparator />
             {allUsers.map((user) => (
                  <DropdownMenuRadioItem key={user.telegramId} value={user.telegramId}>
-                    {user.role}
+                    {user.role} ({user.name})
                 </DropdownMenuRadioItem>
             ))}
         </DropdownMenuRadioGroup>

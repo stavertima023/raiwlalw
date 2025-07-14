@@ -127,7 +127,13 @@ export default function Home() {
 
 
   return (
-    <AppLayout currentUser={currentUser} onUserChange={setCurrentUser}>
+    <AppLayout 
+      currentUser={currentUser} 
+      onUserChange={setCurrentUser}
+      onAddOrder={handleAddOrder}
+      onUpdateStatus={handleUpdateOrderStatus}
+      orders={orders}
+    >
       {(activeView) => {
         if (currentUser.role === 'Продавец') {
            return <Dashboard 
@@ -165,7 +171,7 @@ export default function Home() {
             case 'admin-ai-analytics':
                return <PlaceholderComponent title="AI-аналитика" description="Интеллектуальный анализ данных и прогнозы." />;
             default:
-              return <PlaceholderComponent title="Панель администратора" description="Выберите раздел для начала работы." />;
+              return <AdminOrderList allOrders={orders} allUsers={mockUsers} />;
           }
         }
         return null;
