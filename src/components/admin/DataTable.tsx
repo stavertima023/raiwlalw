@@ -22,7 +22,7 @@ interface DataTableProps {
 }
 
 export function DataTable({ columns, data }: DataTableProps) {
-  if (!columns || !data) {
+  if (!columns || columns.length === 0 || !data) {
     return null;
   }
 

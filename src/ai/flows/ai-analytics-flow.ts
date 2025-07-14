@@ -29,10 +29,6 @@ const ChartDataItemSchema = z.object({
   name: z.string().describe('The label for the data point (e.g., a date, month, or category).'),
 }).catchall(z.number().describe('The numerical value for a specific key.'));
 
-const TableColumnSchema = z.object({
-    key: z.string().describe("The key from the data objects to display in this column."),
-    label: z.string().describe("The display label for the column header (e.g., 'Название товара').")
-});
 
 const AIAnalyticsOutputSchema = z.object({
   summary: z.string().describe('A concise, natural language summary of the findings in Russian. This should be a detailed analysis, including trends, anomalies, and insights.'),
@@ -40,8 +36,8 @@ const AIAnalyticsOutputSchema = z.object({
   chartData: z.array(ChartDataItemSchema).optional().describe('Data structured for creating a bar or line chart. Should be omitted if a chart is not relevant.'),
   chartType: z.enum(['bar', 'line', 'pie']).optional().describe("The recommended type of chart for the data. Defaults to 'bar' if not specified."),
   chartKeys: z.array(z.string()).optional().describe('An array of keys used in the chartData objects (e.g., ["доход", "расход"]). Should be omitted if a chart is not relevant.'),
-  tableData: z.array(z.record(z.string(), z.any())).optional().describe("Data structured for a table view. Use this to provide detailed, row-level information."),
-  tableColumns: z.array(TableColumnSchema).optional().describe("Definitions for the table columns, including keys and labels. Must be provided if 'tableData' is present."),
+  tableData: z.array(z.array(z.union([z.string(), z.number()]))).optional().describe("Data structured for a table view as an array of arrays (like a CSV). The first inner array should be the headers. Example: [[\"Order Number\", \"Profit\"], [\"ORD-101\", 5000], [\"ORD-102\", 4500]]"),
+  tableColumns: z.array(z.string()).optional().describe("An array of string headers for the table. Example: [\"Номер заказа\", \"Прибыль (₽)\"]. This must be provided if 'tableData' is present and should correspond to the headers in tableData."),
 });
 export type AIAnalyticsOutput = z.infer<typeof AIAnalyticsOutputSchema>;
 
@@ -63,8 +59,8 @@ const systemPrompt = `Ты — ведущий AI-аналитик в прило�
         - Остальные ключи — числовые значения для оси Y.
         - Укажи 'chartType' ('bar', 'line' или 'pie'), наиболее подходящий для визуализации.
         - В 'chartKeys' перечисли ключи, которые нужно отобразить.
-    *   **tableData**: Если запрос требует детальной разбивки (например, "список самых прибыльных заказов" или "все расходы на маркетинг"), сформируй данные для таблицы.
-    *   **tableColumns**: Если 'tableData' предоставлен, обязательно определи для него колонки, указав 'key' (ключ из объекта данных) и 'label' (заголовок столбца на русском).
+    *   **tableData**: Если запрос требует детальной разбивки (например, "список самых прибыльных заказов"), сформируй данные для таблицы в формате **массива массивов**. Первый вложенный массив — это заголовки на английском (например, ["orderNumber", "profit"]). Последующие массивы — это строки данных.
+    *   **tableColumns**: Если 'tableData' предоставлен, обязательно определи для него заголовки столбцов на русском языке. Порядок должен соответствовать tableData.
 
 **Пример анализа:**
 - Запрос: "Сравни доходы и расходы по месяцам за последний квартал и покажи топ-5 самых прибыльных заказов."
@@ -90,15 +86,11 @@ const systemPrompt = `Ты — ведущий AI-аналитик в прило�
       ],
       "chartKeys": ["Доход", "Расход"],
       "tableData": [
-        { "orderNumber": "ORD-101", "product": "фб", "profit": 5000 },
-        { "orderNumber": "ORD-102", "product": "хч", "profit": 4500 },
-        ...
+        ["orderNumber", "product", "profit"],
+        ["ORD-101", "фб", 5000],
+        ["ORD-102", "хч", 4500]
       ],
-      "tableColumns": [
-        { "key": "orderNumber", "label": "Номер заказа" },
-        { "key": "product", "label": "Товар" },
-        { "key": "profit", "label": "Прибыль (₽)" }
-      ]
+      "tableColumns": ["Номер заказа", "Товар", "Прибыль (₽)"]
     }
 `;
 

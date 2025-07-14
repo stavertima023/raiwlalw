@@ -66,6 +66,30 @@ export default function AIAnalytics({ orders, expenses }: AIAnalyticsProps) {
     setQuery(sample);
     handleAnalyze(sample);
   }
+  
+  const formattedTableData = React.useMemo(() => {
+    if (!analysisResult?.tableData || analysisResult.tableData.length < 2) {
+      return { columns: [], data: [] };
+    }
+    const headers = analysisResult.tableData[0];
+    const columnLabels = analysisResult.tableColumns || headers;
+
+    const columns = headers.map((header, index) => ({
+      key: String(header),
+      label: String(columnLabels[index] || header),
+    }));
+
+    const data = analysisResult.tableData.slice(1).map(row => {
+      const rowObject: Record<string, any> = {};
+      headers.forEach((header, index) => {
+        rowObject[String(header)] = row[index];
+      });
+      return rowObject;
+    });
+
+    return { columns, data };
+  }, [analysisResult]);
+
 
   const renderChart = () => {
     if (!analysisResult || !analysisResult.chartData || analysisResult.chartData.length === 0) return null;
@@ -202,8 +226,8 @@ export default function AIAnalytics({ orders, expenses }: AIAnalyticsProps) {
                        )}
                     </TabsContent>
                     <TabsContent value="table">
-                         {analysisResult.tableData && analysisResult.tableColumns && analysisResult.tableData.length > 0 ? (
-                            <DataTable columns={analysisResult.tableColumns} data={analysisResult.tableData} />
+                         {formattedTableData.data.length > 0 ? (
+                            <DataTable columns={formattedTableData.columns} data={formattedTableData.data} />
                        ): (
                            <p className="text-muted-foreground text-center">Для этого запроса нет табличных данных.</p>
                        )}
