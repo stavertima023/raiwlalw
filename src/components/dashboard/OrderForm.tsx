@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -49,6 +50,7 @@ export function OrderForm({ children, onSave, currentUser }: OrderFormProps) {
   const [isOpen, setIsOpen] = React.useState(false);
   const [isPredicting, setIsPredicting] = React.useState(false);
   const { toast } = useToast();
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const form = useForm<OrderFormData>({
     resolver: zodResolver(OrderSchema.omit({ id: true, orderDate: true, cost: true })),
@@ -105,13 +107,51 @@ export function OrderForm({ children, onSave, currentUser }: OrderFormProps) {
       setIsPredicting(false);
     }
   };
+  
+  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
 
-  const handleAddPhoto = () => {
-    const photos = getValues('photos');
-    if (photos.length < 3) {
-      const newPhotos = [...photos, `https://placehold.co/400x400.png`];
-      setValue('photos', newPhotos, { shouldValidate: true });
+    const currentPhotos = getValues('photos');
+    const totalSlots = 3 - currentPhotos.length;
+
+    if (files.length > totalSlots) {
+        toast({
+            variant: 'destructive',
+            title: 'Слишком много файлов',
+            description: `Вы можете загрузить еще ${totalSlots} фото.`,
+        });
     }
+
+    const filesToProcess = Array.from(files).slice(0, totalSlots);
+
+    filesToProcess.forEach(file => {
+        if (!file.type.startsWith('image/')) {
+            toast({
+                variant: 'destructive',
+                title: 'Неверный тип файла',
+                description: `Файл "${file.name}" не является изображением.`,
+            });
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const result = e.target?.result as string;
+            setValue('photos', [...getValues('photos'), result], { shouldValidate: true });
+        };
+        reader.readAsDataURL(file);
+    });
+
+    // Reset file input
+    if(fileInputRef.current) {
+        fileInputRef.current.value = '';
+    }
+  };
+
+
+  const handleAddPhotoClick = () => {
+    fileInputRef.current?.click();
   };
 
   const handleRemovePhoto = (index: number) => {
@@ -272,15 +312,23 @@ export function OrderForm({ children, onSave, currentUser }: OrderFormProps) {
                             <FormItem className="border-t pt-6">
                             <FormLabel>Фотографии (до 3)</FormLabel>
                             <FormControl>
-                                <div className="flex items-center gap-2">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <input 
+                                        type="file" 
+                                        ref={fileInputRef} 
+                                        onChange={handlePhotoUpload}
+                                        className="hidden" 
+                                        accept="image/*"
+                                        multiple
+                                     />
                                     {watchedValues.photos.map((photo, index) => (
-                                        <div key={index} className="relative group">
+                                        <div key={index} className="relative group w-24 h-24 sm:w-28 sm:h-28">
                                             <Image
                                                 src={photo}
                                                 alt={`Product photo ${index + 1}`}
-                                                width={100}
-                                                height={100}
-                                                className="rounded-md object-cover"
+                                                width={112}
+                                                height={112}
+                                                className="rounded-md object-cover w-full h-full"
                                                 data-ai-hint="product photo"
                                             />
                                             <Button
@@ -298,8 +346,8 @@ export function OrderForm({ children, onSave, currentUser }: OrderFormProps) {
                                         <Button
                                             type="button"
                                             variant="outline"
-                                            className="h-24 w-24 border-dashed"
-                                            onClick={handleAddPhoto}
+                                            className="h-24 w-24 sm:h-28 sm:w-28 border-dashed flex-shrink-0"
+                                            onClick={handleAddPhotoClick}
                                         >
                                             <Plus className="h-8 w-8 text-muted-foreground" />
                                         </Button>
