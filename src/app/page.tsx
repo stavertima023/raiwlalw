@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -10,6 +11,7 @@ import { Dashboard } from '@/components/dashboard/Dashboard';
 import { OrderTable } from '@/components/dashboard/OrderTable';
 import { AdminOrderList } from '@/components/admin/AdminOrderList';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { ExpensesList } from '@/components/admin/ExpensesList';
 
 export default function Home() {
   const [orders, setOrders] = React.useState<Order[]>(mockOrders);
@@ -24,10 +26,6 @@ export default function Home() {
       orderDate: new Date(),
     };
     setOrders((prevOrders) => [newOrder, ...prevOrders]);
-    toast({
-      title: 'Заказ создан',
-      description: `Заказ #${newOrder.orderNumber} был успешно добавлен.`,
-    });
   };
 
   const handleCancelOrder = (orderNumber: string) => {
@@ -80,16 +78,13 @@ export default function Home() {
     });
   };
   
-  const handleAddExpense = (newExpenseData: Omit<Expense, 'id'>) => {
+  const handleAddExpense = (newExpenseData: Omit<Expense, 'id' | 'date'>) => {
     const newExpense: Expense = {
       ...newExpenseData,
       id: uuidv4(),
+      date: new Date(),
     };
     setExpenses((prev) => [newExpense, ...prev]);
-    toast({
-      title: 'Расход добавлен',
-      description: 'Новая запись о расходах успешно создана.'
-    })
   }
 
   const findOrder = (orderNumber: string): Order | undefined => {
@@ -165,7 +160,11 @@ export default function Home() {
             case 'admin-orders':
               return <AdminOrderList allOrders={orders} allUsers={mockUsers} />;
             case 'admin-expenses':
-              return <PlaceholderComponent title="Расходы" description="Отслеживание и управление расходами." />;
+              return <ExpensesList 
+                        allExpenses={expenses} 
+                        allUsers={mockUsers} 
+                        onAddExpense={handleAddExpense} 
+                      />;
             case 'admin-analytics':
               return <PlaceholderComponent title="Аналитика" description="Интерактивные дашборды и графики." />;
             case 'admin-ai-analytics':
