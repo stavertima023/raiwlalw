@@ -12,7 +12,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,12 +38,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import {
   MoreHorizontal,
@@ -52,7 +46,6 @@ import {
   Edit,
   Check,
   X,
-  MessageSquareText,
 } from 'lucide-react';
 import type { Order, OrderStatus, User } from '@/lib/types';
 import { format } from 'date-fns';
@@ -209,7 +202,6 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
         )
     }
 
-    // Fallback to dropdown for other statuses for now
     return (
        <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -264,6 +256,9 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
     <Card>
       <CardHeader>
         <CardTitle>Список заказов</CardTitle>
+        <CardDescription>
+            {currentUser.role === 'Продавец' ? 'Список всех ваших заказов.' : 'Заказы, требующие вашего внимания.'}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <Table>

@@ -2,99 +2,64 @@
 @tailwind components;
 @tailwind utilities;
 
-@keyframes gradient-animation {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-body {
-  font-family: Arial, Helvetica, sans-serif;
-  background: linear-gradient(-45deg, #1a1a2e, #16213e, #0f3460, #2c3e50);
-  background-size: 400% 400%;
-  animation: gradient-animation 15s ease infinite;
-}
-
 @layer base {
   :root {
-    --background: 240 10% 3.9% / 0.8;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9% / 0.8;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9% / 0.8;
-    --popover-foreground: 0 0% 98%;
-    --primary: 262 82% 57%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 3.7% 15.9% / 0.8;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9% / 0.8;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 262 82% 65% / 0.8;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6% / 0.8;
-    --destructive-foreground: 0 0% 98%;
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 205 90% 45%; /* Soft Blue */
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 271 76% 85%; /* Muted Purple */
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
     --success: 142.1 70.2% 41.3%;
-    --success-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9% / 0.8;
-    --input: 240 3.7% 15.9% / 0.8;
-    --ring: 262 82% 57%;
+    --success-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
     --radius: 0.5rem;
-    --chart-1: 262 70% 50%;
-    --chart-2: 282 60% 45%;
-    --chart-3: 302 80% 55%;
-    --chart-4: 242 65% 60%;
+    --chart-1: 205 90% 55%;
+    --chart-2: 271 76% 75%;
+    --chart-3: 160 80% 55%;
+    --chart-4: 25 85% 60%;
     --chart-5: 322 75% 55%;
-    --sidebar-background: 240 5.9% 10% / 0.8;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 262 82% 57%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9% / 0.8;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9% / 0.8;
-    --sidebar-ring: 262 82% 57%;
   }
 
   .dark {
-    --background: 240 10% 3.9% / 0.8;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9% / 0.8;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9% / 0.8;
-    --popover-foreground: 0 0% 98%;
-    --primary: 262 82% 57%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 3.7% 15.9% / 0.8;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9% / 0.8;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 262 82% 65% / 0.8;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6% / 0.8;
-    --destructive-foreground: 0 0% 98%;
-    --success: 142.1 70.2% 41.3%;
-    --success-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9% / 0.8;
-    --input: 240 3.7% 15.9% / 0.8;
-    --ring: 262 82% 57%;
-    --chart-1: 262 70% 50%;
-    --chart-2: 282 60% 45%;
-    --chart-3: 302 80% 55%;
-    --chart-4: 242 65% 60%;
+    --background: 220 13% 11%; /* Light Gray for BG -> Dark Gray */
+    --foreground: 210 40% 98%;
+    --card: 220 13% 15%;
+    --card-foreground: 210 40% 98%;
+    --popover: 220 13% 11%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 205 90% 55%; /* Soft Blue */
+    --primary-foreground: 210 40% 98%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 271 76% 70%; /* Muted Purple */
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --success: 142.1 70.2% 31.3%;
+    --success-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 205 90% 45%;
+    --chart-1: 205 90% 55%;
+    --chart-2: 271 76% 70%;
+    --chart-3: 160 80% 55%;
+    --chart-4: 25 85% 60%;
     --chart-5: 322 75% 55%;
-    --sidebar-background: 240 5.9% 10% / 0.8;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 262 82% 57%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9% / 0.8;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9% / 0.8;
-    --sidebar-ring: 262 82% 57%;
   }
 }
 
@@ -103,36 +68,7 @@ body {
     @apply border-border;
   }
   body {
-    /* The animated gradient is applied directly to the body tag now, not via @apply */
-    @apply text-foreground;
-  }
-
-  /* Make shadcn components semi-transparent so the background shows through */
-  .bg-background {
-    background-color: hsl(var(--background));
-  }
-  .bg-card {
-     background-color: hsl(var(--card));
-  }
-   .bg-popover {
-     background-color: hsl(var(--popover));
-  }
-  .bg-secondary {
-    background-color: hsl(var(--secondary));
-  }
-  .bg-muted {
-     background-color: hsl(var(--muted));
-  }
-   .bg-accent {
-     background-color: hsl(var(--accent));
-  }
-   .bg-destructive {
-     background-color: hsl(var(--destructive));
-  }
-  .bg-sidebar {
-    background-color: hsl(var(--sidebar-background));
-  }
-  .bg-sidebar-accent {
-      background-color: hsl(var(--sidebar-accent));
+    @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
   }
 }

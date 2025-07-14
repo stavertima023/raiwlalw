@@ -1,33 +1,20 @@
 'use client';
 
 import * as React from 'react';
-import { Order, OrderStatus, ProductType, User, Role } from '@/lib/types';
-import { mockOrders, mockUsers } from '@/lib/data';
-import Header from '@/components/dashboard/Header';
-import Filters from '@/components/dashboard/Filters';
-import { OrderTable } from '@/components/dashboard/OrderTable';
+import { Order, OrderStatus, User, Expense, ExpenseCategory } from '@/lib/types';
+import { mockOrders, mockUsers, mockExpenses } from '@/lib/data';
 import { v4 as uuidv4 } from 'uuid';
-import { Dashboard } from '@/components/dashboard/Dashboard';
-import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { AppLayout } from '@/components/layout/AppLayout';
+import { Dashboard } from '@/components/dashboard/Dashboard';
+import { OrderTable } from '@/components/dashboard/OrderTable';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 export default function Home() {
   const [orders, setOrders] = React.useState<Order[]>(mockOrders);
-  const [currentUser, setCurrentUser] = React.useState<User>(mockUsers[0]);
-  const [view, setView] = React.useState<'dashboard' | 'orders'>('dashboard');
+  const [expenses, setExpenses] = React.useState<Expense[]>(mockExpenses);
+  const [currentUser, setCurrentUser] = React.useState<User>(mockUsers[0]); 
   const { toast } = useToast();
-
-  const [filters, setFilters] = React.useState<{
-    status: OrderStatus | 'all';
-    productType: ProductType | 'all';
-    orderNumber: string;
-  }>({
-    status: 'all',
-    productType: 'all',
-    orderNumber: '',
-  });
 
   const handleAddOrder = (newOrderData: Omit<Order, 'id' | 'orderDate'>) => {
     const newOrder: Order = {
@@ -36,8 +23,10 @@ export default function Home() {
       orderDate: new Date(),
     };
     setOrders((prevOrders) => [newOrder, ...prevOrders]);
-    setView('orders');
-    setFilters({ status: 'all', productType: 'all', orderNumber: '' });
+    toast({
+      title: 'Заказ создан',
+      description: `Заказ #${newOrder.orderNumber} был успешно добавлен.`,
+    });
   };
 
   const handleCancelOrder = (orderNumber: string) => {
@@ -89,6 +78,18 @@ export default function Home() {
       description: `Заказ получил новый статус: "${newStatus}".`,
     });
   };
+  
+  const handleAddExpense = (newExpenseData: Omit<Expense, 'id'>) => {
+    const newExpense: Expense = {
+      ...newExpenseData,
+      id: uuidv4(),
+    };
+    setExpenses((prev) => [newExpense, ...prev]);
+    toast({
+      title: 'Расход добавлен',
+      description: 'Новая запись о расходах успешно создана.'
+    })
+  }
 
   const findOrder = (orderNumber: string): Order | undefined => {
     return orders.find((order) => order.orderNumber === orderNumber);
@@ -98,80 +99,76 @@ export default function Home() {
     return orders.filter(order => orderNumbers.includes(order.orderNumber));
   }
 
-  const filteredOrders = React.useMemo(() => {
+  const filteredOrdersForSeller = React.useMemo(() => {
     return orders
-      .filter((order) => {
-        const statusMatch = filters.status === 'all' || order.status === filters.status;
-        const productTypeMatch = filters.productType === 'all' || order.productType === filters.productType;
-        const sellerMatch = currentUser.role === 'Продавец' ? order.seller === currentUser.telegramId : true;
-        const orderNumberMatch = filters.orderNumber === '' || order.orderNumber.toLowerCase().includes(filters.orderNumber.toLowerCase());
-        return statusMatch && productTypeMatch && sellerMatch && orderNumberMatch;
-      })
+      .filter((order) => order.seller === currentUser.telegramId)
       .sort((a, b) => b.orderDate.getTime() - a.orderDate.getTime());
-  }, [orders, filters, currentUser]);
+  }, [orders, currentUser]);
 
-  const toggleUserRole = () => {
-    setCurrentUser(currentUser.role === 'Продавец' ? mockUsers[1] : mockUsers[0]);
-    setView('dashboard');
-    setFilters({ status: 'all', productType: 'all', orderNumber: '' });
-  };
-  
-  const getOrderViewTitle = () => {
-     if (currentUser.role === 'Продавец') return 'Мои заказы';
-     if (filters.status === 'Добавлен') return 'Новые заказы';
-     if (filters.status === 'Готов') return 'Готовые к отправке';
-     return 'Все заказы';
-  }
+  const filteredOrdersForPrinter = React.useMemo(() => {
+    return orders
+      .filter(order => order.status === 'Добавлен' || order.status === 'Готов')
+      .sort((a, b) => b.orderDate.getTime() - a.orderDate.getTime());
+  }, [orders]);
 
-  const navigateToOrders = (statusFilter: OrderStatus | 'all' = 'all') => {
-    setFilters(prev => ({ ...prev, status: statusFilter, orderNumber: '' }));
-    setView('orders');
-  };
 
-  const useLargeLayout = currentUser.role === 'Принтовщик' && (filters.status === 'Добавлен' || filters.status === 'Готов' || filters.status === 'all');
+  const PlaceholderComponent = ({ title, description }: { title: string, description: string }) => (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p>Этот раздел находится в разработке. Полный функционал будет добавлен в следующих итерациях.</p>
+      </CardContent>
+    </Card>
+  )
+
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <Header onAddOrder={handleAddOrder} onBackToDashboard={() => {
-        setView('dashboard');
-        setFilters({ status: 'all', productType: 'all', orderNumber: '' });
-      }} showBackButton={view === 'orders'} currentUser={currentUser} />
-      <main className="flex-1 container mx-auto p-4 md:p-6 lg:p-8">
-        <div className="flex items-center justify-end mb-4 space-x-2">
-            <Label htmlFor="role-switch">
-              Текущая роль: <span className="font-bold">{currentUser.role}</span>
-            </Label>
-             <Switch
-              id="role-switch"
-              checked={currentUser.role === 'Принтовщик'}
-              onCheckedChange={toggleUserRole}
-            />
-        </div>
-
-        {view === 'dashboard' ? (
-          <Dashboard 
+    <AppLayout currentUser={currentUser} onUserChange={setCurrentUser}>
+      {(activeView) => {
+        if (currentUser.role === 'Продавец') {
+           return <Dashboard 
             user={currentUser} 
-            onNavigate={navigateToOrders} 
+            orders={filteredOrdersForSeller}
             onAddOrder={handleAddOrder} 
             onCancelOrder={handleCancelOrder}
             onReturnOrder={handleReturnOrder}
             findOrder={findOrder}
             findOrders={findOrders}
             onPayout={handlePayout}
+            onUpdateStatus={handleUpdateOrderStatus}
           />
-        ) : (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold">{getOrderViewTitle()}</h2>
-            <Filters onFilterChange={setFilters} currentFilters={filters} />
-            <OrderTable 
-              orders={filteredOrders} 
-              currentUser={currentUser} 
-              onUpdateStatus={handleUpdateOrderStatus}
-              useLargeLayout={useLargeLayout}
-            />
-          </div>
-        )}
-      </main>
-    </div>
+        }
+        if (currentUser.role === 'Принтовщик') {
+          return (
+             <div className="space-y-6">
+              <OrderTable 
+                orders={filteredOrdersForPrinter} 
+                currentUser={currentUser} 
+                onUpdateStatus={handleUpdateOrderStatus}
+                useLargeLayout={true}
+              />
+            </div>
+          )
+        }
+        if (currentUser.role === 'Администратор') {
+          switch (activeView) {
+            case 'admin-orders':
+              return <PlaceholderComponent title="Список заказов" description="Просмотр и управление всеми заказами в системе." />;
+            case 'admin-expenses':
+              return <PlaceholderComponent title="Расходы" description="Отслеживание и управление расходами." />;
+            case 'admin-analytics':
+              return <PlaceholderComponent title="Аналитика" description="Интерактивные дашборды и графики." />;
+            case 'admin-ai-analytics':
+               return <PlaceholderComponent title="AI-аналитика" description="Интеллектуальный анализ данных и прогнозы." />;
+            default:
+              return <PlaceholderComponent title="Панель администратора" description="Выберите раздел для начала работы." />;
+          }
+        }
+        return null;
+      }}
+    </AppLayout>
   );
 }
