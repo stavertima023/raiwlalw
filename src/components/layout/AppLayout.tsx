@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Sidebar, SidebarBody, SidebarHeader, SidebarTrigger, SidebarContent, SidebarFooter } from '@/components/layout/Sidebar';
+import { Sidebar, SidebarBody, SidebarHeader, SidebarTrigger, SidebarInset, SidebarProvider, SidebarRail } from '@/components/ui/sidebar';
 import { MainNav, type NavItem } from './MainNav';
 import { UserNav } from './UserNav';
 import { ThemeToggle } from './ThemeToggle';
@@ -44,7 +44,8 @@ export function AppLayout({ children, currentUser, onUserChange }: AppLayoutProp
 
   React.useEffect(() => {
     // Reset active view when user role changes
-    setActiveView(navConfig[currentUser.role].top[0]?.id || 'default');
+    const newActiveView = navConfig[currentUser.role].top[0]?.id || 'default';
+    setActiveView(newActiveView);
   }, [currentUser.role]);
 
   const handleNavClick = (id: string) => {
@@ -54,10 +55,10 @@ export function AppLayout({ children, currentUser, onUserChange }: AppLayoutProp
   const navItems = navConfig[currentUser.role];
 
   return (
-    <div className="w-full flex">
+    <SidebarProvider defaultOpen>
       <Sidebar>
-        <SidebarHeader className="p-4">
-            <div className="flex items-center gap-2">
+        <SidebarHeader>
+           <div className="flex items-center gap-2">
                  <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 256 256"
@@ -90,18 +91,19 @@ export function AppLayout({ children, currentUser, onUserChange }: AppLayoutProp
                 <h1 className="text-xl font-bold">OrderFlow</h1>
             </div>
         </SidebarHeader>
-        <SidebarBody className="flex flex-col justify-between">
-          <MainNav 
+        <SidebarBody>
+           <MainNav 
             topItems={navItems.top} 
             bottomItems={navItems.bottom} 
             activeItem={activeView} 
             onItemClick={handleNavClick}
           />
         </SidebarBody>
+         <SidebarRail />
       </Sidebar>
-      <div className="flex-1 flex flex-col">
+      <SidebarInset>
         <header className="flex items-center justify-between p-4 border-b h-16">
-          <SidebarTrigger className="lg:hidden" />
+          <SidebarTrigger />
           <div className="flex-1"></div>
           <div className="flex items-center gap-4">
             <ThemeToggle />
@@ -111,7 +113,7 @@ export function AppLayout({ children, currentUser, onUserChange }: AppLayoutProp
         <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">
           {children(activeView)}
         </main>
-      </div>
-    </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

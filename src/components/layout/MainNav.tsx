@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from './Sidebar';
+import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -30,27 +30,19 @@ interface MainNavProps {
 export function MainNav({ topItems, bottomItems, activeItem, onItemClick }: MainNavProps) {
   const renderNavItem = (item: NavItem) => (
     <SidebarMenuItem key={item.id}>
-       <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-              <SidebarMenuButton
-                onClick={() => onItemClick(item.id)}
-                className="w-full"
-                variant={activeItem === item.id ? 'default' : 'ghost'}
-                disabled={item.disabled}
-                asChild
-              >
-                  <Link href={item.href}>
-                    <item.icon className="h-4 w-4" />
-                    <span>{item.title}</span>
-                  </Link>
-              </SidebarMenuButton>
-          </TooltipTrigger>
-          <TooltipContent side="right" className="flex items-center gap-4">
-              {item.title}
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+        <SidebarMenuButton
+          onClick={() => onItemClick(item.id)}
+          className="w-full"
+          variant={activeItem === item.id ? 'default' : 'ghost'}
+          disabled={item.disabled}
+          asChild
+          tooltip={item.title}
+        >
+            <Link href={item.href}>
+              <item.icon className="h-4 w-4" />
+              <span>{item.title}</span>
+            </Link>
+        </SidebarMenuButton>
     </SidebarMenuItem>
   );
 
