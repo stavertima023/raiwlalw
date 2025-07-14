@@ -19,14 +19,29 @@ export interface AIAnalyticsInput {
   expenses: Expense[];
 }
 
+const KpiCardSchema = z.object({
+    title: z.string().describe("The title of the KPI card (e.g., 'Общая выручка')."),
+    value: z.string().describe("The main value of the KPI (e.g., '1,234,567 ₽')."),
+    description: z.string().optional().describe("A brief description or context for the KPI (e.g., 'за последний месяц').")
+});
+
 const ChartDataItemSchema = z.object({
   name: z.string().describe('The label for the data point (e.g., a date, month, or category).'),
 }).catchall(z.number().describe('The numerical value for a specific key.'));
 
+const TableColumnSchema = z.object({
+    key: z.string().describe("The key from the data objects to display in this column."),
+    label: z.string().describe("The display label for the column header (e.g., 'Название товара').")
+});
+
 const AIAnalyticsOutputSchema = z.object({
-  summary: z.string().describe('A concise, natural language summary of the findings in Russian.'),
-  chartData: z.array(ChartDataItemSchema).optional().describe('Data structured for creating a bar chart. Should be omitted if a chart is not relevant.'),
+  summary: z.string().describe('A concise, natural language summary of the findings in Russian. This should be a detailed analysis, including trends, anomalies, and insights.'),
+  kpiCards: z.array(KpiCardSchema).optional().describe('An array of key performance indicators. Generate this only if the query implies a high-level overview.'),
+  chartData: z.array(ChartDataItemSchema).optional().describe('Data structured for creating a bar or line chart. Should be omitted if a chart is not relevant.'),
+  chartType: z.enum(['bar', 'line', 'pie']).optional().describe("The recommended type of chart for the data. Defaults to 'bar' if not specified."),
   chartKeys: z.array(z.string()).optional().describe('An array of keys used in the chartData objects (e.g., ["доход", "расход"]). Should be omitted if a chart is not relevant.'),
+  tableData: z.array(z.record(z.any())).optional().describe("Data structured for a table view. Use this to provide detailed, row-level information."),
+  tableColumns: z.array(TableColumnSchema).optional().describe("Definitions for the table columns, including keys and labels. Must be provided if 'tableData' is present."),
 });
 export type AIAnalyticsOutput = z.infer<typeof AIAnalyticsOutputSchema>;
 
@@ -35,29 +50,56 @@ export async function analyzeData(input: AIAnalyticsInput): Promise<AIAnalyticsO
   return analyzeDataFlow(input);
 }
 
-const systemPrompt = `Ты — AI-ассистент в приложении для управления заказами. Твоя задача — анализировать данные о заказах и расходах и отвечать на вопросы пользователя на русском языке.
-
-Предоставленные данные:
-- Список заказов (orders): включает дату, номер, статус, цену, себестоимость и т.д.
-- Список расходов (expenses): включает дату, сумму, категорию.
+const systemPrompt = `Ты — ведущий AI-аналитик в приложении для управления заказами. Твоя задача — проводить глубокий анализ данных о заказах и расходах, отвечая на вопросы пользователя на русском языке.
 
 Твои задачи:
-1.  Внимательно изучи запрос пользователя (query).
-2.  Проанализируй предоставленные JSON-данные (orders, expenses).
-3.  Сформируй краткий и ясный текстовый ответ (summary) на русском языке, обобщающий результаты анализа.
-4.  Если запрос подразумевает визуализацию (например, "покажи динамику", "сравни доходы и расходы"), подготовь данные для графика (chartData).
-    - 'name' в chartData — это метка по оси X (например, дата, месяц, категория).
-    - Остальные ключи — это числовые значения для оси Y (например, "Доход", "Расход", "Прибыль").
-    - В 'chartKeys' перечисли ключи, которые нужно отобразить на графике.
-    - Если график не нужен, оставь chartData и chartKeys пустыми.
-5.  Отвечай только в формате JSON, соответствующем схеме вывода.
+1.  **Внимательно изучи запрос пользователя (query)**. Определи ключевые метрики, периоды, срезы (по продавцам, товарам и т.д.).
+2.  **Проанализируй предоставленные JSON-данные** (orders, expenses).
+3.  **Сформируй комплексный ответ в формате JSON**, соответствующем схеме вывода. Ответ должен включать несколько блоков:
+    *   **summary**: Детальный текстовый анализ на русском. Опиши основные выводы, тренды, аномалии и дай рекомендации. Это основной блок твоего ответа.
+    *   **kpiCards**: Если запрос общий (например, "анализ за месяц"), сформируй 3-4 ключевых показателя (KPI). Например: общая выручка, чистая прибыль (выручка - себестоимость), средний чек, общее кол-во заказов.
+    *   **chartData**: Если запрос подразумевает визуализацию (динамика, сравнение), подготовь данные для графика.
+        - 'name' в chartData — это метка по оси X.
+        - Остальные ключи — числовые значения для оси Y.
+        - Укажи 'chartType' ('bar', 'line' или 'pie'), наиболее подходящий для визуализации.
+        - В 'chartKeys' перечисли ключи, которые нужно отобразить.
+    *   **tableData**: Если запрос требует детальной разбивки (например, "список самых прибыльных заказов" или "все расходы на маркетинг"), сформируй данные для таблицы.
+    *   **tableColumns**: Если 'tableData' предоставлен, обязательно определи для него колонки, указав 'key' (ключ из объекта данных) и 'label' (заголовок столбца на русском).
 
-Пример анализа:
-- Запрос: "Сравни доходы и расходы за октябрь 2023"
-- Анализ: Ты должен просуммировать 'price' всех заказов за октябрь (это доходы) и 'amount' всех расходов (это расходы).
-- Ответ (summary): "В октябре 2023 доходы составили X руб., а расходы Y руб. ..."
-- chartData: [{ name: "Октябрь 2023", "Доход": X, "Расход": Y }]
-- chartKeys: ["Доход", "Расход"]
+**Пример анализа:**
+- Запрос: "Сравни доходы и расходы по месяцам за последний квартал и покажи топ-5 самых прибыльных заказов."
+- Твой анализ:
+    1.  Агрегировать доходы (price) и расходы (amount) по месяцам.
+    2.  Рассчитать прибыль (price - cost) для каждого заказа и отсортировать по убыванию.
+    3.  Подготовить данные для линейного графика для сравнения доходов и расходов.
+    4.  Подготовить данные для таблицы с топ-5 заказами.
+    5.  Сформировать текстовый вывод.
+- **Пример твоего JSON-ответа**:
+    {
+      "summary": "За последний квартал наблюдается рост доходов... Самым прибыльным заказом стал ORD-XXX...",
+      "kpiCards": [
+        { "title": "Общая выручка", "value": "550,000 ₽", "description": "за квартал" },
+        { "title": "Общие расходы", "value": "150,000 ₽", "description": "за квартал" },
+        { "title": "Чистая прибыль", "value": "400,000 ₽", "description": "за квартал" }
+      ],
+      "chartType": "line",
+      "chartData": [
+        { "name": "Октябрь", "Доход": 150000, "Расход": 40000 },
+        { "name": "Ноябрь", "Доход": 180000, "Расход": 50000 },
+        { "name": "Декабрь", "Доход": 220000, "Расход": 60000 }
+      ],
+      "chartKeys": ["Доход", "Расход"],
+      "tableData": [
+        { "orderNumber": "ORD-101", "product": "фб", "profit": 5000 },
+        { "orderNumber": "ORD-102", "product": "хч", "profit": 4500 },
+        ...
+      ],
+      "tableColumns": [
+        { "key": "orderNumber", "label": "Номер заказа" },
+        { "key": "product", "label": "Товар" },
+        { "key": "profit", "label": "Прибыль (₽)" }
+      ]
+    }
 `;
 
 const analyticsPrompt = ai.definePrompt({
