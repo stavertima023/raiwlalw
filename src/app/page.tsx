@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useToast } from '@/hooks/use-toast';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Dashboard } from '@/components/dashboard/Dashboard';
-import { OrderTable } from '@/components/dashboard/OrderTable';
+import { PrinterDashboard } from '@/components/printer/PrinterDashboard';
 import { AdminOrderList } from '@/components/admin/AdminOrderList';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ExpensesList } from '@/components/admin/ExpensesList';
@@ -102,9 +102,20 @@ export default function Home() {
       .sort((a, b) => b.orderDate.getTime() - a.orderDate.getTime());
   }, [orders, currentUser]);
 
-  const filteredOrdersForPrinter = React.useMemo(() => {
+  const ordersForProduction = React.useMemo(() => {
     return orders
-      .filter(order => order.status === 'Добавлен' || order.status === 'Готов')
+      .filter(order => order.status === 'Добавлен')
+      .sort((a, b) => b.orderDate.getTime() - a.orderDate.getTime());
+  }, [orders]);
+  
+  const ordersForShipment = React.useMemo(() => {
+    return orders
+      .filter(order => order.status === 'Готов')
+      .sort((a, b) => b.orderDate.getTime() - a.orderDate.getTime());
+  }, [orders]);
+
+  const allPrinterOrders = React.useMemo(() => {
+    return orders
       .sort((a, b) => b.orderDate.getTime() - a.orderDate.getTime());
   }, [orders]);
 
@@ -146,14 +157,13 @@ export default function Home() {
         }
         if (currentUser.role === 'Принтовщик') {
           return (
-             <div className="space-y-6">
-              <OrderTable 
-                orders={filteredOrdersForPrinter} 
-                currentUser={currentUser} 
+             <PrinterDashboard
+                currentUser={currentUser}
                 onUpdateStatus={handleUpdateOrderStatus}
-                useLargeLayout={true}
+                ordersForProduction={ordersForProduction}
+                ordersForShipment={ordersForShipment}
+                allOrders={allPrinterOrders}
               />
-            </div>
           )
         }
         if (currentUser.role === 'Администратор') {
