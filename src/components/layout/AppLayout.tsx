@@ -9,10 +9,16 @@ import { User } from '@/lib/types';
 
 type AppLayoutProps = {
   children: (activeView: string) => React.ReactNode;
-  currentUser: Omit<User, 'password_hash'>;
+  currentUser: Omit<User, 'password_hash'> | undefined | null;
 };
 
 export function AppLayout({ children, currentUser }: AppLayoutProps) {
+  // Defensive check for client-side hydration
+  if (!currentUser) {
+    // You can replace this with a more sophisticated loading spinner
+    return <div className="flex h-screen w-full items-center justify-center">Загрузка...</div>;
+  }
+  
   const [activeView, setActiveView] = React.useState('');
 
   const getNavItems = (role: User['role']): NavItem[] => {
