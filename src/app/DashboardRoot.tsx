@@ -24,10 +24,15 @@ const fetcher = (url: string) => fetch(url).then(res => {
 });
 
 type DashboardRootProps = {
-  initialUser: Omit<User, 'password_hash'>
+  initialUser: Omit<User, 'password_hash'> | undefined;
 }
 
 export default function DashboardRoot({ initialUser }: DashboardRootProps) {
+  // Defensive check to prevent client-side hydration errors
+  if (!initialUser) {
+    return null; // or a loading spinner
+  }
+
   const { toast } = useToast();
   
   const { data: orders = [], error: ordersError } = useSWR<Order[]>('/api/orders', fetcher);
