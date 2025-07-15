@@ -17,8 +17,8 @@ export function AppLayout({ children, currentUser }: AppLayoutProps) {
   if (!currentUser) {
     // You can replace this with a more sophisticated loading spinner
     return <div className="flex h-screen w-full items-center justify-center">Загрузка...</div>;
-  }
-  
+}
+
   const [activeView, setActiveView] = React.useState('');
 
   const getNavItems = (role: User['role']): NavItem[] => {
@@ -39,24 +39,24 @@ export function AppLayout({ children, currentUser }: AppLayoutProps) {
   };
   
   const navItems = getNavItems(currentUser.role);
-  
+
   React.useEffect(() => {
     if (navItems.length > 0 && !activeView) {
         setActiveView(navItems[0].id);
-    }
+  }
   }, [navItems, activeView]);
 
 
   return (
     <SidebarProvider>
       <div className="flex min-h-screen">
-        <Sidebar>
-          <SidebarHeader>
+      <Sidebar>
+        <SidebarHeader>
              <UserNav user={currentUser} />
-          </SidebarHeader>
-          <SidebarBody>
+        </SidebarHeader>
+        <SidebarBody>
              <MainNav items={navItems} activeItem={activeView} onItemSelect={setActiveView} />
-          </SidebarBody>
+        </SidebarBody>
           <SidebarInset className='p-4'>
             <ThemeToggle />
           </SidebarInset>
@@ -64,8 +64,8 @@ export function AppLayout({ children, currentUser }: AppLayoutProps) {
         
         <div className="flex-1">
            <main className="p-4 md:p-8">
-              {children(activeView)}
-           </main>
+          {children(activeView)}
+        </main>
         </div>
       </div>
     </SidebarProvider>

@@ -56,8 +56,8 @@ export function UserNav({ user }: UserNavProps) {
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout}>
-          Выйти
-        </DropdownMenuItem>
+              Выйти
+          </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )

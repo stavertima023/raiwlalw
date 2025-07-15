@@ -11,7 +11,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { OrderForm } from './OrderForm';
-import { Order } from '@/lib/types';
+import { Order, ProductType, Size } from '@/lib/types';
 import { PlusCircle } from 'lucide-react';
 
 type AddOrderDialogProps = {
@@ -21,12 +21,19 @@ type AddOrderDialogProps = {
 export function AddOrderDialog({ onAddOrder }: AddOrderDialogProps) {
   const [isOpen, setIsOpen] = React.useState(false);
 
-  const handleSave = (formData: Omit<Order, 'id' | 'orderDate' | 'seller' | 'status' | 'photos' | 'shipmentNumber'>) => {
+  const handleSave = (formData: {
+    orderNumber: string;
+    shipmentNumber: string;
+    productType: ProductType;
+    size: Size;
+    price: number;
+    photos: string[];
+    comment?: string;
+  }) => {
     const completeOrderData: Omit<Order, 'id' | 'orderDate' | 'seller'> = {
         ...formData,
         status: 'Добавлен',
-        photos: [],
-        shipmentNumber: ''
+        cost: Math.round(formData.price * 0.5), // Auto-calculate cost as 50% of price
     };
     onAddOrder(completeOrderData);
     setIsOpen(false);
@@ -40,7 +47,7 @@ export function AddOrderDialog({ onAddOrder }: AddOrderDialogProps) {
           Добавить заказ
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Новый заказ</DialogTitle>
           <DialogDescription>

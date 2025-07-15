@@ -15,17 +15,12 @@ async function checkAdmin(session: any) {
 }
 
 export async function GET() {
-  // Check if Supabase is configured
-  if (!supabaseAdmin) {
-    return NextResponse.json({ message: 'Supabase не настроен' }, { status: 503 });
-  }
-
   const session = await getSession();
   const { authorized, response, user } = await checkAdmin(session);
   if (!authorized) return response;
 
   try {
-    const { data, error } = await supabaseAdmin!.from('expenses').select('*').order('date', { ascending: false });
+    const { data, error } = await supabaseAdmin.from('expenses').select('*').order('date', { ascending: false });
     if (error) throw error;
     
     const parsedData = data.map(item => ({...item, date: new Date(item.date) }))
@@ -36,11 +31,6 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-    // Check if Supabase is configured
-    if (!supabaseAdmin) {
-      return NextResponse.json({ message: 'Supabase не настроен' }, { status: 503 });
-    }
-
     const session = await getSession();
     const { authorized, response, user } = await checkAdmin(session);
     if (!authorized) return response;
@@ -55,7 +45,7 @@ export async function POST(request: Request) {
 
         const validatedExpense = ExpenseSchema.omit({ id: true }).parse(newExpenseData);
         
-        const { data, error } = await supabaseAdmin!.from('expenses').insert(validatedExpense).select().single();
+        const { data, error } = await supabaseAdmin.from('expenses').insert(validatedExpense).select().single();
         if (error) throw error;
         
         return NextResponse.json(data, { status: 201 });

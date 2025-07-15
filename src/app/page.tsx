@@ -9,6 +9,6 @@ export default async function Home() {
   if (!isLoggedIn || !user) {
     redirect('/login');
   }
-  
+
   return <DashboardRoot initialUser={user || null} />;
 } 

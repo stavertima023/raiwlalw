@@ -18,19 +18,20 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { OrderSchema, ProductTypeEnum, SizeEnum } from '@/lib/types';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Plus, X } from 'lucide-react';
+import { X, Plus, Upload } from 'lucide-react';
 import Image from 'next/image';
-import { useToast } from '@/hooks/use-toast';
 
-// Updated form schema: shipmentNumber is required, cost is removed, photos added
-const FormSchema = z.object({
-    orderNumber: z.string().min(1, 'Номер заказа обязателен'),
+// Updated form schema with shipmentNumber required and cost removed
+const FormSchema = OrderSchema.pick({
+    orderNumber: true,
+    shipmentNumber: true,
+    productType: true,
+    size: true,
+    price: true,
+    comment: true,
+    photos: true
+}).extend({
     shipmentNumber: z.string().min(1, 'Номер отправления обязателен'),
-    productType: ProductTypeEnum,
-    size: SizeEnum,
-    price: z.coerce.number().positive('Цена должна быть положительной'),
-    photos: z.array(z.string()).max(3, 'Максимум 3 фотографии').optional().default([]),
-    comment: z.string().optional(),
 });
 
 type OrderFormValues = z.infer<typeof FormSchema>;
@@ -41,9 +42,9 @@ type OrderFormProps = {
 };
 
 export function OrderForm({ onSave, initialData }: OrderFormProps) {
-  const { toast } = useToast();
+  const [photos, setPhotos] = React.useState<string[]>(initialData?.photos || []);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
-  
+
   const form = useForm<OrderFormValues>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
@@ -52,55 +53,37 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
       productType: initialData?.productType || undefined,
       size: initialData?.size || undefined,
       price: initialData?.price || 0,
-      photos: initialData?.photos || [],
       comment: initialData?.comment || '',
+      photos: photos,
     },
   });
-
-  const { watch, setValue, getValues } = form;
-  const watchedPhotos = watch('photos');
 
   const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
 
-    const currentPhotos = getValues('photos');
-    const availableSlots = 3 - currentPhotos.length;
+    const currentPhotos = photos;
+    const totalSlots = 3 - currentPhotos.length;
 
-    if (files.length > availableSlots) {
-      toast({
-        variant: 'destructive',
-        title: 'Слишком много файлов',
-        description: `Вы можете загрузить еще ${availableSlots} фото.`,
-      });
+    if (files.length > totalSlots) {
+      alert(`Можно загрузить еще ${totalSlots} фото`);
+      return;
     }
 
-    const filesToProcess = Array.from(files).slice(0, availableSlots);
+    const filesToProcess = Array.from(files).slice(0, totalSlots);
 
     filesToProcess.forEach(file => {
       if (!file.type.startsWith('image/')) {
-        toast({
-          variant: 'destructive',
-          title: 'Неверный тип файла',
-          description: `Файл "${file.name}" не является изображением.`,
-        });
-        return;
-      }
-
-      // Check file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        toast({
-          variant: 'destructive',
-          title: 'Файл слишком большой',
-          description: `Файл "${file.name}" превышает 5MB.`,
-        });
+        alert(`Файл "${file.name}" не является изображением`);
         return;
       }
 
       const reader = new FileReader();
       reader.onload = (e) => {
         const result = e.target?.result as string;
-        setValue('photos', [...getValues('photos'), result], { shouldValidate: true });
+        const newPhotos = [...photos, result];
+        setPhotos(newPhotos);
+        form.setValue('photos', newPhotos);
       };
       reader.readAsDataURL(file);
     });
@@ -111,23 +94,19 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
     }
   };
 
-  const handleAddPhotoClick = () => {
-    fileInputRef.current?.click();
-  };
-
   const handleRemovePhoto = (index: number) => {
-    const photos = getValues('photos');
     const newPhotos = photos.filter((_, i) => i !== index);
-    setValue('photos', newPhotos, { shouldValidate: true });
+    setPhotos(newPhotos);
+    form.setValue('photos', newPhotos);
   };
 
   const onSubmit = (data: OrderFormValues) => {
-    onSave(data);
+    onSave({ ...data, photos });
   };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 py-4 max-h-[80vh] overflow-y-auto">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 py-4">
         <FormField
           control={form.control}
           name="orderNumber"
@@ -149,7 +128,7 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
             <FormItem>
               <FormLabel>Номер отправления</FormLabel>
               <FormControl>
-                <Input placeholder="SHP-A1B2" {...field} />
+                <Input placeholder="SHP-A1B2C3" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -192,7 +171,7 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
                         <SelectItem key={option} value={option}>{option}</SelectItem>
                     ))}
                  </SelectContent>
-                </Select>
+               </Select>
               <FormMessage />
             </FormItem>
           )}
@@ -212,6 +191,7 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
           )}
         />
 
+        {/* Photo Upload Section */}
         <FormField
           control={form.control}
           name="photos"
@@ -230,11 +210,11 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
                   />
                   
                   <div className="flex flex-wrap gap-2">
-                    {watchedPhotos?.map((photo, index) => (
+                    {photos.map((photo, index) => (
                       <div key={index} className="relative group w-20 h-20">
                         <Image
                           src={photo}
-                          alt={`Фото товара ${index + 1}`}
+                          alt={`Фото ${index + 1}`}
                           width={80}
                           height={80}
                           className="rounded-md object-cover w-full h-full border"
@@ -251,14 +231,15 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
                       </div>
                     ))}
                     
-                    {(watchedPhotos?.length || 0) < 3 && (
+                    {photos.length < 3 && (
                       <Button
                         type="button"
                         variant="outline"
-                        className="h-20 w-20 border-dashed flex-shrink-0"
-                        onClick={handleAddPhotoClick}
+                        className="h-20 w-20 border-dashed flex flex-col items-center justify-center"
+                        onClick={() => fileInputRef.current?.click()}
                       >
-                        <Plus className="h-6 w-6 text-muted-foreground" />
+                        <Plus className="h-4 w-4 mb-1" />
+                        <span className="text-xs">Фото</span>
                       </Button>
                     )}
                   </div>
@@ -283,7 +264,7 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
           )}
         />
         
-        <Button type="submit" className="w-full">Сохранить заказ</Button>
+        <Button type="submit">Сохранить</Button>
       </form>
     </Form>
   );

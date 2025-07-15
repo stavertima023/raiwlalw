@@ -46,17 +46,17 @@ export function Dashboard({
             <AddOrderDialog onAddOrder={onAddOrder} />
         </div>
       
-      <OrderTable 
-        orders={orders}
-        currentUser={user}
+       <OrderTable
+          orders={orders}
+          currentUser={user}
         selectedOrders={selectedOrders}
         setSelectedOrders={setSelectedOrders}
-        onCancelOrder={onCancelOrder}
-        onReturnOrder={onReturnOrder}
+          onCancelOrder={onCancelOrder}
+          onReturnOrder={onReturnOrder}
         onPayout={onPayout}
-        findOrder={findOrder}
-        findOrders={findOrders}
-      />
+          findOrder={findOrder}
+          findOrders={findOrders}
+        />
     </div>
   );
 }
