@@ -1,18 +1,15 @@
-import { getSession } from '@/lib/session';
+import { getSession, type SessionData } from "@/lib/session";
 import { redirect } from 'next/navigation';
 import DashboardRoot from './DashboardRoot';
-import { SessionProvider } from '@/components/auth/SessionProvider';
 
-export default async function Page() {
+export default async function Home() {
   const session = await getSession();
+  const { user } = session as SessionData;
 
-  if (!session.isLoggedIn || !session.user) {
+  if (!user) {
+    // This should not happen due to middleware, but as a fallback
     redirect('/login');
   }
 
-  return (
-    <SessionProvider user={session.user}>
-      <DashboardRoot />
-    </SessionProvider>
-  );
+  return <DashboardRoot initialUser={user} />;
 } 

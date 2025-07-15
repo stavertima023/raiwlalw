@@ -1,8 +1,8 @@
-import { getIronSession, IronSession, SessionOptions } from 'iron-session';
+import { getIronSession } from 'iron-session';
 import { cookies } from 'next/headers';
 import { User } from './types';
 
-export const sessionOptions: SessionOptions = {
+export const sessionOptions = {
   password: process.env.SESSION_SECRET as string,
   cookieName: 'webapp-tg-session',
   cookieOptions: {
@@ -10,14 +10,13 @@ export const sessionOptions: SessionOptions = {
   },
 };
 
+// This is the user type that will be stored in the session
 export type SessionData = {
   user?: Omit<User, 'password_hash'>;
   isLoggedIn: boolean;
 }
 
-// This function is for Server Components and API Routes.
-export function getSession(): Promise<IronSession<SessionData>> {
-  // The type assertion is needed due to a mismatch between Next.js's
-  // ReadonlyRequestCookies and iron-session's CookieStore type.
-  return getIronSession<SessionData>(cookies() as any, sessionOptions);
+export const getSession = () => {
+  // @ts-ignore - TODO: remove when iron-session has better Next.js App Router support
+  return getIronSession<SessionData>(cookies(), sessionOptions);
 } 

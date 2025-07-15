@@ -5,21 +5,22 @@ import { sessionOptions, type SessionData } from '@/lib/session';
  
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next();
-  // Use the edge-compatible getIronSession
   const session = await getIronSession<SessionData>(request, response, sessionOptions);
 
-  const { isLoggedIn } = session;
+  const { user, isLoggedIn } = session;
+
   const { pathname } = request.nextUrl
 
+  // Если пользователь залогинен и пытается зайти на страницу логина, редиректим на главную
   if (isLoggedIn && pathname.startsWith('/login')) {
      return NextResponse.redirect(new URL('/', request.url))
   }
 
+  // Если пользователь не залогинен и пытается зайти на любую страницу, кроме логина, редиректим на логин
   if (!isLoggedIn && !pathname.startsWith('/login')) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
  
-  // IMPORTANT: Return the response to save the session cookie
   return response;
 }
  

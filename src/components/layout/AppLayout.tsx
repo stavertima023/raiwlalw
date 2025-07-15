@@ -5,20 +5,14 @@ import { Sidebar, SidebarBody, SidebarHeader, SidebarInset, SidebarProvider } fr
 import { MainNav, type NavItem } from './MainNav';
 import { UserNav } from './UserNav';
 import { ThemeToggle } from './ThemeToggle';
-import { useSession } from '../auth/SessionProvider';
 import { User } from '@/lib/types';
 
 type AppLayoutProps = {
   children: (activeView: string) => React.ReactNode;
+  currentUser: Omit<User, 'password_hash'>;
 };
 
-export function AppLayout({ children }: AppLayoutProps) {
-  const currentUser = useSession();
-
-  if (!currentUser) {
-    return null;
-  }
-
+export function AppLayout({ children, currentUser }: AppLayoutProps) {
   const [activeView, setActiveView] = React.useState('');
 
   const getNavItems = (role: User['role']): NavItem[] => {
@@ -46,12 +40,13 @@ export function AppLayout({ children }: AppLayoutProps) {
     }
   }, [navItems, activeView]);
 
+
   return (
     <SidebarProvider>
       <div className="flex min-h-screen">
         <Sidebar>
           <SidebarHeader>
-             <UserNav />
+             <UserNav user={currentUser} />
           </SidebarHeader>
           <SidebarBody>
              <MainNav items={navItems} activeItem={activeView} onItemSelect={setActiveView} />
