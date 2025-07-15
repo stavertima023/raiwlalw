@@ -28,7 +28,7 @@ export type Size = z.infer<typeof SizeEnum>;
 
 export const OrderSchema = z.object({
   id: z.string().optional(), 
-  orderDate: z.date(), 
+  orderDate: z.union([z.date(), z.string().transform((str) => new Date(str))]), 
   orderNumber: z.string().min(1, 'Номер заказа обязателен'),
   shipmentNumber: z.string().optional(),
   status: OrderStatusEnum,
