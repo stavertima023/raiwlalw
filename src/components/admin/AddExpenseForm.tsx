@@ -22,7 +22,6 @@ const FormSchema = ExpenseSchema.pick({
     amount: true,
     category: true,
     comment: true,
-    // responsible is set automatically
 });
 
 type ExpenseFormValues = z.infer<typeof FormSchema>;

@@ -22,7 +22,7 @@ type AddExpenseDialogProps = {
 export function AddExpenseDialog({ onAddExpense, currentUser }: AddExpenseDialogProps) {
   const [isOpen, setIsOpen] = React.useState(false);
 
-  const handleSave = (expenseData: Omit<Expense, 'id' | 'date' | 'responsible'>) => {
+  const handleSave = (expenseData: Omit<Expense, 'id' | 'date' | 'responsible' | 'receiptPhoto'>) => {
     onAddExpense(expenseData);
     setIsOpen(false);
   };

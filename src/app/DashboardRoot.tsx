@@ -28,9 +28,8 @@ type DashboardRootProps = {
 }
 
 export default function DashboardRoot({ initialUser }: DashboardRootProps) {
-  // Guard Clause: If for any reason initialUser is not available,
-  // do not attempt to render the component. This prevents client-side
-  // crashes during complex navigation or hydration scenarios.
+  // Guard Clause: If initialUser is not available on any render (especially client-side hydration),
+  // exit early to prevent crashes in hooks that depend on it. This MUST be before any hooks.
   if (!initialUser) {
     return null;
   }

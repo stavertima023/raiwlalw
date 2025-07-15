@@ -7,7 +7,7 @@ import { ExpensesTable } from "./ExpensesTable"
 
 type ExpensesListProps = {
     allExpenses: Expense[]
-    allUsers: User[] // This remains as full User, assuming it's needed for other things
+    allUsers: User[] // This can remain as full User if needed elsewhere
     onAddExpense: (expense: Omit<Expense, 'id' | 'date' | 'responsible'>) => void
     currentUser: Omit<User, 'password_hash'>
 }
@@ -22,7 +22,6 @@ export function ExpensesList({ allExpenses, allUsers, onAddExpense, currentUser 
                         Добавляйте и отслеживайте все расходы компании.
                     </p>
                 </div>
-                {/* We need to pass the safe user type to the dialog as well */}
                 <AddExpenseDialog onAddExpense={onAddExpense} currentUser={currentUser} />
             </div>
             <ExpensesTable expenses={allExpenses} />
