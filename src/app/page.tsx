@@ -1,15 +1,17 @@
-import { getSession, type SessionData } from "@/lib/session";
+import { getSession } from '@/lib/session';
 import { redirect } from 'next/navigation';
 import DashboardRoot from './DashboardRoot';
+import { User } from '@/lib/types';
 
-export default async function Home() {
+export default async function Page() {
   const session = await getSession();
-  const { user } = session as SessionData;
 
-  if (!user) {
-    // This should not happen due to middleware, but as a fallback
+  if (!session.isLoggedIn || !session.user) {
     redirect('/login');
   }
+
+  // We are sure user exists here, so we cast it.
+  const user = session.user as Omit<User, 'password_hash'>;
 
   return <DashboardRoot initialUser={user} />;
 } 
