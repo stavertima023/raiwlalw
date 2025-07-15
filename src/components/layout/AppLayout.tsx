@@ -5,16 +5,16 @@ import { Sidebar, SidebarBody, SidebarHeader, SidebarInset, SidebarProvider } fr
 import { MainNav, type NavItem } from './MainNav';
 import { UserNav } from './UserNav';
 import { ThemeToggle } from './ThemeToggle';
+import { useSession } from '../auth/SessionProvider';
 import { User } from '@/lib/types';
 
 type AppLayoutProps = {
   children: (activeView: string) => React.ReactNode;
-  currentUser: Omit<User, 'password_hash'>;
 };
 
-export function AppLayout({ children, currentUser }: AppLayoutProps) {
-  // Guard Clause: If currentUser is not available, do not render.
-  // This prevents client-side crashes during navigation.
+export function AppLayout({ children }: AppLayoutProps) {
+  const currentUser = useSession();
+
   if (!currentUser) {
     return null;
   }
@@ -46,13 +46,12 @@ export function AppLayout({ children, currentUser }: AppLayoutProps) {
     }
   }, [navItems, activeView]);
 
-
   return (
     <SidebarProvider>
       <div className="flex min-h-screen">
         <Sidebar>
           <SidebarHeader>
-             <UserNav user={currentUser} />
+             <UserNav />
           </SidebarHeader>
           <SidebarBody>
              <MainNav items={navItems} activeItem={activeView} onItemSelect={setActiveView} />

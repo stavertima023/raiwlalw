@@ -1,28 +1,13 @@
 'use client';
 
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { User } from "@/lib/types"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useRouter } from "next/navigation"
+import { useSession } from "../auth/SessionProvider";
 
-type UserNavProps = {
-  user: Omit<User, 'password_hash'>
-}
-
-export function UserNav({ user }: UserNavProps) {
+export function UserNav() {
+  const user = useSession();
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -30,6 +15,10 @@ export function UserNav({ user }: UserNavProps) {
     router.push('/login');
     router.refresh();
   };
+
+  if (!user) {
+    return null; // Don't render if no user in session
+  }
 
   return (
     <DropdownMenu>
@@ -51,9 +40,7 @@ export function UserNav({ user }: UserNavProps) {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-           {/* Add other items here if needed */}
-        </DropdownMenuGroup>
+        <DropdownMenuGroup>{/* Add other items here */}</DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout}>
           Выйти
