@@ -9,6 +9,11 @@ const UpdateStatusSchema = z.object({
 });
 
 export async function PATCH(request: Request, { params }: { params: { orderId: string } }) {
+  // Check if Supabase is configured
+  if (!supabaseAdmin) {
+    return NextResponse.json({ message: 'Supabase не настроен' }, { status: 503 });
+  }
+
   const session = await getSession();
   const { user } = session;
 
@@ -26,7 +31,7 @@ export async function PATCH(request: Request, { params }: { params: { orderId: s
     const json = await request.json();
     const { status } = UpdateStatusSchema.parse(json);
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabaseAdmin!
       .from('orders')
       .update({ status })
       .eq('id', orderId)

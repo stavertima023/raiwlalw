@@ -7,10 +7,10 @@ export async function GET() {
   try {
     console.log('GET /api/orders - Starting...');
     
-    // Check environment variables
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      console.error('Missing Supabase environment variables');
-      return NextResponse.json({ message: 'Ошибка конфигурации сервера' }, { status: 500 });
+    // Check if Supabase is configured
+    if (!supabaseAdmin) {
+      console.error('Supabase admin client not configured');
+      return NextResponse.json({ message: 'Supabase не настроен' }, { status: 503 });
     }
     
     const session = await getSession();
@@ -23,7 +23,7 @@ export async function GET() {
       return NextResponse.json({ message: 'Пользователь не авторизован' }, { status: 401 });
     }
 
-    let query = supabaseAdmin.from('orders').select('*').order('orderDate', { ascending: false });
+    let query = supabaseAdmin!.from('orders').select('*').order('orderDate', { ascending: false });
 
     // If the user is a seller, only fetch their orders
     if (user.role === 'Продавец') {
@@ -51,10 +51,10 @@ export async function POST(request: Request) {
   try {
     console.log('POST /api/orders - Starting...');
     
-    // Check environment variables first
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      console.error('Missing Supabase environment variables');
-      return NextResponse.json({ message: 'Ошибка конфигурации сервера' }, { status: 500 });
+    // Check if Supabase is configured
+    if (!supabaseAdmin) {
+      console.error('Supabase admin client not configured');
+      return NextResponse.json({ message: 'Supabase не настроен' }, { status: 503 });
     }
     
     // Check session secret
@@ -91,7 +91,7 @@ export async function POST(request: Request) {
     console.log('Validated order:', validatedOrder);
 
     // Test Supabase connection
-    const { data: testData, error: testError } = await supabaseAdmin.from('orders').select('count').limit(1);
+    const { data: testData, error: testError } = await supabaseAdmin!.from('orders').select('count').limit(1);
     if (testError) {
       console.error('Supabase connection test failed:', testError);
       return NextResponse.json({ 
@@ -100,7 +100,7 @@ export async function POST(request: Request) {
       }, { status: 500 });
     }
 
-    const { data, error } = await supabaseAdmin.from('orders').insert(validatedOrder).select().single();
+    const { data, error } = await supabaseAdmin!.from('orders').insert(validatedOrder).select().single();
 
     if (error) {
       console.error('Supabase insert error:', error);
