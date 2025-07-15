@@ -7,10 +7,10 @@ export async function GET() {
   try {
     console.log('GET /api/orders - Starting...');
     
-    // Check environment variables
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      console.error('Missing Supabase environment variables');
-      return NextResponse.json({ message: 'Ошибка конфигурации сервера' }, { status: 500 });
+    // Check supabaseAdmin availability
+    if (!supabaseAdmin) {
+      console.error('supabaseAdmin not available');
+      return NextResponse.json({ message: 'Сервис недоступен' }, { status: 503 });
     }
     
     const session = await getSession();
@@ -61,6 +61,12 @@ export async function POST(request: Request) {
     if (!process.env.SESSION_SECRET) {
       console.error('Missing SESSION_SECRET');
       return NextResponse.json({ message: 'Ошибка конфигурации сессии' }, { status: 500 });
+    }
+
+    // Check supabaseAdmin availability
+    if (!supabaseAdmin) {
+      console.error('supabaseAdmin not available');
+      return NextResponse.json({ message: 'Сервис недоступен' }, { status: 503 });
     }
 
     const session = await getSession();

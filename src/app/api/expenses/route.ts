@@ -19,6 +19,10 @@ export async function GET() {
   const { authorized, response, user } = await checkAdmin(session);
   if (!authorized) return response;
 
+  if (!supabaseAdmin) {
+    return NextResponse.json({ message: 'Сервис недоступен' }, { status: 503 });
+  }
+
   try {
     const { data, error } = await supabaseAdmin.from('expenses').select('*').order('date', { ascending: false });
     if (error) throw error;
@@ -34,6 +38,10 @@ export async function POST(request: Request) {
     const session = await getSession();
     const { authorized, response, user } = await checkAdmin(session);
     if (!authorized) return response;
+
+    if (!supabaseAdmin) {
+        return NextResponse.json({ message: 'Сервис недоступен' }, { status: 503 });
+    }
 
     try {
         const json = await request.json();
