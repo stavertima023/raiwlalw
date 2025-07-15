@@ -1,8 +1,8 @@
-import { getIronSession } from 'iron-session/next';
+import { getIronSession, IronSession, SessionOptions } from 'iron-session';
 import { cookies } from 'next/headers';
 import { User } from './types';
 
-export const sessionOptions = {
+export const sessionOptions: SessionOptions = {
   password: process.env.SESSION_SECRET as string,
   cookieName: 'webapp-tg-session',
   cookieOptions: {
@@ -15,8 +15,9 @@ export type SessionData = {
   isLoggedIn: boolean;
 }
 
-// This universal function works in Server Components, API Routes, and Middleware
-// by leveraging the Next.js cookies() function.
-export function getSession() {
-  return getIronSession<SessionData>(cookies(), sessionOptions);
+// This function is for Server Components and API Routes.
+export function getSession(): Promise<IronSession<SessionData>> {
+  // The type assertion is needed due to a mismatch between Next.js's
+  // ReadonlyRequestCookies and iron-session's CookieStore type.
+  return getIronSession<SessionData>(cookies() as any, sessionOptions);
 } 
