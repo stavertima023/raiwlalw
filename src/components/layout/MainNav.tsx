@@ -1,59 +1,36 @@
 'use client';
 
-import * as React from 'react';
 import Link from 'next/link';
-import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
-import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+import { Button } from '@/components/ui/button';
 
-export interface NavItem {
+export type NavItem = {
   id: string;
-  title: string;
-  href: string;
-  icon: LucideIcon;
-  disabled?: boolean;
-}
+  label: string;
+  href?: string;
+  icon?: React.ReactNode;
+};
 
-interface MainNavProps {
-  topItems: NavItem[];
-  bottomItems: NavItem[];
+type MainNavProps = {
+  items: NavItem[];
   activeItem: string;
-  onItemClick: (id: string) => void;
-}
+  onItemSelect: (id: string) => void;
+};
 
-export function MainNav({ topItems, bottomItems, activeItem, onItemClick }: MainNavProps) {
-  const renderNavItem = (item: NavItem) => (
-    <SidebarMenuItem key={item.id}>
-        <SidebarMenuButton
-          onClick={() => onItemClick(item.id)}
-          className="w-full"
-          variant={activeItem === item.id ? 'default' : 'ghost'}
-          disabled={item.disabled}
-          asChild
-          tooltip={item.title}
-        >
-            <Link href={item.href}>
-              <item.icon className="h-4 w-4" />
-              <span>{item.title}</span>
-            </Link>
-        </SidebarMenuButton>
-    </SidebarMenuItem>
-  );
-
+export function MainNav({ items, activeItem, onItemSelect }: MainNavProps) {
   return (
-    <div className='flex flex-col justify-between h-full p-2'>
-        <SidebarMenu>
-            {topItems.map(renderNavItem)}
-        </SidebarMenu>
-        <SidebarMenu>
-            {bottomItems.map(renderNavItem)}
-        </SidebarMenu>
-    </div>
+    <nav className="grid items-start gap-2">
+      {items.map((item) => (
+        <Button
+          key={item.id}
+          variant={activeItem === item.id ? 'default' : 'ghost'}
+          className="w-full justify-start"
+          onClick={() => onItemSelect(item.id)}
+        >
+          {item.icon && <span className="mr-2 h-4 w-4">{item.icon}</span>}
+          {item.label}
+        </Button>
+      ))}
+    </nav>
   );
 }

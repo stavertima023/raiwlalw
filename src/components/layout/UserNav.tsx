@@ -1,64 +1,64 @@
 'use client';
 
-import * as React from 'react';
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuLabel,
-} from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import type { User } from '@/lib/types';
-import { logout } from '@/app/actions';
+} from "@/components/ui/dropdown-menu"
+import { User } from "@/lib/types"
+import { useRouter } from "next/navigation"
 
-type SafeUser = Omit<User, 'password_hash'>;
-
-interface UserNavProps {
-  currentUser: SafeUser;
+type UserNavProps = {
+  user: Omit<User, 'password_hash'>
 }
 
-export function UserNav({ currentUser }: UserNavProps) {
-  
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .join('');
-  };
+export function UserNav({ user }: UserNavProps) {
+  const router = useRouter();
 
-  if (!currentUser) {
-    return null;
-  }
+  const handleLogout = async () => {
+    await fetch('/api/logout', { method: 'POST' });
+    router.push('/login');
+    router.refresh();
+  };
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-          <Avatar className="h-9 w-9">
-            <AvatarImage src="#" alt="User avatar" />
-            <AvatarFallback>{getInitials(currentUser.name)}</AvatarFallback>
+          <Avatar className="h-8 w-8">
+            <AvatarImage src="/avatars/01.png" alt={user.name} />
+            <AvatarFallback>{user.name.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{currentUser.name}</p>
-            <p className="text-xs leading-none text-muted-foreground">{currentUser.role}</p>
+            <p className="text-sm font-medium leading-none">{user.name}</p>
+            <p className="text-xs leading-none text-muted-foreground">
+              {user.username} ({user.role})
+            </p>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <form action={logout}>
-          <DropdownMenuItem asChild>
-            <button type="submit" className="w-full text-left">
-              Выйти
-            </button>
-          </DropdownMenuItem>
-        </form>
+        <DropdownMenuGroup>
+           {/* Add other items here if needed */}
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={handleLogout}>
+          Выйти
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  );
+  )
 }

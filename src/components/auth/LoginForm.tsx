@@ -1,7 +1,7 @@
 'use client';
 
-import { useFormState, useFormStatus } from 'react-dom';
-import { login, type FormState } from '@/app/actions';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,19 +9,42 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
-
-  return (
-    <Button type="submit" className="w-full" disabled={pending}>
-      {pending ? 'Вход...' : 'Войти'}
-    </Button>
-  );
-}
-
 export function LoginForm() {
-  const initialState: FormState = { message: '' };
-  const [state, dispatch] = useFormState(login, initialState);
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsLoading(true);
+    setError(null);
+
+    const formData = new FormData(event.currentTarget);
+    const username = formData.get('username');
+    const password = formData.get('password');
+
+    try {
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Произошла ошибка');
+      }
+
+      // On successful login, redirect to the dashboard
+      router.push('/');
+      router.refresh(); // Refresh server components
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <Card className="mx-auto max-w-sm">
@@ -32,7 +55,7 @@ export function LoginForm() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form action={dispatch} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="username">Логин</Label>
             <Input
@@ -41,22 +64,25 @@ export function LoginForm() {
               type="text"
               placeholder="admin"
               required
+              disabled={isLoading}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Пароль</Label>
-            <Input id="password" name="password" type="password" required />
+            <Input id="password" name="password" type="password" required disabled={isLoading} />
           </div>
           
-          {state.message && (
+          {error && (
              <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Ошибка входа</AlertTitle>
-              <AlertDescription>{state.message}</AlertDescription>
+              <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
 
-          <SubmitButton />
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? 'Вход...' : 'Войти'}
+          </Button>
         </form>
       </CardContent>
     </Card>

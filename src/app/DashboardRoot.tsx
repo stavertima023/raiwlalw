@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import useSWR, { mutate } from 'swr';
 import { Order, OrderStatus, User, Expense } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -10,126 +11,117 @@ import { AdminOrderList } from '@/components/admin/AdminOrderList';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ExpensesList } from '@/components/admin/ExpensesList';
 import AIAnalytics from '@/components/admin/AIAnalytics';
-import { supabase } from '@/lib/supabaseClient';
 
-// Renamed from 'Home'
-export default function DashboardRoot({ initialUser }: { initialUser: Omit<User, 'password_hash'> }) {
-  const [orders, setOrders] = React.useState<Order[]>([]);
-  const [expenses, setExpenses] = React.useState<Expense[]>([]);
-  // User is now managed by the session, passed as a prop
-  const [currentUser, setCurrentUser] = React.useState(initialUser);
+const fetcher = (url: string) => fetch(url).then(res => {
+    if (!res.ok) {
+        const error = new Error('Произошла ошибка при загрузке данных');
+        return res.json().then(info => {
+            (error as any).info = info;
+            throw error;
+        });
+    }
+    return res.json();
+});
+
+type DashboardRootProps = {
+  initialUser: Omit<User, 'password_hash'>
+}
+
+export default function DashboardRoot({ initialUser }: DashboardRootProps) {
   const { toast } = useToast();
-
-  const fetchOrders = React.useCallback(async () => {
-    let query = supabase.from('orders').select('*').order('orderDate', { ascending: false });
-
-    // If the user is a seller, only fetch their orders
-    if (currentUser.role === 'Продавец') {
-      query = query.eq('seller', currentUser.username);
-    }
-    
-    const { data, error } = await query;
-
-    if (error) {
-      toast({ title: 'Ошибка загрузки заказов', description: error.message, variant: 'destructive' });
-      console.error('Error fetching orders:', error);
-    } else if (data) {
-      const parsedData = data.map(item => ({...item, orderDate: new Date(item.orderDate) }))
-      setOrders(parsedData as any);
-    }
-  }, [toast, currentUser]);
-
-  const fetchExpenses = React.useCallback(async () => {
-    const { data, error } = await supabase.from('expenses').select('*').order('date', { ascending: false });
-     if (error) {
-      toast({ title: 'Ошибка загрузки расходов', description: error.message, variant: 'destructive' });
-      console.error('Error fetching expenses:', error);
-    } else if (data) {
-       const parsedData = data.map(item => ({...item, date: new Date(item.date) }))
-      setExpenses(parsedData as any);
-    }
-  }, [toast]);
+  
+  const { data: orders = [], error: ordersError } = useSWR<Order[]>('/api/orders', fetcher);
+  
+  const { data: expenses = [], error: expensesError } = useSWR<Expense[]>(
+    initialUser.role === 'Администратор' ? '/api/expenses' : null, 
+    fetcher
+  );
 
   React.useEffect(() => {
-    fetchOrders();
-    // Only admins see expenses
-    if (currentUser.role === 'Администратор') {
-      fetchExpenses();
+    if (ordersError) {
+      toast({ title: 'Ошибка загрузки заказов', description: ordersError.message, variant: 'destructive' });
     }
-  }, [fetchOrders, fetchExpenses, currentUser.role]);
+    if (expensesError) {
+      toast({ title: 'Ошибка загрузки расходов', description: expensesError.message, variant: 'destructive' });
+    }
+  }, [ordersError, expensesError, toast]);
 
-
-  const handleAddOrder = async (newOrderData: Omit<Order, 'id' | 'orderDate'>) => {
-    const newOrder = {
-      ...newOrderData,
-      seller: currentUser.username, // Automatically set the seller
-      orderDate: new Date(),
-    };
-    const { error } = await supabase.from('orders').insert(newOrder);
-    if (error) {
-      toast({ title: 'Ошибка добавления заказа', description: error.message, variant: 'destructive' });
-    } else {
+  const handleAddOrder = async (newOrderData: Omit<Order, 'id' | 'orderDate' | 'seller'>) => {
+    try {
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newOrderData),
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || 'Server error');
+      }
+      mutate('/api/orders');
       toast({ title: 'Заказ успешно добавлен' });
-      fetchOrders();
+    } catch (error: any) {
+      toast({ title: 'Ошибка добавления заказа', description: error.message, variant: 'destructive' });
     }
   };
 
-  // ... (keep other handlers: handleCancelOrder, handleReturnOrder, etc. as they are)
-  // ... they already re-fetch data, which respects the role-based filtering
-  const handleCancelOrder = async (orderNumber: string) => {
-    const { error } = await supabase.from('orders').update({ status: 'Отменен' }).eq('orderNumber', orderNumber);
-    if (error) {
-       toast({ title: 'Ошибка отмены заказа', description: error.message, variant: 'destructive' });
-    } else {
-       toast({ title: 'Заказ отменен', description: `Статус заказа #${orderNumber} изменен на "Отменен".` });
-       fetchOrders();
-    }
-  };
-  
-  const handleReturnOrder = async (orderNumber: string) => {
-    const { error } = await supabase.from('orders').update({ status: 'Возврат' }).eq('orderNumber', orderNumber);
-     if (error) {
-       toast({ title: 'Ошибка возврата заказа', description: error.message, variant: 'destructive' });
-    } else {
-       toast({ title: 'Оформлен возврат', description: `Статус заказа #${orderNumber} изменен на "Возврат".` });
-       fetchOrders();
-    }
-  };
-
-  const handlePayout = async (orderNumbers: string[]) => {
-    const { error } = await supabase.from('orders').update({ status: 'Исполнен' }).in('orderNumber', orderNumbers);
-    if (error) {
-       toast({ title: 'Ошибка проведения оплаты', description: error.message, variant: 'destructive' });
-    } else {
-       toast({ title: 'Оплата проведена', description: `${orderNumbers.length} заказ(а/ов) были отмечены как "Исполнен".` });
-       fetchOrders();
-    }
-  };
-  
   const handleUpdateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
-    const { error } = await supabase.from('orders').update({ status: newStatus }).eq('id', orderId);
-     if (error) {
-       toast({ title: 'Ошибка обновления статуса', description: error.message, variant: 'destructive' });
-    } else {
-       toast({ title: 'Статус заказа обновлен', description: `Заказ получил новый статус: "${newStatus}".` });
-       fetchOrders();
+    try {
+        const response = await fetch(`/api/orders/${orderId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus }),
+        });
+        if (!response.ok) {
+          const err = await response.json();
+          throw new Error(err.message || 'Server error');
+        }
+        mutate('/api/orders');
+        toast({ title: 'Статус заказа обновлен', description: `Заказ получил новый статус: "${newStatus}".` });
+    } catch (error: any) {
+        toast({ title: 'Ошибка обновления статуса', description: error.message, variant: 'destructive' });
     }
   };
   
-  const handleAddExpense = async (newExpenseData: Omit<Expense, 'id' | 'date'>) => {
-    const newExpense = {
-      ...newExpenseData,
-      date: new Date(),
-    };
-    const { error } = await supabase.from('expenses').insert(newExpense);
-    if (error) {
-      toast({ title: 'Ошибка добавления расхода', description: error.message, variant: 'destructive' });
-    } else {
+  const handleAddExpense = async (newExpenseData: Omit<Expense, 'id' | 'date' | 'responsible'>) => {
+    try {
+      const response = await fetch('/api/expenses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newExpenseData),
+      });
+       if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || 'Server error');
+      }
+      mutate('/api/expenses');
       toast({ title: 'Расход успешно добавлен' });
-      fetchExpenses();
+    } catch (error: any) {
+      toast({ title: 'Ошибка добавления расхода', description: error.message, variant: 'destructive' });
     }
   }
 
+  const handleCancelOrder = (orderNumber: string) => {
+      const order = findOrder(orderNumber);
+      if (order?.id) handleUpdateOrderStatus(order.id, 'Отменен');
+  };
+  
+  const handleReturnOrder = (orderNumber: string) => {
+      const order = findOrder(orderNumber);
+      if (order?.id) handleUpdateOrderStatus(order.id, 'Возврат');
+  };
+
+  const handlePayout = async (orderNumbers: string[]) => {
+      const payoutPromises = findOrders(orderNumbers)
+        .filter(order => order.id)
+        .map(order => handleUpdateOrderStatus(order.id!, 'Исполнен'));
+      try {
+        await Promise.all(payoutPromises);
+        toast({ title: 'Оплата проведена', description: `${orderNumbers.length} заказ(а/ов) были отмечены как "Исполнен".` });
+      } catch (error: any) {
+        toast({ title: 'Ошибка проведения оплаты', description: error.message, variant: 'destructive' });
+      }
+  };
+  
   const findOrder = (orderNumber: string): Order | undefined => {
     return orders.find((order: Order) => order.orderNumber === orderNumber);
   };
@@ -137,17 +129,6 @@ export default function DashboardRoot({ initialUser }: { initialUser: Omit<User,
   const findOrders = (orderNumbers: string[]): Order[] => {
     return orders.filter((order: Order) => orderNumbers.includes(order.orderNumber));
   }
-
-  // This is no longer needed as filtering is done in the fetch query
-  // const filteredOrdersForSeller = React.useMemo(() => {
-  //   return orders
-  //     .filter((order: Order) => order.seller === currentUser.username)
-  // }, [orders, currentUser]);
-
-  const allPrinterOrders = React.useMemo(() => {
-    return orders
-  }, [orders]);
-
 
   const PlaceholderComponent = ({ title, description }: { title: string, description: string }) => (
     <Card>
@@ -161,19 +142,13 @@ export default function DashboardRoot({ initialUser }: { initialUser: Omit<User,
     </Card>
   )
 
-
   return (
-    <AppLayout 
-      currentUser={currentUser} 
-      onAddOrder={handleAddOrder}
-      onUpdateStatus={handleUpdateOrderStatus}
-      orders={orders}
-    >
+    <AppLayout currentUser={initialUser}>
       {(activeView: string) => {
-        if (currentUser.role === 'Продавец') {
+        if (initialUser.role === 'Продавец') {
            return <Dashboard 
-            user={currentUser} 
-            orders={orders} // Pass all fetched orders (already filtered)
+            user={initialUser} 
+            orders={orders}
             onAddOrder={handleAddOrder} 
             onCancelOrder={handleCancelOrder}
             onReturnOrder={handleReturnOrder}
@@ -183,16 +158,16 @@ export default function DashboardRoot({ initialUser }: { initialUser: Omit<User,
             onUpdateStatus={handleUpdateOrderStatus}
           />
         }
-        if (currentUser.role === 'Принтовщик') {
+        if (initialUser.role === 'Принтовщик') {
           return (
              <PrinterDashboard
-                currentUser={currentUser}
+                currentUser={initialUser}
                 onUpdateStatus={handleUpdateOrderStatus}
-                allOrders={allPrinterOrders}
+                allOrders={orders}
               />
           )
         }
-        if (currentUser.role === 'Администратор') {
+        if (initialUser.role === 'Администратор') {
           switch (activeView) {
             case 'admin-orders':
               return <AdminOrderList allOrders={orders} allUsers={[]} />;
@@ -201,7 +176,7 @@ export default function DashboardRoot({ initialUser }: { initialUser: Omit<User,
                         allExpenses={expenses} 
                         allUsers={[]} 
                         onAddExpense={handleAddExpense}
-                        currentUser={currentUser} 
+                        currentUser={initialUser}
                       />;
             case 'admin-analytics':
               return <PlaceholderComponent title="Аналитика" description="Интерактивные дашборды и графики." />;

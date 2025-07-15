@@ -30,8 +30,8 @@ import { ExpensesFilters } from './ExpensesFilters';
 interface ExpensesListProps {
   allExpenses: Expense[];
   allUsers: User[];
-  onAddExpense: (expense: Omit<Expense, 'id' | 'date'>) => void;
-  currentUser: User;
+  onAddExpense: (expense: Omit<Expense, 'id' | 'date' | 'responsible'>) => void;
+  currentUser: Omit<User, 'password_hash'>;
 }
 
 interface ExpenseSortDescriptor {

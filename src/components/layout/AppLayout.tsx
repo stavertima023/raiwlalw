@@ -1,140 +1,67 @@
 'use client';
 
 import * as React from 'react';
-import { Sidebar, SidebarBody, SidebarHeader, SidebarTrigger, SidebarInset, SidebarProvider, SidebarRail } from '@/components/ui/sidebar';
+import { Sidebar, SidebarBody, SidebarHeader, SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { MainNav, type NavItem } from './MainNav';
 import { UserNav } from './UserNav';
 import { ThemeToggle } from './ThemeToggle';
-import type { User, Role, Order, OrderStatus } from '@/lib/types';
-import { Home, Package, BarChart3, BotMessageSquare, Truck, Factory } from 'lucide-react';
-import { Header } from '@/components/dashboard/Header';
-import { Dashboard } from '../dashboard/Dashboard';
-import { OrderTable } from '../dashboard/OrderTable';
-import { AdminOrderList } from '../admin/AdminOrderList';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
+import { User } from '@/lib/types';
 
-// Use a more secure user type for the UI
-type SafeUser = Omit<User, 'password_hash'>;
-
-interface AppLayoutProps {
+type AppLayoutProps = {
   children: (activeView: string) => React.ReactNode;
-  currentUser: SafeUser;
-  onAddOrder: (order: Omit<Order, 'id' | 'orderDate' | 'seller'>) => void;
-  onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void;
-  orders: Order[];
-}
-
-const navConfig: Record<Role, { top: NavItem[], bottom: NavItem[] }> = {
-  'Продавец': {
-    top: [],
-    bottom: [],
-  },
-  'Принтовщик': {
-    top: [],
-    bottom: [],
-  },
-  'Администратор': {
-    top: [
-      { id: 'admin-orders', title: 'Список заказов', icon: Truck, href: '#' },
-      { id: 'admin-expenses', title: 'Расходы', icon: Factory, href: '#' },
-      { id: 'admin-analytics', title: 'Аналитика', icon: BarChart3, href: '#' },
-      { id: 'admin-ai-analytics', title: 'AI-аналитика', icon: BotMessageSquare, href: '#' },
-    ],
-    bottom: [],
-  },
+  currentUser: Omit<User, 'password_hash'>;
 };
 
-export function AppLayout({ children, currentUser, onAddOrder, onUpdateStatus, orders }: AppLayoutProps) {
-  const [activeView, setActiveView] = React.useState<string>('default');
+export function AppLayout({ children, currentUser }: AppLayoutProps) {
+  const [activeView, setActiveView] = React.useState('');
 
-  React.useEffect(() => {
-    if (currentUser.role === 'Администратор') {
-      setActiveView(navConfig[currentUser.role].top[0]?.id || 'default');
-    } else {
-        setActiveView('default');
+  const getNavItems = (role: User['role']): NavItem[] => {
+    switch (role) {
+      case 'Администратор':
+        return [
+          { id: 'admin-orders', label: 'Заказы' },
+          { id: 'admin-expenses', label: 'Расходы' },
+          { id: 'admin-analytics', label: 'Аналитика' },
+          { id: 'admin-ai-analytics', label: 'AI Аналитика' },
+        ];
+      case 'Принтовщик':
+        return [{ id: 'printer-dashboard', label: 'Панель принтовщика' }];
+      case 'Продавец':
+      default:
+        return [{ id: 'seller-dashboard', label: 'Панель продавца' }];
     }
-  }, [currentUser.role]);
-
-  const handleNavClick = (id: string) => {
-    setActiveView(id);
   };
+  
+  const navItems = getNavItems(currentUser.role);
+  
+  React.useEffect(() => {
+    if (navItems.length > 0 && !activeView) {
+        setActiveView(navItems[0].id);
+    }
+  }, [navItems, activeView]);
 
-  if (currentUser.role !== 'Администратор') {
-     return (
-      <div className="flex flex-col min-h-screen">
-        <Header 
-          currentUser={currentUser}
-          onAddOrder={onAddOrder}
-        />
-        <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto bg-muted/40">
-           {children(activeView)}
-        </main>
-      </div>
-    );
-  }
-
-  const navItems = navConfig[currentUser.role];
 
   return (
-    <SidebarProvider defaultOpen>
-      <Sidebar>
-        <SidebarHeader>
-           <div className="flex items-center gap-2">
-                 <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 256 256"
-                    className="h-7 w-7 text-primary"
-                    >
-                    <rect width="256" height="256" fill="none" />
-                    <line
-                        x1="208"
-                        y1="128"
-                        x2="128"
-                        y2="208"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="16"
-                    />
-                    <line
-                        x1="192"
-                        y1="40"
-                        x2="40"
-                        y2="192"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="16"
-                    />
-                    </svg>
-                <h1 className="text-xl font-bold">OrderFlow</h1>
-            </div>
-        </SidebarHeader>
-        <SidebarBody>
-           <MainNav 
-            topItems={navItems.top} 
-            bottomItems={navItems.bottom} 
-            activeItem={activeView} 
-            onItemClick={handleNavClick}
-          />
-        </SidebarBody>
-         <SidebarRail />
-      </Sidebar>
-      <SidebarInset>
-        <header className="flex items-center justify-between p-4 border-b h-16">
-          <SidebarTrigger />
-          <div className="flex-1"></div>
-          <div className="flex items-center gap-4">
+    <SidebarProvider>
+      <div className="flex min-h-screen">
+        <Sidebar>
+          <SidebarHeader>
+             <UserNav user={currentUser} />
+          </SidebarHeader>
+          <SidebarBody>
+             <MainNav items={navItems} activeItem={activeView} onItemSelect={setActiveView} />
+          </SidebarBody>
+          <SidebarInset className='p-4'>
             <ThemeToggle />
-            <UserNav currentUser={currentUser} />
-          </div>
-        </header>
-        <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">
-          {children(activeView)}
-        </main>
-      </SidebarInset>
+          </SidebarInset>
+        </Sidebar>
+        
+        <div className="flex-1">
+           <main className="p-4 md:p-8">
+              {children(activeView)}
+           </main>
+        </div>
+      </div>
     </SidebarProvider>
   );
 }
