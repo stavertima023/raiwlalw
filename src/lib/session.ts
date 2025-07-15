@@ -1,4 +1,4 @@
-import { getIronSession } from 'iron-session/next';
+import { getIronSession } from 'iron-session';
 import { cookies } from 'next/headers';
 import { User } from './types';
 
@@ -17,5 +17,6 @@ export type SessionData = {
 }
 
 export const getSession = () => {
+  // @ts-ignore - TODO: remove when iron-session has better Next.js App Router support
   return getIronSession<SessionData>(cookies(), sessionOptions);
 } 
