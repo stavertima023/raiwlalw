@@ -13,6 +13,12 @@ type AppLayoutProps = {
 };
 
 export function AppLayout({ children, currentUser }: AppLayoutProps) {
+  // Guard Clause: If currentUser is not available, do not render.
+  // This prevents client-side crashes during navigation.
+  if (!currentUser) {
+    return null;
+  }
+
   const [activeView, setActiveView] = React.useState('');
 
   const getNavItems = (role: User['role']): NavItem[] => {

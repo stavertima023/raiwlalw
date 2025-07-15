@@ -1,4 +1,4 @@
-import { getIronSession } from 'iron-session';
+import { getIronSession } from 'iron-session/next';
 import { cookies } from 'next/headers';
 import { User } from './types';
 
@@ -10,13 +10,13 @@ export const sessionOptions = {
   },
 };
 
-// This is the user type that will be stored in the session
 export type SessionData = {
   user?: Omit<User, 'password_hash'>;
   isLoggedIn: boolean;
 }
 
-export const getSession = () => {
-  // @ts-ignore - TODO: remove when iron-session has better Next.js App Router support
+// This universal function works in Server Components, API Routes, and Middleware
+// by leveraging the Next.js cookies() function.
+export function getSession() {
   return getIronSession<SessionData>(cookies(), sessionOptions);
 } 
