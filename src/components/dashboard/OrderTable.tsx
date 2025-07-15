@@ -54,8 +54,15 @@ import { cn } from '@/lib/utils';
 
 interface OrderTableProps {
   orders: Order[];
-  currentUser: User;
-  onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void;
+  currentUser?: Omit<User, 'password_hash'>;
+  selectedOrders?: string[];
+  setSelectedOrders?: React.Dispatch<React.SetStateAction<string[]>>;
+  onCancelOrder?: (orderNumber: string) => void;
+  onReturnOrder?: (orderNumber: string) => void;
+  onPayout?: (orderNumbers: string[]) => void;
+  findOrder?: (orderNumber: string) => Order | undefined;
+  findOrders?: (orderNumbers: string[]) => Order[];
+  onUpdateStatus?: (orderId: string, newStatus: OrderStatus) => void;
   useLargeLayout?: boolean;
 }
 
@@ -226,9 +233,9 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
 
   const renderActionsCell = (order: Order) => (
     <TableCell className={cn(useLargeLayout && 'w-[120px]')}>
-      {currentUser.role === 'Принтовщик' ? (
+      {currentUser?.role === 'Принтовщик' ? (
         renderPrinterActions(order)
-      ) : currentUser.role === 'Продавец' ? null : (
+      ) : currentUser?.role === 'Продавец' ? null : (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button aria-haspopup="true" size="icon" variant="ghost">
@@ -252,7 +259,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
       <CardHeader>
         <CardTitle>Список заказов</CardTitle>
         <CardDescription>
-            {currentUser.role === 'Продавец' ? 'Список всех ваших заказов.' : 'Заказы, требующие вашего внимания.'}
+            {currentUser?.role === 'Продавец' ? 'Список всех ваших заказов.' : 'Заказы, требующие вашего внимания.'}
         </CardDescription>
       </CardHeader>
       <CardContent>

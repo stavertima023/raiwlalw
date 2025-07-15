@@ -47,7 +47,8 @@ export function Dashboard({
         </div>
       
       <OrderTable 
-        orders={orders} 
+        orders={orders}
+        currentUser={user}
         selectedOrders={selectedOrders}
         setSelectedOrders={setSelectedOrders}
         onCancelOrder={onCancelOrder}
