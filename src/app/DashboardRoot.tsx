@@ -28,6 +28,13 @@ type DashboardRootProps = {
 }
 
 export default function DashboardRoot({ initialUser }: DashboardRootProps) {
+  // Guard Clause: If for any reason initialUser is not available,
+  // do not attempt to render the component. This prevents client-side
+  // crashes during complex navigation or hydration scenarios.
+  if (!initialUser) {
+    return null;
+  }
+
   const { toast } = useToast();
   
   const { data: orders = [], error: ordersError } = useSWR<Order[]>('/api/orders', fetcher);
