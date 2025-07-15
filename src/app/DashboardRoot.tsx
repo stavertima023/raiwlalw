@@ -58,14 +58,37 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newOrderData),
       });
+      
+      const responseData = await response.json();
+      
       if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.message || 'Server error');
+        console.error('Order creation failed:', responseData);
+        
+        // Build detailed error message
+        let errorMessage = responseData.message || 'Произошла ошибка';
+        
+        if (responseData.errors) {
+          // Zod validation errors
+          const errorDetails = responseData.errors.map((e: any) => 
+            `${e.path.join('.')}: ${e.message}`
+          ).join(', ');
+          errorMessage += `: ${errorDetails}`;
+        } else if (responseData.error) {
+          // Database or other errors
+          errorMessage += `: ${responseData.error}`;
+        }
+        
+        throw new Error(errorMessage);
       }
+      
       mutate('/api/orders');
       toast({ title: 'Заказ успешно добавлен' });
     } catch (error: any) {
-      toast({ title: 'Ошибка добавления заказа', description: error.message, variant: 'destructive' });
+      toast({ 
+        title: 'Ошибка добавления заказа', 
+        description: error.message,
+        variant: 'destructive' 
+      });
     }
   };
 

@@ -44,6 +44,8 @@ export async function POST(request: Request) {
 
   try {
     const json = await request.json();
+    console.log('Received order data:', json);
+    
     // Automatically set the seller and orderDate
     const newOrderData = {
       ...json,
@@ -51,22 +53,47 @@ export async function POST(request: Request) {
       orderDate: new Date(),
     };
     
+    console.log('Order data with seller and date:', newOrderData);
+    
     // Validate data with Zod schema before inserting
     const validatedOrder = OrderSchema.omit({ id: true }).parse(newOrderData);
+    
+    console.log('Validated order:', validatedOrder);
 
     const { data, error } = await supabase.from('orders').insert(validatedOrder).select().single();
 
     if (error) {
+      console.error('Supabase error:', error);
       throw error;
     }
 
     return NextResponse.json(data, { status: 201 });
 
   } catch (error: any) {
+    console.error('Full error object:', error);
+    
     // Handle Zod validation errors
     if (error.name === 'ZodError') {
-       return NextResponse.json({ message: 'Ошибка валидации данных', errors: error.errors }, { status: 400 });
+       return NextResponse.json({ 
+         message: 'Ошибка валидации данных', 
+         errors: error.errors,
+         receivedData: request.method === 'POST' ? await request.text() : undefined 
+       }, { status: 400 });
     }
-    return NextResponse.json({ message: 'Ошибка добавления заказа', error: error.message }, { status: 500 });
+    
+    // Handle Supabase errors specifically
+    if (error.code) {
+      return NextResponse.json({ 
+        message: 'Ошибка базы данных', 
+        error: error.message,
+        code: error.code,
+        details: error.details
+      }, { status: 500 });
+    }
+    
+    return NextResponse.json({ 
+      message: 'Ошибка добавления заказа', 
+      error: error.message || 'Unknown error'
+    }, { status: 500 });
   }
 } 
