@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { supabaseAdmin } from '@/lib/supabaseClient';
-import { OrderStatusEnum, OrderStatus } from '@/lib/types';
+import { OrderStatusEnum } from '@/lib/types';
 import { z } from 'zod';
 
 const UpdateStatusSchema = z.object({
@@ -25,44 +25,51 @@ export async function PATCH(request: Request, { params }: { params: { orderId: s
     const json = await request.json();
     const { status } = UpdateStatusSchema.parse(json);
 
-    // For sellers, check if they own the order and only allow certain status changes
-    if (user.role === 'Продавец') {
-      // First, get the order to check ownership
-      const { data: orderData, error: fetchError } = await supabaseAdmin
-        .from('orders')
-        .select('seller, status')
-        .eq('id', orderId)
-        .single();
+    // First, get the current order to check permissions
+    const { data: currentOrder, error: fetchError } = await supabaseAdmin
+      .from('orders')
+      .select('*')
+      .eq('id', orderId)
+      .single();
 
-      if (fetchError || !orderData) {
-        return NextResponse.json({ message: 'Заказ не найден' }, { status: 404 });
+    if (fetchError || !currentOrder) {
+      return NextResponse.json({ message: 'Заказ не найден' }, { status: 404 });
+    }
+
+    // Check permissions based on user role
+    if (user.role === 'Администратор') {
+      // Admin can change any status
+    } else if (user.role === 'Принтовщик') {
+      // Printer can change any status
+    } else if (user.role === 'Продавец') {
+      // Seller can only modify their own orders
+      if (currentOrder.seller !== user.username) {
+        return NextResponse.json({ message: 'Вы можете изменять только свои заказы' }, { status: 403 });
       }
 
-      // Check if seller owns this order
-      if (orderData.seller !== user.username) {
-        return NextResponse.json({ message: 'Доступ запрещен: вы можете изменять только свои заказы' }, { status: 403 });
+      // Seller can only cancel orders with status "Добавлен" or "Готов"
+      if (status === 'Отменен') {
+        if (currentOrder.status !== 'Добавлен' && currentOrder.status !== 'Готов') {
+          return NextResponse.json({ 
+            message: 'Можно отменять только заказы со статусом "Добавлен" или "Готов"' 
+          }, { status: 403 });
+        }
       }
-
-      // Sellers can only cancel orders that are "Добавлен" or "Готов", and return orders that are "Отправлен"
-      const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
-        'Добавлен': ['Отменен'],
-        'Готов': ['Отменен'],
-        'Отправлен': ['Возврат'],
-        'Исполнен': [],
-        'Отменен': [],
-        'Возврат': []
-      };
-
-      const currentStatus = orderData.status as OrderStatus;
-      const allowedStatuses = allowedTransitions[currentStatus] || [];
-
-      if (!allowedStatuses.includes(status)) {
+      // Seller can only return orders with status "Отправлен"
+      else if (status === 'Возврат') {
+        if (currentOrder.status !== 'Отправлен') {
+          return NextResponse.json({ 
+            message: 'Можно оформлять возврат только для заказов со статусом "Отправлен"' 
+          }, { status: 403 });
+        }
+      }
+      // Seller cannot set other statuses
+      else {
         return NextResponse.json({ 
-          message: `Невозможно изменить статус с "${currentStatus}" на "${status}"` 
+          message: 'Продавец может только отменять или оформлять возврат заказов' 
         }, { status: 403 });
       }
-    } else if (user.role !== 'Администратор' && user.role !== 'Принтовщик') {
-      // Other roles (not seller, admin, or printer) are not allowed
+    } else {
       return NextResponse.json({ message: 'Доступ запрещен' }, { status: 403 });
     }
 
