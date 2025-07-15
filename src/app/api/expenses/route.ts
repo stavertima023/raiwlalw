@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
-import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseClient';
 import { ExpenseSchema } from '@/lib/types';
 
 async function checkAdmin(session: any) {
@@ -20,7 +20,7 @@ export async function GET() {
   if (!authorized) return response;
 
   try {
-    const { data, error } = await supabase.from('expenses').select('*').order('date', { ascending: false });
+    const { data, error } = await supabaseAdmin.from('expenses').select('*').order('date', { ascending: false });
     if (error) throw error;
     
     const parsedData = data.map(item => ({...item, date: new Date(item.date) }))
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
 
         const validatedExpense = ExpenseSchema.omit({ id: true }).parse(newExpenseData);
         
-        const { data, error } = await supabase.from('expenses').insert(validatedExpense).select().single();
+        const { data, error } = await supabaseAdmin.from('expenses').insert(validatedExpense).select().single();
         if (error) throw error;
         
         return NextResponse.json(data, { status: 201 });

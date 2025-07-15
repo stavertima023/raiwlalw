@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
-import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseClient';
 import { OrderStatusEnum } from '@/lib/types';
 import { z } from 'zod';
 
@@ -26,7 +26,7 @@ export async function PATCH(request: Request, { params }: { params: { orderId: s
     const json = await request.json();
     const { status } = UpdateStatusSchema.parse(json);
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('orders')
       .update({ status })
       .eq('id', orderId)

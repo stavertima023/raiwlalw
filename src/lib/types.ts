@@ -30,14 +30,14 @@ export const OrderSchema = z.object({
   id: z.string().optional(), 
   orderDate: z.union([z.date(), z.string().transform((str) => new Date(str))]), 
   orderNumber: z.string().min(1, 'Номер заказа обязателен'),
-  shipmentNumber: z.string().optional(),
+  shipmentNumber: z.string().min(1, 'Номер отправления обязателен'),
   status: OrderStatusEnum,
   productType: ProductTypeEnum,
   size: SizeEnum,
   seller: z.string().min(1, 'Продавец обязателен'), 
   price: z.coerce.number().positive('Цена должна быть положительной'),
   cost: z.coerce.number().positive('Себестоимость должна быть положительной'),
-  photos: z.array(z.string().url()).max(3).optional().default([]),
+  photos: z.array(z.string()).max(3).optional().default([]), // Accept any string (base64 or URL)
   comment: z.string().optional(),
 });
 
