@@ -8,9 +8,11 @@ import type { Order, User } from '@/lib/types';
 import { ThemeToggle } from '../layout/ThemeToggle';
 import { UserNav } from '../layout/UserNav';
 
+type SafeUser = Omit<User, 'password_hash'>;
+
 interface HeaderProps {
-  currentUser: User;
-  onAddOrder: (order: Omit<Order, 'id' | 'orderDate'>) => void;
+  currentUser: SafeUser;
+  onAddOrder: (order: Omit<Order, 'id' | 'orderDate' | 'seller'>) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ currentUser, onAddOrder }) => {

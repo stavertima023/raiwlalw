@@ -5,19 +5,21 @@ import { Sidebar, SidebarBody, SidebarHeader, SidebarTrigger, SidebarInset, Side
 import { MainNav, type NavItem } from './MainNav';
 import { UserNav } from './UserNav';
 import { ThemeToggle } from './ThemeToggle';
-import type { User, Role } from '@/lib/types';
+import type { User, Role, Order, OrderStatus } from '@/lib/types';
 import { Home, Package, BarChart3, BotMessageSquare, Truck, Factory } from 'lucide-react';
 import { Header } from '@/components/dashboard/Header';
 import { Dashboard } from '../dashboard/Dashboard';
 import { OrderTable } from '../dashboard/OrderTable';
 import { AdminOrderList } from '../admin/AdminOrderList';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
-import { Order, OrderStatus } from '@/lib/types';
+
+// Use a more secure user type for the UI
+type SafeUser = Omit<User, 'password_hash'>;
 
 interface AppLayoutProps {
   children: (activeView: string) => React.ReactNode;
-  currentUser: User;
-  onAddOrder: (order: Omit<Order, 'id' | 'orderDate'>) => void;
+  currentUser: SafeUser;
+  onAddOrder: (order: Omit<Order, 'id' | 'orderDate' | 'seller'>) => void;
   onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void;
   orders: Order[];
 }

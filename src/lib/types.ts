@@ -28,7 +28,7 @@ export type Size = z.infer<typeof SizeEnum>;
 
 export const OrderSchema = z.object({
   id: z.string().optional(), 
-  orderDate: z.date().optional(), 
+  orderDate: z.date(), 
   orderNumber: z.string().min(1, 'Номер заказа обязателен'),
   shipmentNumber: z.string().optional(),
   status: OrderStatusEnum,
@@ -47,10 +47,11 @@ export const RoleEnum = z.enum(['Продавец', 'Принтовщик', 'А�
 export type Role = z.infer<typeof RoleEnum>;
 
 export const UserSchema = z.object({
-  telegramId: z.string(),
+  id: z.string(),
+  username: z.string(),
   name: z.string(),
+  password_hash: z.string(),
   role: RoleEnum,
-  position: z.string(),
 });
 
 export type User = z.infer<typeof UserSchema>;

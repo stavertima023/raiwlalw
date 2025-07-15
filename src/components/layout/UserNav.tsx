@@ -12,9 +12,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { User } from '@/lib/types';
+import { logout } from '@/app/actions';
+
+type SafeUser = Omit<User, 'password_hash'>;
 
 interface UserNavProps {
-  currentUser: User;
+  currentUser: SafeUser;
 }
 
 export function UserNav({ currentUser }: UserNavProps) {
@@ -48,6 +51,13 @@ export function UserNav({ currentUser }: UserNavProps) {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <form action={logout}>
+          <DropdownMenuItem asChild>
+            <button type="submit" className="w-full text-left">
+              Выйти
+            </button>
+          </DropdownMenuItem>
+        </form>
       </DropdownMenuContent>
     </DropdownMenu>
   );
