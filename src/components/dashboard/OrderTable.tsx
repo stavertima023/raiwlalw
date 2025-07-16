@@ -148,7 +148,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Закрыть</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => onUpdateStatus(order.id, 'Отменен')}>
+                      <AlertDialogAction onClick={() => onUpdateStatus(order.id!, 'Отменен')}>
                         Подтвердить отмену
                       </AlertDialogAction>
                     </AlertDialogFooter>
@@ -177,7 +177,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Закрыть</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => onUpdateStatus(order.id, 'Отправлен')}>
+                      <AlertDialogAction onClick={() => onUpdateStatus(order.id!, 'Отправлен')}>
                         Подтвердить
                       </AlertDialogAction>
                     </AlertDialogFooter>
@@ -199,7 +199,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Закрыть</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => onUpdateStatus(order.id, 'Отменен')}>
+                      <AlertDialogAction onClick={() => onUpdateStatus(order.id!, 'Отменен')}>
                         Подтвердить отмену
                       </AlertDialogAction>
                     </AlertDialogFooter>
@@ -221,7 +221,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
             {actions.map((actionStatus) => (
             <DropdownMenuItem
                 key={actionStatus}
-                onClick={() => onUpdateStatus(order.id, actionStatus)}
+                onClick={() => onUpdateStatus(order.id!, actionStatus)}
             >
                 Изменить на "{actionStatus}"
             </DropdownMenuItem>
@@ -233,7 +233,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
 
   const renderSellerActions = (order: Order) => {
     // Sellers can only modify their own orders
-    if (order.seller !== currentUser?.telegramId || !order.id || !onUpdateStatus) {
+    if (order.seller !== currentUser?.username || !order.id || !onUpdateStatus) {
       return null;
     }
 

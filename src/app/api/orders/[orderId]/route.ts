@@ -17,6 +17,10 @@ export async function PATCH(request: Request, { params }: { params: { orderId: s
   }
 
   try {
+    if (!supabaseAdmin) {
+      return NextResponse.json({ message: 'Сервис недоступен' }, { status: 503 });
+    }
+
     const { orderId } = params;
     const json = await request.json();
     const { status } = UpdateStatusSchema.parse(json);
@@ -39,7 +43,7 @@ export async function PATCH(request: Request, { params }: { params: { orderId: s
       // Printer can change any order status (existing behavior)
     } else if (user.role === 'Продавец') {
       // Seller can only modify their own orders with specific rules
-      if (currentOrder.seller !== user.telegramId) {
+      if (currentOrder.seller !== user.username) {
         return NextResponse.json({ message: 'Доступ запрещен: вы можете изменять только свои заказы' }, { status: 403 });
       }
 
