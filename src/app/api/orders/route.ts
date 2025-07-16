@@ -169,7 +169,7 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    // Step 6.5: Format data for Supabase according to actual schema with quoted camelCase
+    // Step 6.5: Format data for Supabase - try both formats for debugging
     const supabaseOrderData = {
       "orderDate": validatedOrder.orderDate,
       "orderNumber": validatedOrder.orderNumber,
@@ -184,7 +184,24 @@ export async function POST(request: Request) {
       comment: validatedOrder.comment,
     };
     
-    console.log('Supabase-formatted order data:', supabaseOrderData);
+    console.log('Supabase-formatted order data (quoted camelCase):', supabaseOrderData);
+    
+    // Also try snake_case version as backup
+    const supabaseOrderDataSnakeCase = {
+      order_date: validatedOrder.orderDate,
+      order_number: validatedOrder.orderNumber,
+      shipment_number: validatedOrder.shipmentNumber,
+      status: validatedOrder.status,
+      product_type: validatedOrder.productType,
+      size: validatedOrder.size,
+      seller: validatedOrder.seller,
+      price: validatedOrder.price,
+      cost: validatedOrder.cost,
+      photos: validatedOrder.photos,
+      comment: validatedOrder.comment,
+    };
+    
+    console.log('Supabase-formatted order data (snake_case):', supabaseOrderDataSnakeCase);
 
     // Step 7: Database Connection Test
     try {
@@ -207,25 +224,44 @@ export async function POST(request: Request) {
       }, { status: 500 });
     }
 
-    // Step 8: Database Insert
+    // Step 8: Database Insert - try different formats
     try {
-      const { data, error } = await supabaseAdmin
+      console.log('Attempting insert with quoted camelCase format...');
+      
+      // First try with quoted camelCase format
+      let { data, error } = await supabaseAdmin
         .from('orders')
         .insert(supabaseOrderData)
         .select()
         .single();
 
       if (error) {
-        console.error('Supabase insert error:', error);
-        return NextResponse.json({ 
-          message: 'Ошибка сохранения в базе данных',
-          debug: 'Supabase insert failed',
-          error: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint,
-          supabaseError: error
-        }, { status: 500 });
+        console.error('Quoted camelCase insert failed:', error);
+        
+        // If camelCase failed, try snake_case
+        if (error.code === '42703' || error.message.includes('has no field')) {
+          console.log('Trying insert with snake_case format...');
+          
+          const result = await supabaseAdmin
+            .from('orders')
+            .insert(supabaseOrderDataSnakeCase)
+            .select()
+            .single();
+          
+          data = result.data;
+          error = result.error;
+          
+          if (error) {
+            console.error('Snake_case insert also failed:', error);
+            throw error;
+          } else {
+            console.log('Snake_case insert succeeded!');
+          }
+        } else {
+          throw error;
+        }
+      } else {
+        console.log('Quoted camelCase insert succeeded!');
       }
 
       console.log('Order created successfully:', data);
@@ -233,7 +269,10 @@ export async function POST(request: Request) {
       // Convert orderDate to proper Date object for frontend
       const responseData = {
         ...data,
-        orderDate: new Date(data.orderDate),
+        orderDate: new Date(data.orderDate || data.order_date),
+        orderNumber: data.orderNumber || data.order_number,
+        shipmentNumber: data.shipmentNumber || data.shipment_number,
+        productType: data.productType || data.product_type,
       };
       
       return NextResponse.json(responseData, { status: 201 });
@@ -241,9 +280,13 @@ export async function POST(request: Request) {
     } catch (insertError) {
       console.error('Database insert exception:', insertError);
       return NextResponse.json({ 
-        message: 'Ошибка сохранения заказа',
-        debug: 'Database insert threw exception',
-        error: (insertError as Error).message
+        message: 'Ошибка сохранения в базе данных',
+        debug: 'Supabase insert failed',
+        error: (insertError as any).message,
+        code: (insertError as any).code,
+        details: (insertError as any).details,
+        hint: (insertError as any).hint,
+        supabaseError: insertError
       }, { status: 500 });
     }
 
