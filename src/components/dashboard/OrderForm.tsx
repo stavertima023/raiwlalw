@@ -112,11 +112,6 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
       const currentPhotos = form.getValues('photos') || [];
       const newPhotos = [...currentPhotos, ...results];
       form.setValue('photos', newPhotos);
-      
-      // Show success message
-      if (results.length > 1) {
-        alert(`Успешно загружено ${results.length} фотографий`);
-      }
     } catch (error) {
       console.error('Ошибка загрузки фото:', error);
       alert('Произошла ошибка при загрузке фотографий');
