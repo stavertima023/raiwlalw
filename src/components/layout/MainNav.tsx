@@ -1,8 +1,7 @@
 'use client';
 
-import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
+import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
 
 export type NavItem = {
   id: string;
@@ -19,18 +18,19 @@ type MainNavProps = {
 
 export function MainNav({ items, activeItem, onItemSelect }: MainNavProps) {
   return (
-    <nav className="grid items-start gap-2">
+    <SidebarMenu>
       {items.map((item) => (
-        <Button
-          key={item.id}
-          variant={activeItem === item.id ? 'default' : 'ghost'}
-          className="w-full justify-start"
-          onClick={() => onItemSelect(item.id)}
-        >
-          {item.icon && <span className="mr-2 h-4 w-4">{item.icon}</span>}
-          {item.label}
-        </Button>
+        <SidebarMenuItem key={item.id}>
+          <SidebarMenuButton
+            isActive={activeItem === item.id}
+            onClick={() => onItemSelect(item.id)}
+            className="w-full justify-start gap-2"
+          >
+            {item.icon}
+            <span>{item.label}</span>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
       ))}
-    </nav>
+    </SidebarMenu>
   );
 }
