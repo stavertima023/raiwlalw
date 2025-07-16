@@ -52,7 +52,7 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
       shipmentNumber: initialData?.shipmentNumber || '',
       productType: initialData?.productType || undefined,
       size: initialData?.size || undefined,
-      price: initialData?.price || 0,
+      price: initialData?.price,
       comment: initialData?.comment || '',
       photos: photos,
     },
@@ -184,7 +184,13 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
             <FormItem>
               <FormLabel>Цена</FormLabel>
               <FormControl>
-                <Input type="number" placeholder="1500" {...field} />
+                <Input 
+                  type="number" 
+                  placeholder="С учетом Авито комиссии" 
+                  {...field}
+                  value={field.value || ''}
+                  onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
