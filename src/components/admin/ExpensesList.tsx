@@ -172,10 +172,9 @@ export const ExpensesList: React.FC<ExpensesListProps> = ({ allExpenses, allUser
           <CardTitle>Список расходов</CardTitle>
           <CardDescription>Все зафиксированные расходы.</CardDescription>
         </CardHeader>
-        <CardContent className="p-0">
-          <div className="mobile-table-container scrollbar-thin border-t">
-            <div className="overflow-x-auto">
-              <Table>
+        <CardContent>
+          <div className="h-[70vh] max-h-[600px] overflow-auto border rounded-lg">
+            <Table>
             <TableHeader>
               <TableRow>
                 {renderSortableHeader('date', 'Дата')}
@@ -248,8 +247,7 @@ export const ExpensesList: React.FC<ExpensesListProps> = ({ allExpenses, allUser
                 </TableRow>
               )}
             </TableBody>
-              </Table>
-            </div>
+            </Table>
           </div>
         </CardContent>
       </Card>
