@@ -38,7 +38,20 @@ export async function GET() {
     }
 
     // Parse dates before sending to client
-    const parsedData = data.map(item => ({...item, orderDate: new Date(item.orderDate) }))
+    const parsedData = data.map(item => ({
+      id: item.id,
+      orderDate: new Date(item.order_date || item.orderDate),
+      orderNumber: item.order_number || item.orderNumber,
+      shipmentNumber: item.shipment_number || item.shipmentNumber,
+      status: item.status,
+      productType: item.product_type || item.productType,
+      size: item.size,
+      seller: item.seller,
+      price: item.price,
+      cost: item.cost,
+      photos: item.photos || [],
+      comment: item.comment || '',
+    }));
 
     return NextResponse.json(parsedData);
   } catch (error: any) {
@@ -166,6 +179,23 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
+    // Step 6.5: Convert camelCase to snake_case for Supabase compatibility
+    const supabaseOrderData = {
+      order_date: validatedOrder.orderDate,
+      order_number: validatedOrder.orderNumber,
+      shipment_number: validatedOrder.shipmentNumber,
+      status: validatedOrder.status,
+      product_type: validatedOrder.productType,
+      size: validatedOrder.size,
+      seller: validatedOrder.seller,
+      price: validatedOrder.price,
+      cost: validatedOrder.cost,
+      photos: validatedOrder.photos,
+      comment: validatedOrder.comment,
+    };
+    
+    console.log('Supabase-formatted order data:', supabaseOrderData);
+
     // Step 7: Database Connection Test
     try {
       const { error: testError } = await supabaseAdmin.from('orders').select('count').limit(1);
@@ -191,7 +221,7 @@ export async function POST(request: Request) {
     try {
       const { data, error } = await supabaseAdmin
         .from('orders')
-        .insert(validatedOrder)
+        .insert(supabaseOrderData)
         .select()
         .single();
 
@@ -209,7 +239,24 @@ export async function POST(request: Request) {
       }
 
       console.log('Order created successfully:', data);
-      return NextResponse.json(data, { status: 201 });
+      
+      // Convert response data back to camelCase for frontend
+      const responseData = {
+        id: data.id,
+        orderDate: new Date(data.order_date || data.orderDate),
+        orderNumber: data.order_number || data.orderNumber,
+        shipmentNumber: data.shipment_number || data.shipmentNumber,
+        status: data.status,
+        productType: data.product_type || data.productType,
+        size: data.size,
+        seller: data.seller,
+        price: data.price,
+        cost: data.cost,
+        photos: data.photos || [],
+        comment: data.comment || '',
+      };
+      
+      return NextResponse.json(responseData, { status: 201 });
 
     } catch (insertError) {
       console.error('Database insert exception:', insertError);
