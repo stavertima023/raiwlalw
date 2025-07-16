@@ -43,6 +43,7 @@ type OrderFormProps = {
 
 export function OrderForm({ onSave, initialData }: OrderFormProps) {
   const [photos, setPhotos] = React.useState<string[]>(initialData?.photos || []);
+  const [isUploading, setIsUploading] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const form = useForm<OrderFormValues>({
@@ -58,7 +59,7 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
     },
   });
 
-  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
 
@@ -66,27 +67,56 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
     const totalSlots = 3 - currentPhotos.length;
 
     if (files.length > totalSlots) {
-      alert(`Можно загрузить еще ${totalSlots} фото`);
+      if (totalSlots === 0) {
+        alert('Достигнут лимит фотографий (максимум 3)');
+      } else {
+        alert(`Можно загрузить еще ${totalSlots} фото (выбрано ${files.length})`);
+      }
       return;
     }
 
     const filesToProcess = Array.from(files).slice(0, totalSlots);
-
-    filesToProcess.forEach(file => {
+    
+    // Validate all files first
+    for (const file of filesToProcess) {
       if (!file.type.startsWith('image/')) {
         alert(`Файл "${file.name}" не является изображением`);
         return;
       }
+    }
 
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        const newPhotos = [...photos, result];
-        setPhotos(newPhotos);
-        form.setValue('photos', newPhotos);
-      };
-      reader.readAsDataURL(file);
-    });
+    setIsUploading(true);
+
+    try {
+      // Process all files and collect results
+      const loadPromises = filesToProcess.map(file => {
+        return new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const result = e.target?.result as string;
+            resolve(result);
+          };
+          reader.onerror = () => reject(new Error(`Ошибка чтения файла ${file.name}`));
+          reader.readAsDataURL(file);
+        });
+      });
+
+      // Wait for all files to load and update state once
+      const results = await Promise.all(loadPromises);
+      const newPhotos = [...photos, ...results];
+      setPhotos(newPhotos);
+      form.setValue('photos', newPhotos);
+      
+      // Show success message
+      if (results.length > 1) {
+        alert(`Успешно загружено ${results.length} фотографий`);
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки фото:', error);
+      alert('Произошла ошибка при загрузке фотографий');
+    } finally {
+      setIsUploading(false);
+    }
 
     // Reset file input
     if (fileInputRef.current) {
@@ -204,6 +234,9 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
           render={() => (
             <FormItem>
               <FormLabel>Фотографии (до 3)</FormLabel>
+              <p className="text-sm text-muted-foreground">
+                Можно выбрать несколько фото одновременно
+              </p>
               <FormControl>
                 <div className="space-y-4">
                   <input 
@@ -243,9 +276,19 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
                         variant="outline"
                         className="h-20 w-20 border-dashed flex flex-col items-center justify-center"
                         onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploading}
                       >
-                        <Plus className="h-4 w-4 mb-1" />
-                        <span className="text-xs">Фото</span>
+                        {isUploading ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900 mb-1"></div>
+                            <span className="text-xs">Загрузка...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="h-4 w-4 mb-1" />
+                            <span className="text-xs">Фото</span>
+                          </>
+                        )}
                       </Button>
                     )}
                   </div>
