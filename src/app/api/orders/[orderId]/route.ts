@@ -16,62 +16,15 @@ export async function PATCH(request: Request, { params }: { params: { orderId: s
     return NextResponse.json({ message: 'Пользователь не авторизован' }, { status: 401 });
   }
 
-  if (!supabaseAdmin) {
-    return NextResponse.json({ message: 'Сервис недоступен' }, { status: 503 });
+  // Only Admin or Printer can change status
+  if (user.role !== 'Администратор' && user.role !== 'Принтовщик') {
+     return NextResponse.json({ message: 'Доступ запрещен' }, { status: 403 });
   }
 
   try {
     const { orderId } = params;
     const json = await request.json();
     const { status } = UpdateStatusSchema.parse(json);
-
-    // First, get the current order to check permissions
-    const { data: currentOrder, error: fetchError } = await supabaseAdmin
-      .from('orders')
-      .select('*')
-      .eq('id', orderId)
-      .single();
-
-    if (fetchError || !currentOrder) {
-      return NextResponse.json({ message: 'Заказ не найден' }, { status: 404 });
-    }
-
-    // Check permissions based on user role
-    if (user.role === 'Администратор') {
-      // Admin can change any status
-    } else if (user.role === 'Принтовщик') {
-      // Printer can change any status
-    } else if (user.role === 'Продавец') {
-      // Seller can only modify their own orders
-      if (currentOrder.seller !== user.username) {
-        return NextResponse.json({ message: 'Вы можете изменять только свои заказы' }, { status: 403 });
-      }
-
-      // Seller can only cancel orders with status "Добавлен" or "Готов"
-      if (status === 'Отменен') {
-        if (currentOrder.status !== 'Добавлен' && currentOrder.status !== 'Готов') {
-          return NextResponse.json({ 
-            message: 'Можно отменять только заказы со статусом "Добавлен" или "Готов"' 
-          }, { status: 403 });
-        }
-      }
-      // Seller can only return orders with status "Отправлен"
-      else if (status === 'Возврат') {
-        if (currentOrder.status !== 'Отправлен') {
-          return NextResponse.json({ 
-            message: 'Можно оформлять возврат только для заказов со статусом "Отправлен"' 
-          }, { status: 403 });
-        }
-      }
-      // Seller cannot set other statuses
-      else {
-        return NextResponse.json({ 
-          message: 'Продавец может только отменять или оформлять возврат заказов' 
-        }, { status: 403 });
-      }
-    } else {
-      return NextResponse.json({ message: 'Доступ запрещен' }, { status: 403 });
-    }
 
     const { data, error } = await supabaseAdmin
       .from('orders')
