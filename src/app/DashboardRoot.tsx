@@ -174,15 +174,64 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
   };
 
   const handlePayout = async (orderNumbers: string[]) => {
-      const payoutPromises = findOrders(orderNumbers)
-        .filter(order => order.id)
-        .map(order => handleUpdateOrderStatus(order.id!, 'Исполнен'));
-      try {
-        await Promise.all(payoutPromises);
-        toast({ title: 'Оплата проведена', description: `${orderNumbers.length} заказ(а/ов) были отмечены как "Исполнен".` });
-      } catch (error: any) {
-        toast({ title: 'Ошибка проведения оплаты', description: error.message, variant: 'destructive' });
+    try {
+      // Find valid orders
+      const validOrders = findOrders(orderNumbers).filter(order => order.id);
+      
+      if (validOrders.length === 0) {
+        toast({ 
+          title: 'Ошибка', 
+          description: 'Не найдено действительных заказов для выплаты', 
+          variant: 'destructive' 
+        });
+        return;
       }
+
+      // Calculate total amount
+      const totalAmount = validOrders.reduce((sum, order) => sum + order.price, 0);
+
+      // Create payout record first
+      const payoutData = {
+        seller: initialUser.username,
+        amount: totalAmount,
+        orderNumbers: orderNumbers,
+        orderCount: validOrders.length,
+        comment: `Выплата по ${validOrders.length} заказ(ам)`
+      };
+
+      const payoutResponse = await fetch('/api/payouts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payoutData),
+      });
+
+      if (!payoutResponse.ok) {
+        const errorData = await payoutResponse.json();
+        throw new Error(errorData.message || 'Ошибка создания записи о выплате');
+      }
+
+      // If payout record created successfully, update order statuses
+      const payoutPromises = validOrders
+        .map(order => handleUpdateOrderStatus(order.id!, 'Исполнен'));
+      
+      await Promise.all(payoutPromises);
+      
+      // Refresh payouts data for admin
+      if (initialUser.role === 'Администратор') {
+        mutate('/api/payouts');
+      }
+      
+      toast({ 
+        title: 'Выплата успешно проведена', 
+        description: `${validOrders.length} заказ(а/ов) отмечены как "Исполнен". Сумма: ${totalAmount.toLocaleString('ru-RU')} ₽` 
+      });
+    } catch (error: any) {
+      toast({ 
+        title: 'Ошибка проведения выплаты', 
+        description: error.message, 
+        variant: 'destructive' 
+      });
+    }
   };
   
   const findOrder = (orderNumber: string): Order | undefined => {
