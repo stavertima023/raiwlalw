@@ -11,61 +11,129 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ExpenseCategory, ExpenseCategoryEnum, User } from '@/lib/types';
+import { Input } from '@/components/ui/input';
+import { ExpenseCategory, ExpenseCategoryEnum } from '@/lib/types';
 
 interface ExpensesFiltersProps {
   onFilterChange: (filters: {
     category: ExpenseCategory | 'all';
+    responsible: string | 'all';
+    dateFrom?: string;
+    dateTo?: string;
   }) => void;
   currentFilters: {
     category: ExpenseCategory | 'all';
+    responsible: string | 'all';
+    dateFrom?: string;
+    dateTo?: string;
   };
   onClear: () => void;
+  allUsers: { username: string; name: string }[];
 }
 
 export const ExpensesFilters: React.FC<ExpensesFiltersProps> = ({
   onFilterChange,
   currentFilters,
-  onClear
+  onClear,
+  allUsers
 }: ExpensesFiltersProps) => {
   const [category, setCategory] = React.useState<ExpenseCategory | 'all'>(currentFilters.category);
+  const [responsible, setResponsible] = React.useState<string | 'all'>(currentFilters.responsible);
+  const [dateFrom, setDateFrom] = React.useState<string>(currentFilters.dateFrom || '');
+  const [dateTo, setDateTo] = React.useState<string>(currentFilters.dateTo || '');
 
   React.useEffect(() => {
-    onFilterChange({ category });
-  }, [category, onFilterChange]);
+    onFilterChange({ 
+      category, 
+      responsible,
+      dateFrom: dateFrom || undefined,
+      dateTo: dateTo || undefined
+    });
+  }, [category, responsible, dateFrom, dateTo, onFilterChange]);
   
   const handleClear = () => {
     setCategory('all');
+    setResponsible('all');
+    setDateFrom('');
+    setDateTo('');
     onClear();
   }
 
   return (
     <Card>
       <CardContent className="p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-          {/* Placeholder for Date Range Picker */}
-          <div className="p-2 h-10 flex items-center justify-center border rounded-md text-sm text-muted-foreground">
-              Фильтр по дате (в разработке)
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+          {/* Date From Filter */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Дата с</label>
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="w-full"
+            />
           </div>
 
-          <Select
-            value={category}
-            onValueChange={(value: string) => setCategory(value as ExpenseCategory | 'all')}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Фильтр по категории" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Все категории</SelectItem>
-              {ExpenseCategoryEnum.options.map((cat: ExpenseCategory) => (
-                <SelectItem key={cat} value={cat}>
-                  {cat}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* Date To Filter */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Дата по</label>
+            <Input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="w-full"
+            />
+          </div>
+
+          {/* Category Filter */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Категория</label>
+            <Select
+              value={category}
+              onValueChange={(value: string) => setCategory(value as ExpenseCategory | 'all')}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Все категории" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все категории</SelectItem>
+                {ExpenseCategoryEnum.options.map((cat: ExpenseCategory) => (
+                  <SelectItem key={cat} value={cat}>
+                    {cat}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Responsible Filter */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Ответственный</label>
+            <Select
+              value={responsible}
+              onValueChange={(value: string) => setResponsible(value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Все пользователи" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все пользователи</SelectItem>
+                {allUsers.map((user) => (
+                  <SelectItem key={user.username} value={user.username}>
+                    {user.name} ({user.username})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           
-          <Button variant="ghost" onClick={handleClear} className="w-full lg:w-auto">Очистить фильтры</Button>
+          {/* Clear Filters Button */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium invisible">Действия</label>
+            <Button variant="outline" onClick={handleClear} className="w-full">
+              Очистить фильтры
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

@@ -77,7 +77,7 @@ export const ExpenseSchema = z.object({
   category: ExpenseCategoryEnum,
   responsible: z.string(), // User's username
   comment: z.string().optional(),
-  receiptPhoto: z.string().optional(), // Allow data URIs and URLs
+  receiptPhoto: z.string().optional(), // Proper camelCase naming
 });
 
 export type Expense = z.infer<typeof ExpenseSchema>;

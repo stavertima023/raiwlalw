@@ -43,6 +43,8 @@ export const ExpensesList: React.FC<ExpensesListProps> = ({ allExpenses, allUser
   const [filters, setFilters] = React.useState({
     category: 'all' as ExpenseCategory | 'all',
     responsible: 'all' as string | 'all',
+    dateFrom: undefined as string | undefined,
+    dateTo: undefined as string | undefined,
   });
 
   const [sortDescriptor, setSortDescriptor] = React.useState<ExpenseSortDescriptor>({
@@ -56,18 +58,56 @@ export const ExpensesList: React.FC<ExpensesListProps> = ({ allExpenses, allUser
   };
 
   const filteredAndSortedExpenses = React.useMemo(() => {
+    console.log('Filtering expenses:', { 
+      totalExpenses: allExpenses.length, 
+      filters,
+      sampleExpense: allExpenses[0] 
+    });
+    
     let filtered = [...allExpenses];
 
+    // Filter by category
     if (filters.category !== 'all') {
       filtered = filtered.filter(expense => expense.category === filters.category);
+      console.log('After category filter:', filtered.length, 'expenses');
     }
+    
+    // Filter by responsible person
     if (filters.responsible !== 'all') {
       filtered = filtered.filter(expense => expense.responsible === filters.responsible);
+      console.log('After responsible filter:', filtered.length, 'expenses');
     }
 
+    // Filter by date range
+    if (filters.dateFrom) {
+      const fromDate = new Date(filters.dateFrom);
+      filtered = filtered.filter(expense => {
+        const expenseDate = new Date(expense.date);
+        return expenseDate >= fromDate;
+      });
+      console.log('After dateFrom filter:', filtered.length, 'expenses');
+    }
+
+    if (filters.dateTo) {
+      const toDate = new Date(filters.dateTo);
+      // Set time to end of day
+      toDate.setHours(23, 59, 59, 999);
+      filtered = filtered.filter(expense => {
+        const expenseDate = new Date(expense.date);
+        return expenseDate <= toDate;
+      });
+      console.log('After dateTo filter:', filtered.length, 'expenses');
+    }
+
+    // Sort the filtered results
     filtered.sort((a, b) => {
       const aValue = a[sortDescriptor.column];
       const bValue = b[sortDescriptor.column];
+      
+      // Handle undefined values
+      if (aValue === undefined && bValue === undefined) return 0;
+      if (aValue === undefined) return 1;
+      if (bValue === undefined) return -1;
       
       let cmp = 0;
       if (aValue > bValue) cmp = 1;
@@ -76,6 +116,7 @@ export const ExpensesList: React.FC<ExpensesListProps> = ({ allExpenses, allUser
       return sortDescriptor.direction === 'desc' ? -cmp : cmp;
     });
 
+    console.log('Final filtered and sorted expenses:', filtered.length);
     return filtered;
   }, [allExpenses, filters, sortDescriptor]);
 
@@ -87,6 +128,12 @@ export const ExpensesList: React.FC<ExpensesListProps> = ({ allExpenses, allUser
       </Button>
     </TableHead>
   );
+
+  // Prepare users list for filters
+  const usersForFilter = allUsers.map(user => ({
+    username: user.username,
+    name: user.name
+  }));
 
   return (
     <div className="space-y-6">
@@ -101,10 +148,18 @@ export const ExpensesList: React.FC<ExpensesListProps> = ({ allExpenses, allUser
       </div>
 
       <ExpensesFilters
-        onFilterChange={setFilters}
+        onFilterChange={(newFilters) => setFilters(prevFilters => ({
+          ...prevFilters,
+          ...newFilters
+        }))}
         currentFilters={filters}
-        allUsers={[]}
-        onClear={() => setFilters({ category: 'all', responsible: 'all' })}
+        allUsers={usersForFilter}
+        onClear={() => setFilters({ 
+          category: 'all', 
+          responsible: 'all',
+          dateFrom: undefined,
+          dateTo: undefined
+        })}
       />
 
       <Card>

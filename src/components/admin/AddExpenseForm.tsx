@@ -57,13 +57,13 @@ export function AddExpenseForm({ onSave, currentUser }: AddExpenseFormProps) {
       category: undefined,
       responsible: currentUser.username, // Use username instead of telegramId
       comment: '',
-      receiptPhoto: undefined,
+      receiptPhoto: undefined, // Proper camelCase naming
     },
     mode: 'onChange',
   });
   
   const { watch, setValue, getValues } = form;
-  const watchedPhoto = watch('receiptPhoto');
+  const watchedPhoto = watch('receiptPhoto'); // Use proper camelCase naming
 
   const onSubmit = (data: Omit<ExpenseFormData, 'id' | 'date'>) => {
     // Remove responsible field as it's added by the backend
