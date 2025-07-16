@@ -34,9 +34,9 @@ interface AdminOrderListProps {
 
 const statusConfig: Record<
   OrderStatus,
-  { label: string; color: 'primary' | 'secondary' | 'destructive' | 'outline' | 'default' }
+  { label: string; color: 'secondary' | 'destructive' | 'outline' | 'default' }
 > = {
-  Добавлен: { label: 'Добавлен', color: 'primary' },
+  Добавлен: { label: 'Добавлен', color: 'default' },
   Готов: { label: 'Готов', color: 'default' },
   Отправлен: { label: 'Отправлен', color: 'default' },
   Исполнен: { label: 'Исполнен', color: 'default' },
@@ -73,7 +73,7 @@ export const AdminOrderList: React.FC<AdminOrderListProps> = ({ allOrders, allUs
   
   const sellerMap = React.useMemo(() => {
     return allUsers.reduce((acc, user) => {
-      acc[user.telegramId] = user.name;
+      acc[user.username] = user.name;
       return acc;
     }, {} as Record<string, string>);
   }, [allUsers]);
@@ -99,8 +99,8 @@ export const AdminOrderList: React.FC<AdminOrderListProps> = ({ allOrders, allUs
 
     // Apply sorting
     filtered.sort((a, b) => {
-      const aValue = a[sortDescriptor.column];
-      const bValue = b[sortDescriptor.column];
+      const aValue = a[sortDescriptor.column] ?? 0;
+      const bValue = b[sortDescriptor.column] ?? 0;
       
       let cmp = 0;
       if (aValue > bValue) cmp = 1;
@@ -177,7 +177,7 @@ export const AdminOrderList: React.FC<AdminOrderListProps> = ({ allOrders, allUs
                       {order.price.toLocaleString('ru-RU')} ₽
                     </TableCell>
                      <TableCell className="text-right whitespace-nowrap">
-                      {order.cost.toLocaleString('ru-RU')} ₽
+                      {order.cost ? `${order.cost.toLocaleString('ru-RU')} ₽` : '–'}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">

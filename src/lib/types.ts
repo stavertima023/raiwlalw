@@ -50,7 +50,7 @@ export const UserSchema = z.object({
   id: z.string(),
   username: z.string(),
   name: z.string(),
-  password_hash: z.string(),
+  password_hash: z.string().optional(),
   role: RoleEnum,
 });
 

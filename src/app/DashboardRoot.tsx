@@ -48,6 +48,11 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     fetcher
   );
 
+  const { data: users = [], error: usersError } = useSWR<User[]>(
+    initialUser.role === 'Администратор' ? '/api/users' : null, 
+    fetcher
+  );
+
   React.useEffect(() => {
     if (ordersError) {
       toast({ title: 'Ошибка загрузки заказов', description: ordersError.message, variant: 'destructive' });
@@ -58,7 +63,10 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     if (payoutsError) {
       toast({ title: 'Ошибка загрузки выводов', description: payoutsError.message, variant: 'destructive' });
     }
-  }, [ordersError, expensesError, payoutsError, toast]);
+    if (usersError) {
+      toast({ title: 'Ошибка загрузки пользователей', description: usersError.message, variant: 'destructive' });
+    }
+  }, [ordersError, expensesError, payoutsError, usersError, toast]);
 
   const handleAddOrder = async (newOrderData: Omit<Order, 'id' | 'orderDate' | 'seller'>) => {
     try {
@@ -225,18 +233,18 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
         if (initialUser.role === 'Администратор') {
           switch (activeView) {
             case 'admin-orders':
-              return <AdminOrderList allOrders={orders} allUsers={[]} />;
+              return <AdminOrderList allOrders={orders} allUsers={users} />;
             case 'admin-expenses':
               return <ExpensesList 
                         allExpenses={expenses} 
-                        allUsers={[]} 
+                        allUsers={users} 
                         onAddExpense={handleAddExpense}
                         currentUser={initialUser}
                       />;
             case 'admin-payouts':
               return <PayoutsList 
                         allPayouts={payouts} 
-                        allUsers={[]} 
+                        allUsers={users} 
                         onUpdateStatus={handleUpdatePayoutStatus}
                         currentUser={initialUser}
                       />;
@@ -245,7 +253,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
             case 'admin-ai-analytics':
                return <AIAnalytics orders={orders} expenses={expenses} />;
             default:
-              return <AdminOrderList allOrders={orders} allUsers={[]} />;
+              return <AdminOrderList allOrders={orders} allUsers={users} />;
           }
         }
         return null;
