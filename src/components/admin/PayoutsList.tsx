@@ -127,9 +127,10 @@ export const PayoutsList: React.FC<PayoutsListProps> = ({
         </div>
       </CardHeader>
       
-      <CardContent>
-        <div className="overflow-x-auto">
-          <Table>
+      <CardContent className="p-0">
+        <div className="mobile-table-container scrollbar-thin border-t">
+          <div className="overflow-x-auto">
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Дата</TableHead>
@@ -222,6 +223,7 @@ export const PayoutsList: React.FC<PayoutsListProps> = ({
               )}
             </TableBody>
           </Table>
+          </div>
         </div>
       </CardContent>
     </Card>

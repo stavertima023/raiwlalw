@@ -359,9 +359,10 @@ export const OrderTable: React.FC<OrderTableProps> = ({
           )}
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="overflow-x-auto">
-          <Table>
+      <CardContent className="p-0">
+        <div className="mobile-table-container scrollbar-thin border-t">
+          <div className="overflow-x-auto">
+            <Table>
           <TableHeader>
             <TableRow>
               {useLargeLayout && (
@@ -462,7 +463,8 @@ export const OrderTable: React.FC<OrderTableProps> = ({
               </TableRow>
             )}
           </TableBody>
-        </Table>
+          </Table>
+          </div>
         </div>
       </CardContent>
     </Card>
