@@ -37,27 +37,34 @@ export const ExpensesFilters: React.FC<ExpensesFiltersProps> = ({
   onClear,
   allUsers
 }: ExpensesFiltersProps) => {
-  const [category, setCategory] = React.useState<ExpenseCategory | 'all'>(currentFilters.category);
-  const [responsible, setResponsible] = React.useState<string | 'all'>(currentFilters.responsible);
-  const [dateFrom, setDateFrom] = React.useState<string>(currentFilters.dateFrom || '');
-  const [dateTo, setDateTo] = React.useState<string>(currentFilters.dateTo || '');
-
-  React.useEffect(() => {
+  // Use controlled components that update filters immediately
+  const handleCategoryChange = (value: string) => {
     onFilterChange({ 
-      category, 
-      responsible,
-      dateFrom: dateFrom || undefined,
-      dateTo: dateTo || undefined
+      ...currentFilters,
+      category: value as ExpenseCategory | 'all'
     });
-  }, [category, responsible, dateFrom, dateTo, onFilterChange]);
-  
-  const handleClear = () => {
-    setCategory('all');
-    setResponsible('all');
-    setDateFrom('');
-    setDateTo('');
-    onClear();
-  }
+  };
+
+  const handleResponsibleChange = (value: string) => {
+    onFilterChange({ 
+      ...currentFilters,
+      responsible: value
+    });
+  };
+
+  const handleDateFromChange = (value: string) => {
+    onFilterChange({ 
+      ...currentFilters,
+      dateFrom: value || undefined
+    });
+  };
+
+  const handleDateToChange = (value: string) => {
+    onFilterChange({ 
+      ...currentFilters,
+      dateTo: value || undefined
+    });
+  };
 
   return (
     <Card>
@@ -68,8 +75,8 @@ export const ExpensesFilters: React.FC<ExpensesFiltersProps> = ({
             <label className="text-sm font-medium">Дата с</label>
             <Input
               type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
+              value={currentFilters.dateFrom || ''}
+              onChange={(e) => handleDateFromChange(e.target.value)}
               className="w-full"
             />
           </div>
@@ -79,8 +86,8 @@ export const ExpensesFilters: React.FC<ExpensesFiltersProps> = ({
             <label className="text-sm font-medium">Дата по</label>
             <Input
               type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
+              value={currentFilters.dateTo || ''}
+              onChange={(e) => handleDateToChange(e.target.value)}
               className="w-full"
             />
           </div>
@@ -89,8 +96,8 @@ export const ExpensesFilters: React.FC<ExpensesFiltersProps> = ({
           <div className="space-y-2">
             <label className="text-sm font-medium">Категория</label>
             <Select
-              value={category}
-              onValueChange={(value: string) => setCategory(value as ExpenseCategory | 'all')}
+              value={currentFilters.category}
+              onValueChange={handleCategoryChange}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Все категории" />
@@ -110,8 +117,8 @@ export const ExpensesFilters: React.FC<ExpensesFiltersProps> = ({
           <div className="space-y-2">
             <label className="text-sm font-medium">Ответственный</label>
             <Select
-              value={responsible}
-              onValueChange={(value: string) => setResponsible(value)}
+              value={currentFilters.responsible}
+              onValueChange={handleResponsibleChange}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Все пользователи" />
@@ -130,7 +137,7 @@ export const ExpensesFilters: React.FC<ExpensesFiltersProps> = ({
           {/* Clear Filters Button */}
           <div className="space-y-2">
             <label className="text-sm font-medium invisible">Действия</label>
-            <Button variant="outline" onClick={handleClear} className="w-full">
+            <Button variant="outline" onClick={onClear} className="w-full">
               Очистить фильтры
             </Button>
           </div>
