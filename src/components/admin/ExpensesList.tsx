@@ -97,7 +97,7 @@ export const ExpensesList: React.FC<ExpensesListProps> = ({ allExpenses, allUser
             Отслеживайте и управляйте всеми расходами компании.
           </p>
         </div>
-        <AddExpenseForm onSave={onAddExpense} allUsers={[]} currentUser={currentUser} />
+        <AddExpenseForm onSave={onAddExpense} currentUser={currentUser} />
       </div>
 
       <ExpensesFilters

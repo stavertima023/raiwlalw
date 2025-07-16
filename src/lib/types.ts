@@ -59,10 +59,13 @@ export type User = z.infer<typeof UserSchema>;
 
 export const ExpenseCategoryEnum = z.enum([
   'Аренда',
-  'Зарплата',
+  'Зарплата', 
   'Расходники',
   'Маркетинг',
   'Налоги',
+  'Ткань',
+  'Курьер',
+  'Расходники швейки',
   'Другое',
 ]);
 export type ExpenseCategory = z.infer<typeof ExpenseCategoryEnum>;
@@ -72,7 +75,7 @@ export const ExpenseSchema = z.object({
   date: z.date(),
   amount: z.coerce.number().positive('Сумма должна быть положительной'),
   category: ExpenseCategoryEnum,
-  responsible: z.string(), // User's telegramId
+  responsible: z.string(), // User's username
   comment: z.string().optional(),
   receiptPhoto: z.string().url().optional(),
 });

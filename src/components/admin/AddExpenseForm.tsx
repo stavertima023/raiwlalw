@@ -41,8 +41,8 @@ import { ScrollArea } from '../ui/scroll-area';
 type ExpenseFormData = z.infer<typeof ExpenseSchema>;
 
 interface AddExpenseFormProps {
-  onSave: (data: Omit<Expense, 'id' | 'date'>) => void;
-  currentUser: User;
+  onSave: (data: Omit<Expense, 'id' | 'date' | 'responsible'>) => void;
+  currentUser: Omit<User, 'password_hash'>;
 }
 
 export function AddExpenseForm({ onSave, currentUser }: AddExpenseFormProps) {
@@ -55,7 +55,7 @@ export function AddExpenseForm({ onSave, currentUser }: AddExpenseFormProps) {
     defaultValues: {
       amount: '' as any,
       category: undefined,
-      responsible: currentUser.telegramId,
+      responsible: currentUser.username, // Use username instead of telegramId
       comment: '',
       receiptPhoto: undefined,
     },
@@ -66,7 +66,9 @@ export function AddExpenseForm({ onSave, currentUser }: AddExpenseFormProps) {
   const watchedPhoto = watch('receiptPhoto');
 
   const onSubmit = (data: Omit<ExpenseFormData, 'id' | 'date'>) => {
-    onSave(data);
+    // Remove responsible field as it's added by the backend
+    const { responsible, ...expenseData } = data;
+    onSave(expenseData);
     handleClose();
     toast({
       title: 'Расход добавлен',
