@@ -39,18 +39,8 @@ export async function GET() {
 
     // Parse dates before sending to client
     const parsedData = data.map(item => ({
-      id: item.id,
-      orderDate: new Date(item.order_date || item.orderDate),
-      orderNumber: item.order_number || item.orderNumber,
-      shipmentNumber: item.shipment_number || item.shipmentNumber,
-      status: item.status,
-      productType: item.product_type || item.productType,
-      size: item.size,
-      seller: item.seller,
-      price: item.price,
-      cost: item.cost,
-      photos: item.photos || [],
-      comment: item.comment || '',
+      ...item,
+      orderDate: new Date(item.orderDate),
     }));
 
     return NextResponse.json(parsedData);
@@ -179,13 +169,13 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    // Step 6.5: Convert camelCase to snake_case for Supabase compatibility
+    // Step 6.5: Format data for Supabase according to actual schema with quoted camelCase
     const supabaseOrderData = {
-      order_date: validatedOrder.orderDate,
-      order_number: validatedOrder.orderNumber,
-      shipment_number: validatedOrder.shipmentNumber,
+      "orderDate": validatedOrder.orderDate,
+      "orderNumber": validatedOrder.orderNumber,
+      "shipmentNumber": validatedOrder.shipmentNumber,
       status: validatedOrder.status,
-      product_type: validatedOrder.productType,
+      "productType": validatedOrder.productType,
       size: validatedOrder.size,
       seller: validatedOrder.seller,
       price: validatedOrder.price,
@@ -240,20 +230,10 @@ export async function POST(request: Request) {
 
       console.log('Order created successfully:', data);
       
-      // Convert response data back to camelCase for frontend
+      // Convert orderDate to proper Date object for frontend
       const responseData = {
-        id: data.id,
-        orderDate: new Date(data.order_date || data.orderDate),
-        orderNumber: data.order_number || data.orderNumber,
-        shipmentNumber: data.shipment_number || data.shipmentNumber,
-        status: data.status,
-        productType: data.product_type || data.productType,
-        size: data.size,
-        seller: data.seller,
-        price: data.price,
-        cost: data.cost,
-        photos: data.photos || [],
-        comment: data.comment || '',
+        ...data,
+        orderDate: new Date(data.orderDate),
       };
       
       return NextResponse.json(responseData, { status: 201 });

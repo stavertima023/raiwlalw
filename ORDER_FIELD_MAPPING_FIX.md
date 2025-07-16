@@ -2,37 +2,43 @@
 
 ## Проблема
 
-**Ошибка Supabase**: `record "new" has no field "order_date"`
+**Ошибка Supabase PGRST204**: `Could not find the 'order_date' column of 'orders' in the schema cache`
 
 ## Причина
 
-Несоответствие форматов названий полей между фронтендом (camelCase) и базой данных Supabase (snake_case):
+Неправильное понимание схемы базы данных. Изначально думали, что Supabase использует snake_case, но на самом деле:
 
-### Фронтенд использует camelCase:
-- `orderDate`
-- `orderNumber` 
-- `shipmentNumber`
-- `productType`
+### Реальная структура таблицы в Supabase:
+```sql
+CREATE TABLE public.orders (
+  id UUID NOT NULL DEFAULT gen_random_uuid(),
+  "orderDate" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  "orderNumber" TEXT NOT NULL,
+  "shipmentNumber" TEXT NOT NULL,
+  status public.order_status NOT NULL,
+  "productType" public.product_type NOT NULL,
+  size public.size NOT NULL,
+  seller TEXT NOT NULL,
+  price NUMERIC NOT NULL,
+  cost NUMERIC NULL,
+  photos TEXT[] DEFAULT '{}',
+  comment TEXT NULL
+);
+```
 
-### База данных Supabase ожидает snake_case:
-- `order_date`
-- `order_number`
-- `shipment_number`
-- `product_type`
+**Поля с кавычками используют camelCase**, а не snake_case!
 
 ## Исправление
 
-### 1. Преобразование данных при отправке в БД
-
-В API `POST /api/orders` добавлено преобразование camelCase → snake_case:
+### Отправка данных в БД - используем quoted camelCase:
 
 ```javascript
 const supabaseOrderData = {
-  order_date: validatedOrder.orderDate,
-  order_number: validatedOrder.orderNumber,
-  shipment_number: validatedOrder.shipmentNumber,
+  "orderDate": validatedOrder.orderDate,
+  "orderNumber": validatedOrder.orderNumber,
+  "shipmentNumber": validatedOrder.shipmentNumber,
   status: validatedOrder.status,
-  product_type: validatedOrder.productType,
+  "productType": validatedOrder.productType,
   size: validatedOrder.size,
   seller: validatedOrder.seller,
   price: validatedOrder.price,
@@ -42,33 +48,24 @@ const supabaseOrderData = {
 };
 ```
 
-### 2. Преобразование данных при получении из БД
-
-В API `GET /api/orders` и `POST /api/orders` (ответ) добавлено преобразование snake_case → camelCase:
+### Получение данных из БД - данные уже в camelCase:
 
 ```javascript
 const parsedData = data.map(item => ({
-  id: item.id,
-  orderDate: new Date(item.order_date || item.orderDate),
-  orderNumber: item.order_number || item.orderNumber,
-  shipmentNumber: item.shipment_number || item.shipmentNumber,
-  status: item.status,
-  productType: item.product_type || item.productType,
-  size: item.size,
-  seller: item.seller,
-  price: item.price,
-  cost: item.cost,
-  photos: item.photos || [],
-  comment: item.comment || '',
+  ...item,
+  orderDate: new Date(item.orderDate),
 }));
 ```
+
+## Ключевые выводы
+
+1. **Поля в кавычках** в PostgreSQL/Supabase сохраняют регистр букв
+2. **Поля без кавычек** автоматически преобразуются в lowercase
+3. **Наша схема использует quoted camelCase**, поэтому нужно отправлять данные именно в таком формате
+4. **Нет необходимости в преобразовании** между snake_case и camelCase
 
 ## Тестирование
 
 1. Попробуйте создать новый заказ
-2. Проверьте логи в консоли браузера - должны отобразиться детальные логи процесса
-3. Убедитесь, что заказ создается без ошибок
-
-## Совместимость
-
-Исправление обеспечивает совместимость с обоими форматами полей (snake_case и camelCase), используя оператор `||` для fallback значений. 
+2. Проверьте логи в консоли браузера
+3. Заказ должен создаваться без ошибок PGRST204 
