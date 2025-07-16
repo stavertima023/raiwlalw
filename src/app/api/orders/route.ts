@@ -13,13 +13,24 @@ export async function GET() {
       return NextResponse.json({ message: 'Сервис недоступен' }, { status: 503 });
     }
     
-    const session = await getSession();
-    console.log('Session retrieved:', { isLoggedIn: session.isLoggedIn, hasUser: !!session.user });
+    // Get session with better error handling
+    let session;
+    try {
+      session = await getSession();
+      console.log('Session retrieved:', { 
+        isLoggedIn: session.isLoggedIn, 
+        hasUser: !!session.user,
+        userRole: session.user?.role || 'undefined'
+      });
+    } catch (sessionError) {
+      console.error('Session error:', sessionError);
+      return NextResponse.json({ message: 'Ошибка сессии' }, { status: 401 });
+    }
     
     const { user } = session;
 
     if (!user || !session.isLoggedIn) {
-      console.log('User not authenticated');
+      console.log('User not authenticated - session:', session);
       return NextResponse.json({ message: 'Пользователь не авторизован' }, { status: 401 });
     }
 

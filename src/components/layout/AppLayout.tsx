@@ -43,9 +43,10 @@ export function AppLayout({ children, currentUser }: AppLayoutProps) {
 
   React.useEffect(() => {
     if (navItems.length > 0 && !activeView) {
+        console.log('Setting initial activeView for', currentUser?.role, 'to:', navItems[0].id);
         setActiveView(navItems[0].id);
   }
-  }, [navItems, activeView]);
+  }, [navItems, activeView, currentUser?.role]);
 
 
   return (

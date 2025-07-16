@@ -2,8 +2,14 @@ import { getIronSession } from 'iron-session';
 import { cookies } from 'next/headers';
 import { User } from './types';
 
+const sessionSecret = process.env.SESSION_SECRET;
+
+if (!sessionSecret) {
+  throw new Error('SESSION_SECRET environment variable is required');
+}
+
 export const sessionOptions = {
-  password: process.env.SESSION_SECRET as string,
+  password: sessionSecret,
   cookieName: 'webapp-tg-session',
   cookieOptions: {
     secure: process.env.NODE_ENV === 'production',
@@ -17,6 +23,11 @@ export type SessionData = {
 }
 
 export const getSession = () => {
-  // @ts-ignore - TODO: remove when iron-session has better Next.js App Router support
-  return getIronSession<SessionData>(cookies(), sessionOptions);
+  try {
+    // @ts-ignore - TODO: remove when iron-session has better Next.js App Router support
+    return getIronSession<SessionData>(cookies(), sessionOptions);
+  } catch (error) {
+    console.error('Error getting session:', error);
+    throw error;
+  }
 } 
