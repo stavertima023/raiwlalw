@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import useSWR, { mutate } from 'swr';
-import { Order, OrderStatus, User, Expense } from '@/lib/types';
+import { Order, OrderStatus, User, Expense, Payout, PayoutStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Dashboard } from '@/components/dashboard/Dashboard';
@@ -10,6 +10,7 @@ import { PrinterDashboard } from '@/components/printer/PrinterDashboard';
 import { AdminOrderList } from '@/components/admin/AdminOrderList';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ExpensesList } from '@/components/admin/ExpensesList';
+import { PayoutsList } from '@/components/admin/PayoutsList';
 import AIAnalytics from '@/components/admin/AIAnalytics';
 
 const fetcher = (url: string) => fetch(url).then(res => {
@@ -42,6 +43,11 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     fetcher
   );
 
+  const { data: payouts = [], error: payoutsError } = useSWR<Payout[]>(
+    initialUser.role === 'Администратор' ? '/api/payouts' : null, 
+    fetcher
+  );
+
   React.useEffect(() => {
     if (ordersError) {
       toast({ title: 'Ошибка загрузки заказов', description: ordersError.message, variant: 'destructive' });
@@ -49,7 +55,10 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     if (expensesError) {
       toast({ title: 'Ошибка загрузки расходов', description: expensesError.message, variant: 'destructive' });
     }
-  }, [ordersError, expensesError, toast]);
+    if (payoutsError) {
+      toast({ title: 'Ошибка загрузки выводов', description: payoutsError.message, variant: 'destructive' });
+    }
+  }, [ordersError, expensesError, payoutsError, toast]);
 
   const handleAddOrder = async (newOrderData: Omit<Order, 'id' | 'orderDate' | 'seller'>) => {
     try {
@@ -125,6 +134,24 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       toast({ title: 'Расход успешно добавлен' });
     } catch (error: any) {
       toast({ title: 'Ошибка добавления расхода', description: error.message, variant: 'destructive' });
+    }
+  }
+
+  const handleUpdatePayoutStatus = async (payoutId: string, newStatus: PayoutStatus) => {
+    try {
+      const response = await fetch(`/api/payouts/${payoutId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || 'Server error');
+      }
+      mutate('/api/payouts');
+      toast({ title: 'Статус вывода обновлен' });
+    } catch (error: any) {
+      toast({ title: 'Ошибка обновления статуса', description: error.message, variant: 'destructive' });
     }
   }
 
@@ -204,6 +231,13 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
                         allExpenses={expenses} 
                         allUsers={[]} 
                         onAddExpense={handleAddExpense}
+                        currentUser={initialUser}
+                      />;
+            case 'admin-payouts':
+              return <PayoutsList 
+                        allPayouts={payouts} 
+                        allUsers={[]} 
+                        onUpdateStatus={handleUpdatePayoutStatus}
                         currentUser={initialUser}
                       />;
             case 'admin-analytics':

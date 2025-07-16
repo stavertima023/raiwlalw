@@ -27,6 +27,7 @@ export function AppLayout({ children, currentUser }: AppLayoutProps) {
         return [
           { id: 'admin-orders', label: 'Заказы' },
           { id: 'admin-expenses', label: 'Расходы' },
+          { id: 'admin-payouts', label: 'Выводы' },
           { id: 'admin-analytics', label: 'Аналитика' },
           { id: 'admin-ai-analytics', label: 'AI Аналитика' },
         ];

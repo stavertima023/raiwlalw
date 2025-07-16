@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { supabaseAdmin } from '@/lib/supabaseClient';
-import { ExpenseSchema } from '@/lib/types';
+import { PayoutSchema } from '@/lib/types';
 
 export async function GET() {
   try {
@@ -16,13 +16,13 @@ export async function GET() {
       return NextResponse.json({ message: 'Пользователь не авторизован' }, { status: 401 });
     }
 
-    // Only admins can view expenses
+    // Only admins can view payouts
     if (user.role !== 'Администратор') {
       return NextResponse.json({ message: 'Доступ запрещен' }, { status: 403 });
     }
 
     const { data, error } = await supabaseAdmin
-      .from('expenses')
+      .from('payouts')
       .select('*')
       .order('date', { ascending: false });
 
@@ -38,9 +38,9 @@ export async function GET() {
 
     return NextResponse.json(parsedData);
   } catch (error: any) {
-    console.error('GET /api/expenses error:', error);
+    console.error('GET /api/payouts error:', error);
     return NextResponse.json({ 
-      message: 'Ошибка загрузки расходов', 
+      message: 'Ошибка загрузки выводов', 
       error: error.message 
     }, { status: 500 });
   }
@@ -59,26 +59,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Пользователь не авторизован' }, { status: 401 });
     }
 
-    // Only admins can add expenses
+    // Only admins can create payouts
     if (user.role !== 'Администратор') {
       return NextResponse.json({ message: 'Доступ запрещен' }, { status: 403 });
     }
 
     const json = await request.json();
     
-    // Add responsible user and current date
-    const expenseData = {
+    // Add processed by user and current date
+    const payoutData = {
       ...json,
-      responsible: user.username,
+      processedBy: user.username,
       date: new Date().toISOString(),
+      status: 'pending',
     };
     
     // Validate data with Zod schema
-    const validatedExpense = ExpenseSchema.omit({ id: true }).parse(expenseData);
+    const validatedPayout = PayoutSchema.omit({ id: true }).parse(payoutData);
 
     const { data, error } = await supabaseAdmin
-      .from('expenses')
-      .insert(validatedExpense)
+      .from('payouts')
+      .insert(validatedPayout)
       .select()
       .single();
 
@@ -95,9 +96,9 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
     
-    console.error('POST /api/expenses error:', error);
+    console.error('POST /api/payouts error:', error);
     return NextResponse.json({ 
-      message: 'Ошибка добавления расхода', 
+      message: 'Ошибка создания вывода', 
       error: error.message 
     }, { status: 500 });
   }

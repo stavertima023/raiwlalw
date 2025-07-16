@@ -79,6 +79,23 @@ export const ExpenseSchema = z.object({
 
 export type Expense = z.infer<typeof ExpenseSchema>;
 
+export const PayoutStatusEnum = z.enum(['pending', 'processing', 'completed', 'cancelled']);
+export type PayoutStatus = z.infer<typeof PayoutStatusEnum>;
+
+export const PayoutSchema = z.object({
+  id: z.string().optional(),
+  date: z.union([z.date(), z.string().transform((str) => new Date(str))]),
+  seller: z.string().min(1, 'Продавец обязателен'),
+  amount: z.coerce.number().positive('Сумма должна быть положительной'),
+  orderNumbers: z.array(z.string()).min(1, 'Должен быть хотя бы один заказ'),
+  orderCount: z.number().int().positive('Количество заказов должно быть положительным'),
+  status: PayoutStatusEnum,
+  processedBy: z.string().min(1, 'Ответственный обязателен'),
+  comment: z.string().optional(),
+});
+
+export type Payout = z.infer<typeof PayoutSchema>;
+
 export type SortDirection = 'asc' | 'desc';
 
 export interface SortDescriptor {

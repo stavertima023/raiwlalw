@@ -44,18 +44,41 @@ export default function AIAnalytics({ orders, expenses }: AIAnalyticsProps) {
     setIsLoading(true);
     setAnalysisResult(null);
     try {
-      const result = await analyzeData({
-        query: currentQuery,
-        orders,
-        expenses,
+      const response = await fetch('/api/ai-analytics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: currentQuery }),
       });
+      
+      if (!response.ok) {
+        throw new Error('Ошибка получения анализа');
+      }
+      
+      const data = await response.json();
+      
+      // Convert OpenAI response to our format
+      const result: AIAnalyticsOutput = {
+        summary: data.analysis,
+        kpiCards: [
+          { title: 'Заказов', value: data.dataPoints.ordersCount.toString(), description: 'Всего заказов' },
+          { title: 'Расходов', value: data.dataPoints.expensesCount.toString(), description: 'Всего расходов' },
+          { title: 'Доходы', value: `${data.dataPoints.totalRevenue?.toLocaleString('ru-RU')} ₽`, description: 'Общий доход' },
+          { title: 'Расходы', value: `${data.dataPoints.totalExpenses?.toLocaleString('ru-RU')} ₽`, description: 'Общие расходы' },
+        ],
+        chartData: [],
+        chartType: 'bar',
+        chartKeys: [],
+        tableData: [],
+        tableColumns: [],
+      };
+      
       setAnalysisResult(result);
-    } catch (error) {
+    } catch (error: any) {
       console.error('AI analysis failed:', error);
       toast({
         variant: 'destructive',
         title: 'Ошибка анализа',
-        description: 'Не удалось получить ответ от AI. Попробуйте снова.',
+        description: error.message || 'Не удалось получить ответ от AI. Попробуйте снова.',
       });
     } finally {
       setIsLoading(false);
@@ -117,7 +140,7 @@ export default function AIAnalytics({ orders, expenses }: AIAnalyticsProps) {
         case 'pie':
              return (
                 <PieChart>
-                    <Pie data={analysisResult.chartData} dataKey={analysisResult.chartKeys?.[0]} nameKey="name" cx="50%" cy="50%" outerRadius={100} fill="#8884d8" label>
+                    <Pie data={analysisResult.chartData} dataKey={analysisResult.chartKeys?.[0] || 'value'} nameKey="name" cx="50%" cy="50%" outerRadius={100} fill="#8884d8" label>
                          {analysisResult.chartData.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
                         ))}
@@ -219,7 +242,7 @@ export default function AIAnalytics({ orders, expenses }: AIAnalyticsProps) {
                     <TabsContent value="chart">
                        {analysisResult.chartData && analysisResult.chartData.length > 0 ? (
                             <ResponsiveContainer width="100%" height={400}>
-                                {renderChart()}
+                                {renderChart() || <div>Нет данных для отображения</div>}
                             </ResponsiveContainer>
                        ): (
                            <p className="text-muted-foreground text-center">Для этого запроса нет данных для визуализации.</p>
