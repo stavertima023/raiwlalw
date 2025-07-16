@@ -138,16 +138,27 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       });
       
        if (!response.ok) {
-        const err = await response.json();
-        console.error('API Error:', err); // Debug log
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch (jsonError) {
+          // If response is not JSON, get text
+          const errorText = await response.text();
+          console.error('Non-JSON API Error (Status:', response.status, '):', errorText);
+          throw new Error(`Ошибка сервера (${response.status}): ${errorText || 'Неизвестная ошибка'}`);
+        }
+        
+        console.error('API Error (Status:', response.status, '):', errorData);
         
         // Show detailed validation errors if available
-        if (err.errors && Array.isArray(err.errors)) {
-          const errorMessages = err.errors.map((e: any) => `${e.path?.join('.')}: ${e.message}`).join(', ');
+        if (errorData.errors && Array.isArray(errorData.errors)) {
+          const errorMessages = errorData.errors.map((e: any) => `${e.path?.join('.')}: ${e.message}`).join(', ');
           throw new Error(`Ошибка валидации: ${errorMessages}`);
         }
         
-        throw new Error(err.message || 'Ошибка сервера');
+        // Handle different error types
+        const errorMessage = errorData.message || errorData.error || 'Неизвестная ошибка сервера';
+        throw new Error(`Ошибка сервера (${response.status}): ${errorMessage}`);
       }
       
       mutate('/api/expenses');
@@ -156,7 +167,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       console.error('Expense creation error:', error); // Debug log
       toast({ 
         title: 'Ошибка добавления расхода', 
-        description: error.message, 
+        description: error.message || 'Произошла неизвестная ошибка', 
         variant: 'destructive' 
       });
     }

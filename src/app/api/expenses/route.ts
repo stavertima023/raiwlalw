@@ -65,6 +65,7 @@ export async function POST(request: Request) {
     }
 
     const json = await request.json();
+    console.log('Received expense data:', json);
     
     // Add responsible user and current date
     const expenseData = {
@@ -73,8 +74,11 @@ export async function POST(request: Request) {
       date: new Date().toISOString(),
     };
     
+    console.log('Prepared expense data for validation:', expenseData);
+    
     // Validate data with Zod schema
     const validatedExpense = ExpenseSchema.omit({ id: true }).parse(expenseData);
+    console.log('Validated expense data:', validatedExpense);
 
     const { data, error } = await supabaseAdmin
       .from('expenses')
@@ -83,11 +87,22 @@ export async function POST(request: Request) {
       .single();
 
     if (error) {
+      console.error('Supabase insert error:', error);
       throw error;
     }
 
     return NextResponse.json(data, { status: 201 });
   } catch (error: any) {
+    // Enhanced error logging
+    console.error('POST /api/expenses error details:', {
+      name: error.name,
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+      stack: error.stack
+    });
+    
     if (error.name === 'ZodError') {
       return NextResponse.json({ 
         message: 'Ошибка валидации данных', 
@@ -95,10 +110,37 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
     
-    console.error('POST /api/expenses error:', error);
+    // Handle Supabase/PostgreSQL specific errors
+    if (error.code) {
+      let errorMessage = 'Ошибка базы данных';
+      
+      switch (error.code) {
+        case '23505': // unique_violation
+          errorMessage = 'Запись с такими данными уже существует';
+          break;
+        case '23502': // not_null_violation
+          errorMessage = `Обязательное поле не заполнено: ${error.column}`;
+          break;
+        case '23514': // check_violation
+          errorMessage = 'Данные не прошли проверку ограничений';
+          break;
+        case '42703': // undefined_column
+          errorMessage = `Неизвестная колонка в базе данных: ${error.message}`;
+          break;
+        default:
+          errorMessage = `Ошибка базы данных (${error.code}): ${error.message}`;
+      }
+      
+      return NextResponse.json({ 
+        message: errorMessage,
+        error: error.message,
+        code: error.code
+      }, { status: 500 });
+    }
+    
     return NextResponse.json({ 
       message: 'Ошибка добавления расхода', 
-      error: error.message 
+      error: error.message || 'Неизвестная ошибка сервера'
     }, { status: 500 });
   }
 } 
