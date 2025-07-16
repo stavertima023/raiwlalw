@@ -34,8 +34,6 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     return null; // or a loading spinner
   }
 
-  console.log('DashboardRoot - User role:', initialUser.role); // Debug log
-
   const { toast } = useToast();
   
   const { data: orders = [], error: ordersError } = useSWR<Order[]>('/api/orders', fetcher);
@@ -50,21 +48,15 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     fetcher
   );
 
-  // Debug errors
   React.useEffect(() => {
     if (ordersError) {
-      console.error('Orders error:', ordersError);
-      toast({ 
-        title: 'Ошибка загрузки заказов', 
-        description: ordersError.message || 'Произошла ошибка при загрузке заказов',
-        variant: 'destructive' 
-      });
+      toast({ title: 'Ошибка загрузки заказов', description: ordersError.message, variant: 'destructive' });
     }
     if (expensesError) {
-      console.error('Expenses error:', expensesError);
+      toast({ title: 'Ошибка загрузки расходов', description: expensesError.message, variant: 'destructive' });
     }
     if (payoutsError) {
-      console.error('Payouts error:', payoutsError);
+      toast({ title: 'Ошибка загрузки выводов', description: payoutsError.message, variant: 'destructive' });
     }
   }, [ordersError, expensesError, payoutsError, toast]);
 
@@ -231,7 +223,6 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
           )
         }
         if (initialUser.role === 'Администратор') {
-          console.log('Admin activeView:', activeView); // Debug log
           switch (activeView) {
             case 'admin-orders':
               return <AdminOrderList allOrders={orders} allUsers={[]} />;
@@ -240,14 +231,14 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
                         allExpenses={expenses} 
                         allUsers={[]} 
                         onAddExpense={handleAddExpense}
-                        currentUser={initialUser as any}
+                        currentUser={initialUser}
                       />;
             case 'admin-payouts':
               return <PayoutsList 
                         allPayouts={payouts} 
                         allUsers={[]} 
                         onUpdateStatus={handleUpdatePayoutStatus}
-                        currentUser={initialUser as any}
+                        currentUser={initialUser}
                       />;
             case 'admin-analytics':
               return <PlaceholderComponent title="Аналитика" description="Интерактивные дашборды и графики." />;
