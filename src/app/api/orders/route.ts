@@ -82,16 +82,28 @@ export async function POST(request: Request) {
     const json = await request.json();
     console.log('Received order data:', json);
     
-    // Automatically set the seller and orderDate
+    // Automatically set the seller, orderDate, and status
     const newOrderData = {
       ...json,
       seller: user.username,
       orderDate: new Date().toISOString(), // Use ISO string for better database compatibility
+      status: 'Добавлен', // Set default status for new orders
+      cost: json.cost || null, // Ensure cost is null if not provided
+      photos: json.photos || [], // Ensure photos is an array
+      comment: json.comment || '', // Ensure comment is a string
     };
     
     console.log('Order data with seller and date:', newOrderData);
     
     // Validate data with Zod schema before inserting
+    try {
+      const validatedOrder = OrderSchema.omit({ id: true }).parse(newOrderData);
+      console.log('Validated order successfully:', validatedOrder);
+    } catch (validationError) {
+      console.error('Validation failed:', validationError);
+      throw validationError;
+    }
+    
     const validatedOrder = OrderSchema.omit({ id: true }).parse(newOrderData);
     
     console.log('Validated order:', validatedOrder);

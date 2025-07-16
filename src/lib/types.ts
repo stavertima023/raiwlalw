@@ -36,9 +36,9 @@ export const OrderSchema = z.object({
   size: SizeEnum,
   seller: z.string().min(1, 'Продавец обязателен'), 
   price: z.coerce.number().positive('Цена должна быть положительной'),
-  cost: z.coerce.number().positive('Себестоимость должна быть положительной').optional(),
+  cost: z.coerce.number().positive('Себестоимость должна быть положительной').nullable().optional(),
   photos: z.array(z.string()).max(3).optional().default([]),
-  comment: z.string().optional(),
+  comment: z.string().optional().default(''),
 });
 
 export type Order = z.infer<typeof OrderSchema>;
