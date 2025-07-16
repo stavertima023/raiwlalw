@@ -129,19 +129,36 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
   
   const handleAddExpense = async (newExpenseData: Omit<Expense, 'id' | 'date' | 'responsible'>) => {
     try {
+      console.log('Sending expense data:', newExpenseData); // Debug log
+      
       const response = await fetch('/api/expenses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newExpenseData),
       });
+      
        if (!response.ok) {
         const err = await response.json();
-        throw new Error(err.message || 'Server error');
+        console.error('API Error:', err); // Debug log
+        
+        // Show detailed validation errors if available
+        if (err.errors && Array.isArray(err.errors)) {
+          const errorMessages = err.errors.map((e: any) => `${e.path?.join('.')}: ${e.message}`).join(', ');
+          throw new Error(`Ошибка валидации: ${errorMessages}`);
+        }
+        
+        throw new Error(err.message || 'Ошибка сервера');
       }
+      
       mutate('/api/expenses');
       toast({ title: 'Расход успешно добавлен' });
     } catch (error: any) {
-      toast({ title: 'Ошибка добавления расхода', description: error.message, variant: 'destructive' });
+      console.error('Expense creation error:', error); // Debug log
+      toast({ 
+        title: 'Ошибка добавления расхода', 
+        description: error.message, 
+        variant: 'destructive' 
+      });
     }
   }
 

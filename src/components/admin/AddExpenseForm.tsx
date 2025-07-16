@@ -68,7 +68,16 @@ export function AddExpenseForm({ onSave, currentUser }: AddExpenseFormProps) {
   const onSubmit = (data: Omit<ExpenseFormData, 'id' | 'date'>) => {
     // Remove responsible field as it's added by the backend
     const { responsible, ...expenseData } = data;
-    onSave(expenseData);
+    
+    // Clean up the data - remove empty strings and undefined values
+    const cleanedData = Object.fromEntries(
+      Object.entries(expenseData).filter(([key, value]) => {
+        // Keep all values except empty strings and undefined
+        return value !== '' && value !== undefined && value !== null;
+      })
+    );
+    
+    onSave(cleanedData);
     handleClose();
     toast({
       title: 'Расход добавлен',
