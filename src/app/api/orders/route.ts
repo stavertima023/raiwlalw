@@ -51,109 +51,183 @@ export async function POST(request: Request) {
   try {
     console.log('POST /api/orders - Starting...');
     
-    // Check environment variables first
+    // Step 1: Environment Check
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
       console.error('Missing Supabase environment variables');
-      return NextResponse.json({ message: 'Ошибка конфигурации сервера' }, { status: 500 });
+      return NextResponse.json({ 
+        message: 'Ошибка конфигурации сервера',
+        debug: 'Missing SUPABASE environment variables'
+      }, { status: 500 });
     }
     
-    // Check session secret
     if (!process.env.SESSION_SECRET) {
       console.error('Missing SESSION_SECRET');
-      return NextResponse.json({ message: 'Ошибка конфигурации сессии' }, { status: 500 });
+      return NextResponse.json({ 
+        message: 'Ошибка конфигурации сессии',
+        debug: 'Missing SESSION_SECRET'
+      }, { status: 500 });
     }
 
-    // Check supabaseAdmin availability
+    // Step 2: Supabase Connection Check
     if (!supabaseAdmin) {
       console.error('supabaseAdmin not available');
-      return NextResponse.json({ message: 'Сервис недоступен' }, { status: 503 });
+      return NextResponse.json({ 
+        message: 'Сервис недоступен',
+        debug: 'supabaseAdmin not initialized'
+      }, { status: 503 });
     }
 
-    const session = await getSession();
-    console.log('Session retrieved:', { isLoggedIn: session.isLoggedIn, hasUser: !!session.user });
+    // Step 3: Session Check
+    let session;
+    try {
+      session = await getSession();
+      console.log('Session check result:', { 
+        isLoggedIn: session.isLoggedIn, 
+        hasUser: !!session.user,
+        username: session.user?.username,
+        role: session.user?.role
+      });
+    } catch (sessionError) {
+      console.error('Session error:', sessionError);
+      return NextResponse.json({ 
+        message: 'Ошибка авторизации',
+        debug: 'Session retrieval failed',
+        error: (sessionError as Error).message
+      }, { status: 401 });
+    }
     
     const { user } = session;
 
     if (!user || !session.isLoggedIn) {
       console.log('User not authenticated');
-      return NextResponse.json({ message: 'Пользователь не авторизован' }, { status: 401 });
+      return NextResponse.json({ 
+        message: 'Пользователь не авторизован',
+        debug: 'No user or not logged in'
+      }, { status: 401 });
     }
 
-    const json = await request.json();
-    console.log('Received order data:', json);
+    // Step 4: Parse Request Body
+    let json;
+    try {
+      json = await request.json();
+      console.log('Received order data:', json);
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      return NextResponse.json({ 
+        message: 'Неверный формат данных',
+        debug: 'Failed to parse JSON request body',
+        error: (parseError as Error).message
+      }, { status: 400 });
+    }
     
-    // Automatically set the seller, orderDate, and status
+    // Step 5: Data Preparation
     const newOrderData = {
       ...json,
       seller: user.username,
-      orderDate: new Date().toISOString(), // Use ISO string for better database compatibility
-      status: 'Добавлен', // Set default status for new orders
-      cost: json.cost || null, // Ensure cost is null if not provided
-      photos: json.photos || [], // Ensure photos is an array
-      comment: json.comment || '', // Ensure comment is a string
+      orderDate: new Date().toISOString(),
+      status: 'Добавлен',
+      cost: json.cost || null,
+      photos: Array.isArray(json.photos) ? json.photos : [],
+      comment: json.comment || '',
     };
     
-    console.log('Order data with seller and date:', newOrderData);
+    console.log('Prepared order data:', newOrderData);
     
-    // Validate data with Zod schema before inserting
+    // Step 6: Data Validation
+    let validatedOrder;
     try {
-      const validatedOrder = OrderSchema.omit({ id: true }).parse(newOrderData);
-      console.log('Validated order successfully:', validatedOrder);
-    } catch (validationError) {
+      validatedOrder = OrderSchema.omit({ id: true }).parse(newOrderData);
+      console.log('Validation successful:', validatedOrder);
+    } catch (validationError: any) {
       console.error('Validation failed:', validationError);
-      throw validationError;
-    }
-    
-    const validatedOrder = OrderSchema.omit({ id: true }).parse(newOrderData);
-    
-    console.log('Validated order:', validatedOrder);
-
-    // Test Supabase connection
-    const { data: testData, error: testError } = await supabaseAdmin.from('orders').select('count').limit(1);
-    if (testError) {
-      console.error('Supabase connection test failed:', testError);
+      
+      // Format Zod errors nicely
+      if (validationError.errors) {
+        const errorDetails = validationError.errors.map((e: any) => ({
+          field: e.path.join('.'),
+          message: e.message,
+          code: e.code,
+          received: e.received
+        }));
+        
+        return NextResponse.json({ 
+          message: 'Ошибка валидации данных',
+          debug: 'Zod validation failed',
+          errors: errorDetails,
+          originalData: newOrderData
+        }, { status: 400 });
+      }
+      
       return NextResponse.json({ 
-        message: 'Ошибка подключения к базе данных', 
-        error: testError.message 
+        message: 'Ошибка валидации данных',
+        debug: 'Unknown validation error',
+        error: validationError.message,
+        originalData: newOrderData
+      }, { status: 400 });
+    }
+
+    // Step 7: Database Connection Test
+    try {
+      const { error: testError } = await supabaseAdmin.from('orders').select('count').limit(1);
+      if (testError) {
+        console.error('Supabase connection test failed:', testError);
+        return NextResponse.json({ 
+          message: 'Ошибка подключения к базе данных',
+          debug: 'Supabase connection test failed',
+          error: testError.message,
+          supabaseError: testError
+        }, { status: 500 });
+      }
+    } catch (testError) {
+      console.error('Supabase connection test exception:', testError);
+      return NextResponse.json({ 
+        message: 'Ошибка подключения к базе данных',
+        debug: 'Supabase connection test threw exception',
+        error: (testError as Error).message
       }, { status: 500 });
     }
 
-    const { data, error } = await supabaseAdmin.from('orders').insert(validatedOrder).select().single();
+    // Step 8: Database Insert
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('orders')
+        .insert(validatedOrder)
+        .select()
+        .single();
 
-    if (error) {
-      console.error('Supabase insert error:', error);
-      throw error;
+      if (error) {
+        console.error('Supabase insert error:', error);
+        return NextResponse.json({ 
+          message: 'Ошибка сохранения в базе данных',
+          debug: 'Supabase insert failed',
+          error: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+          supabaseError: error
+        }, { status: 500 });
+      }
+
+      console.log('Order created successfully:', data);
+      return NextResponse.json(data, { status: 201 });
+
+    } catch (insertError) {
+      console.error('Database insert exception:', insertError);
+      return NextResponse.json({ 
+        message: 'Ошибка сохранения заказа',
+        debug: 'Database insert threw exception',
+        error: (insertError as Error).message
+      }, { status: 500 });
     }
-
-    console.log('Order created successfully:', data);
-    return NextResponse.json(data, { status: 201 });
 
   } catch (error: any) {
-    console.error('POST /api/orders - Full error object:', error);
-    
-    // Handle Zod validation errors
-    if (error.name === 'ZodError') {
-       console.error('Zod validation errors:', error.errors);
-       return NextResponse.json({ 
-         message: 'Ошибка валидации данных', 
-         errors: error.errors
-       }, { status: 400 });
-    }
-    
-    // Handle Supabase errors specifically
-    if (error.code) {
-      console.error('Supabase error details:', { code: error.code, message: error.message, details: error.details });
-      return NextResponse.json({ 
-        message: 'Ошибка базы данных', 
-        error: error.message,
-        code: error.code,
-        details: error.details
-      }, { status: 500 });
-    }
+    console.error('POST /api/orders - Unexpected error:', error);
     
     return NextResponse.json({ 
-      message: 'Ошибка добавления заказа', 
-      error: error.message || 'Unknown error'
+      message: 'Неожиданная ошибка сервера',
+      debug: 'Unexpected server error',
+      error: error.message || 'Unknown error',
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     }, { status: 500 });
   }
 } 

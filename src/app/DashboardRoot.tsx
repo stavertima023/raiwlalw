@@ -71,40 +71,72 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
 
   const handleAddOrder = async (newOrderData: Omit<Order, 'id' | 'orderDate' | 'seller'>) => {
     try {
+      console.log('Frontend: Sending order data:', newOrderData);
+      
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newOrderData),
       });
       
-      const responseData = await response.json();
+      console.log('Frontend: Response status:', response.status);
+      console.log('Frontend: Response headers:', Object.fromEntries(response.headers.entries()));
+      
+      // Always try to get response data
+      let responseData;
+      try {
+        responseData = await response.json();
+        console.log('Frontend: Response data:', responseData);
+      } catch (jsonError) {
+        console.error('Frontend: Failed to parse response JSON:', jsonError);
+        const responseText = await response.text();
+        console.error('Frontend: Response text:', responseText);
+        throw new Error(`Сервер вернул неверный формат данных (${response.status}): ${responseText}`);
+      }
       
       if (!response.ok) {
-        console.error('Order creation failed:', responseData);
+        console.error('Frontend: Order creation failed with status:', response.status);
+        console.error('Frontend: Error response:', responseData);
         
-        // Build detailed error message
-        let errorMessage = responseData.message || 'Произошла ошибка';
+        // Build detailed error message based on response
+        let errorMessage = responseData.message || 'Произошла ошибка при создании заказа';
         
-        if (responseData.errors) {
+        // Add debug info in development
+        if (process.env.NODE_ENV === 'development' && responseData.debug) {
+          errorMessage += ` (Debug: ${responseData.debug})`;
+        }
+        
+        if (responseData.errors && Array.isArray(responseData.errors)) {
           // Zod validation errors
           const errorDetails = responseData.errors.map((e: any) => 
-            `${e.path.join('.')}: ${e.message}`
+            `${e.field}: ${e.message}${e.received ? ` (получено: ${e.received})` : ''}`
           ).join(', ');
-          errorMessage += `: ${errorDetails}`;
+          errorMessage += `. Ошибки валидации: ${errorDetails}`;
         } else if (responseData.error) {
           // Database or other errors
-          errorMessage += `: ${responseData.error}`;
+          errorMessage += `. Подробности: ${responseData.error}`;
+        }
+        
+        // Add Supabase error details if available
+        if (responseData.supabaseError) {
+          errorMessage += ` (Код: ${responseData.supabaseError.code})`;
         }
         
         throw new Error(errorMessage);
       }
       
+      console.log('Frontend: Order created successfully:', responseData);
       mutate('/api/orders');
-      toast({ title: 'Заказ успешно добавлен' });
+      toast({ 
+        title: 'Заказ успешно добавлен',
+        description: `Заказ ${responseData.orderNumber} создан` 
+      });
     } catch (error: any) {
+      console.error('Frontend: Order creation error:', error);
+      
       toast({ 
         title: 'Ошибка добавления заказа', 
-        description: error.message,
+        description: error.message || 'Произошла неизвестная ошибка',
         variant: 'destructive' 
       });
     }
