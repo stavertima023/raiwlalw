@@ -11,6 +11,7 @@ import { AdminOrderList } from '@/components/admin/AdminOrderList';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ExpensesList } from '@/components/admin/ExpensesList';
 import { PayoutsList } from '@/components/admin/PayoutsList';
+import { Analytics } from '@/components/admin/Analytics';
 import AIAnalytics from '@/components/admin/AIAnalytics';
 
 const fetcher = (url: string) => fetch(url).then(res => {
@@ -326,7 +327,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
                         currentUser={initialUser}
                       />;
             case 'admin-analytics':
-              return <PlaceholderComponent title="Аналитика" description="Интерактивные дашборды и графики." />;
+              return <Analytics orders={orders} expenses={expenses} users={users} />;
             case 'admin-ai-analytics':
                return <AIAnalytics orders={orders} expenses={expenses} />;
             default:
