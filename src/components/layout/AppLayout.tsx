@@ -56,37 +56,57 @@ export function AppLayout({ children, currentUser }: AppLayoutProps) {
   }
   }, [navItems, activeView]);
 
+  // Only show sidebar for administrators
+  if (currentUser.role === 'Администратор') {
+    return (
+      <SidebarProvider>
+        <div className="flex min-h-screen w-full">
+          <Sidebar>
+            <SidebarHeader className="p-4">
+              <div className="flex items-center justify-between">
+                <UserNav user={currentUser} />
+                <SidebarTrigger className="lg:hidden" />
+              </div>
+            </SidebarHeader>
+            <SidebarBody className="p-4">
+              <MainNav items={navItems} activeItem={activeView} onItemSelect={setActiveView} />
+            </SidebarBody>
+          </Sidebar>
+          
+          <SidebarInset className="flex-1 min-w-0">
+            <div className="flex items-center justify-between p-4 border-b lg:hidden">
+              <h1 className="text-lg font-semibold">
+                {navItems.find(item => item.id === activeView)?.label || 'Панель управления'}
+              </h1>
+              <div className="flex items-center gap-2">
+                <SidebarTrigger />
+                <ThemeToggle />
+              </div>
+            </div>
+            <main className="p-4 md:p-8">
+              {children(activeView)}
+            </main>
+          </SidebarInset>
+        </div>
+      </SidebarProvider>
+    );
+  }
 
+  // Simple layout for sellers and printers without sidebar
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full">
-        <Sidebar>
-          <SidebarHeader className="p-4">
-            <div className="flex items-center justify-between">
-              <UserNav user={currentUser} />
-              <SidebarTrigger className="lg:hidden" />
-            </div>
-          </SidebarHeader>
-          <SidebarBody className="p-4">
-            <MainNav items={navItems} activeItem={activeView} onItemSelect={setActiveView} />
-          </SidebarBody>
-        </Sidebar>
-        
-        <SidebarInset className="flex-1 min-w-0">
-          <div className="flex items-center justify-between p-4 border-b lg:hidden">
-            <h1 className="text-lg font-semibold">
-              {navItems.find(item => item.id === activeView)?.label || 'Панель управления'}
-            </h1>
-            <div className="flex items-center gap-2">
-              <SidebarTrigger />
-              <ThemeToggle />
-            </div>
-          </div>
-          <main className="p-4 md:p-8">
-            {children(activeView)}
-          </main>
-        </SidebarInset>
-      </div>
-    </SidebarProvider>
+    <div className="flex min-h-screen w-full flex-col">
+      <header className="flex items-center justify-between p-4 border-b bg-background">
+        <h1 className="text-lg font-semibold">
+          {currentUser.role === 'Продавец' ? 'Панель продавца' : 'Панель принтовщика'}
+        </h1>
+        <div className="flex items-center gap-2">
+          <UserNav user={currentUser} />
+          <ThemeToggle />
+        </div>
+      </header>
+      <main className="flex-1 p-4 md:p-8">
+        {children(activeView)}
+      </main>
+    </div>
   );
 }

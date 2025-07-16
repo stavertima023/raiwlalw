@@ -62,10 +62,18 @@ export async function PATCH(request: Request, { params }: { params: { orderId: s
             message: `Нельзя оформить возврат для заказа со статусом "${currentOrder.status}". Возврат доступен только для заказов со статусом "Отправлен".` 
           }, { status: 403 });
         }
+      } else if (status === 'Исполнен') {
+        // Allow sellers to mark orders as "Исполнен" when doing payouts
+        // Orders must be "Готов" or "Отправлен" to be marked as "Исполнен"
+        if (currentOrder.status !== 'Готов' && currentOrder.status !== 'Отправлен') {
+          return NextResponse.json({ 
+            message: `Нельзя исполнить заказ со статусом "${currentOrder.status}". Исполнение доступно только для заказов со статусом "Готов" или "Отправлен".` 
+          }, { status: 403 });
+        }
       } else {
         // Sellers cannot change orders to other statuses
         return NextResponse.json({ 
-          message: 'Доступ запрещен: продавцы могут только отменять свои заказы или оформлять возврат' 
+          message: 'Доступ запрещен: продавцы могут только отменять свои заказы, оформлять возврат или исполнять готовые заказы' 
         }, { status: 403 });
       }
     } else {
