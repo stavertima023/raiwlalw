@@ -105,3 +105,18 @@ export interface SortDescriptor {
   column: keyof Order;
   direction: SortDirection;
 }
+
+// Analytics types
+export interface AnalyticsData {
+  totalOrders: number;
+  ordersByStatus: Record<OrderStatus, number>;
+  totalPayouts: number;
+  averageOrderPrice: number;
+  expensesByCategory: Record<ExpenseCategory, number>;
+}
+
+export interface AnalyticsFilters {
+  dateFrom?: string;
+  dateTo?: string;
+  sellers?: string[];
+}

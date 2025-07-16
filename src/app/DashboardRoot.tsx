@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { ExpensesList } from '@/components/admin/ExpensesList';
 import { PayoutsList } from '@/components/admin/PayoutsList';
 import AIAnalytics from '@/components/admin/AIAnalytics';
+import { Analytics } from '@/components/admin/Analytics';
 
 const fetcher = (url: string) => fetch(url).then(res => {
     if (!res.ok) {
@@ -326,7 +327,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
                         currentUser={initialUser}
                       />;
             case 'admin-analytics':
-              return <PlaceholderComponent title="Аналитика" description="Интерактивные дашборды и графики." />;
+              return <Analytics allUsers={users} />;
             case 'admin-ai-analytics':
                return <AIAnalytics orders={orders} expenses={expenses} />;
             default:

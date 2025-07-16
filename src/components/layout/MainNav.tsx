@@ -20,17 +20,17 @@ export function MainNav({ items, activeItem, onItemSelect }: MainNavProps) {
   return (
     <SidebarMenu>
       {items.map((item) => (
-        <SidebarMenuItem key={item.id}>
-          <SidebarMenuButton
+    <SidebarMenuItem key={item.id}>
+        <SidebarMenuButton
             isActive={activeItem === item.id}
             onClick={() => onItemSelect(item.id)}
             className="w-full justify-start gap-2"
           >
             {item.icon}
             <span>{item.label}</span>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
+        </SidebarMenuButton>
+    </SidebarMenuItem>
       ))}
-    </SidebarMenu>
+        </SidebarMenu>
   );
 }
