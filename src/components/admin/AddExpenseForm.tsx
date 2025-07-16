@@ -70,14 +70,14 @@ export function AddExpenseForm({ onSave, currentUser }: AddExpenseFormProps) {
     const { responsible, ...expenseData } = data;
     
     // Clean up the data - remove empty strings and undefined values
-    const cleanedData = Object.fromEntries(
-      Object.entries(expenseData).filter(([key, value]) => {
-        // Keep all values except empty strings and undefined
-        return value !== '' && value !== undefined && value !== null;
-      })
-    );
+    const cleanedEntries = Object.entries(expenseData).filter(([key, value]) => {
+      // Keep all values except empty strings and undefined
+      return value !== '' && value !== undefined && value !== null;
+    });
     
-    onSave(cleanedData);
+    const cleanedData = Object.fromEntries(cleanedEntries);
+    
+    onSave(cleanedData as any); // Type assertion needed due to dynamic filtering
     handleClose();
     toast({
       title: 'Расход добавлен',
