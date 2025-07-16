@@ -68,9 +68,9 @@ interface OrderTableProps {
 
 const statusConfig: Record<
   OrderStatus,
-  { label: string; color: 'primary' | 'secondary' | 'destructive' | 'outline' | 'default' }
+  { label: string; color: 'secondary' | 'destructive' | 'outline' | 'default' }
 > = {
-  Добавлен: { label: 'Добавлен', color: 'primary' },
+  Добавлен: { label: 'Добавлен', color: 'default' },
   Готов: { label: 'Готов', color: 'default' },
   Отправлен: { label: 'Отправлен', color: 'default'},
   Исполнен: { label: 'Исполнен', color: 'default'},
@@ -105,7 +105,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
 
   const renderPrinterActions = (order: Order) => {
     const actions = getAvailableActions(order.status);
-    if (!actions.length) return null;
+    if (!actions.length || !order.id || !onUpdateStatus) return null;
 
     if (order.status === 'Добавлен') {
         return (
@@ -126,7 +126,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Закрыть</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => onUpdateStatus(order.id, 'Готов')}>
+                      <AlertDialogAction onClick={() => onUpdateStatus(order.id!, 'Готов')}>
                         Подтвердить
                       </AlertDialogAction>
                     </AlertDialogFooter>
@@ -231,11 +231,80 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
     );
   }
 
+  const renderSellerActions = (order: Order) => {
+    // Sellers can only modify their own orders
+    if (order.seller !== currentUser?.telegramId || !order.id || !onUpdateStatus) {
+      return null;
+    }
+
+    // Based on business rules:
+    // - Can cancel orders with status "Добавлен" or "Готов"
+    // - Can return orders with status "Отправлен"
+    if (order.status === 'Добавлен' || order.status === 'Готов') {
+      return (
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button size="icon" variant="destructive">
+              <X className="h-4 w-4" />
+              <span className="sr-only">Отменить</span>
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Вы собираетесь отменить заказ #{order.orderNumber}. Это действие нельзя будет отменить.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Закрыть</AlertDialogCancel>
+              <AlertDialogAction onClick={() => onUpdateStatus(order.id!, 'Отменен')}>
+                Подтвердить отмену
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      );
+    }
+
+    if (order.status === 'Отправлен') {
+      return (
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button size="icon" variant="outline">
+              <XCircle className="h-4 w-4" />
+              <span className="sr-only">Возврат</span>
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Вы собираетесь оформить возврат для заказа #{order.orderNumber}.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Закрыть</AlertDialogCancel>
+              <AlertDialogAction onClick={() => onUpdateStatus(order.id!, 'Возврат')}>
+                Подтвердить возврат
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      );
+    }
+
+    // For other statuses, no actions available
+    return null;
+  };
+
   const renderActionsCell = (order: Order) => (
     <TableCell className={cn(useLargeLayout && 'w-[120px]')}>
       {currentUser?.role === 'Принтовщик' ? (
         renderPrinterActions(order)
-      ) : currentUser?.role === 'Продавец' ? null : (
+      ) : currentUser?.role === 'Продавец' ? (
+        renderSellerActions(order)
+      ) : (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button aria-haspopup="true" size="icon" variant="ghost">
