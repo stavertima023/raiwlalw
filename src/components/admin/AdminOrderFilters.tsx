@@ -106,7 +106,7 @@ const AdminOrderFilters: React.FC<AdminOrderFiltersProps> = ({ onFilterChange, c
             <SelectContent>
               <SelectItem value="all">Все продавцы</SelectItem>
               {sellerUsers.map((u) => (
-                <SelectItem key={u.username} value={u.username}>
+                <SelectItem key={u.telegramId} value={u.telegramId}>
                   {u.name}
                 </SelectItem>
               ))}

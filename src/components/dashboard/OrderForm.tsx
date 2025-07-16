@@ -56,11 +56,11 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
       comment: initialData?.comment || '',
       photos: initialData?.photos || [],
     },
-  });
+      });
 
   // Watch photos value from form
   const photos = form.watch('photos') || [];
-
+  
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
@@ -78,15 +78,15 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
     }
 
     const filesToProcess = Array.from(files).slice(0, totalSlots);
-    
+
 
     
     // Validate all files first
     for (const file of filesToProcess) {
-      if (!file.type.startsWith('image/')) {
+        if (!file.type.startsWith('image/')) {
         alert(`Файл "${file.name}" не является изображением`);
-        return;
-      }
+            return;
+        }
     }
 
     setIsUploading(true);
@@ -95,14 +95,14 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
       // Process all files and collect results
       const loadPromises = filesToProcess.map(file => {
         return new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = (e) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
             const result = e.target?.result as string;
             resolve(result);
-          };
+        };
           reader.onerror = () => reject(new Error(`Ошибка чтения файла ${file.name}`));
-          reader.readAsDataURL(file);
-        });
+        reader.readAsDataURL(file);
+    });
       });
 
       // Wait for all files to load and update state once
@@ -121,7 +121,7 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
 
     // Reset file input
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+        fileInputRef.current.value = '';
     }
   };
 
@@ -136,85 +136,85 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
   };
 
   return (
-    <Form {...form}>
+        <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 py-4">
-        <FormField
-          control={form.control}
-          name="orderNumber"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Номер заказа</FormLabel>
-              <FormControl>
+                        <FormField
+                            control={form.control}
+                            name="orderNumber"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Номер заказа</FormLabel>
+                                <FormControl>
                 <Input placeholder="WB-12345" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
         
-        <FormField
-          control={form.control}
-          name="shipmentNumber"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Номер отправления</FormLabel>
-              <FormControl>
+                        <FormField
+                            control={form.control}
+                            name="shipmentNumber"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Номер отправления</FormLabel>
+                                <FormControl>
                 <Input placeholder="SHP-A1B2C3" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
         
-        <FormField
-          control={form.control}
+                        <FormField
+                            control={form.control}
           name="productType"
-          render={({ field }) => (
-            <FormItem>
+                            render={({ field }) => (
+                            <FormItem>
               <FormLabel>Тип товара</FormLabel>
                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                 <FormControl>
+                                <FormControl>
                   <SelectTrigger><SelectValue placeholder="Выберите тип" /></SelectTrigger>
-                 </FormControl>
+                                </FormControl>
                  <SelectContent>
                     {ProductTypeEnum.options.map(option => (
                         <SelectItem key={option} value={option}>{option}</SelectItem>
                     ))}
                  </SelectContent>
                </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        
-        <FormField
-          control={form.control}
-          name="size"
-          render={({ field }) => (
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                    <FormField
+                    control={form.control}
+                    name="size"
+                    render={({ field }) => (
             <FormItem>
               <FormLabel>Размер</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
-                 <FormControl>
+                        <FormControl>
                   <SelectTrigger><SelectValue placeholder="Выберите размер" /></SelectTrigger>
                  </FormControl>
                  <SelectContent>
                     {SizeEnum.options.map(option => (
                         <SelectItem key={option} value={option}>{option}</SelectItem>
-                    ))}
+                                ))}
                  </SelectContent>
                </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        
-        <FormField
-          control={form.control}
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+
+                    <FormField
+                    control={form.control}
           name="price"
-          render={({ field }) => (
+                    render={({ field }) => (
             <FormItem>
               <FormLabel>Цена</FormLabel>
-              <FormControl>
+                        <FormControl>
                 <Input 
                   type="number" 
                   placeholder="С учетом Авито комиссии" 
@@ -222,59 +222,59 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
                   value={field.value || ''}
                   onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
                 />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                
         {/* Photo Upload Section */}
-        <FormField
-          control={form.control}
-          name="photos"
-          render={() => (
+                    <FormField
+                        control={form.control}
+                        name="photos"
+                        render={() => (
             <FormItem>
-              <FormLabel>Фотографии (до 3)</FormLabel>
+                            <FormLabel>Фотографии (до 3)</FormLabel>
               <p className="text-sm text-muted-foreground">
                 Можно выбрать несколько фото одновременно
               </p>
-              <FormControl>
+                            <FormControl>
                 <div className="space-y-4">
-                  <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    onChange={handlePhotoUpload}
-                    className="hidden" 
-                    accept="image/*"
-                    multiple
-                  />
+                                    <input 
+                                        type="file" 
+                                        ref={fileInputRef} 
+                                        onChange={handlePhotoUpload}
+                                        className="hidden" 
+                                        accept="image/*"
+                                        multiple
+                                     />
                   
                   <div className="flex flex-wrap gap-2">
                     {photos.map((photo, index) => (
                       <div key={index} className="relative group w-20 h-20">
-                        <Image
-                          src={photo}
+                                            <Image
+                                                src={photo}
                           alt={`Фото ${index + 1}`}
                           width={80}
                           height={80}
                           className="rounded-md object-cover w-full h-full border"
-                        />
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="icon"
-                          className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => handleRemovePhoto(index)}
-                        >
+                                            />
+                                            <Button
+                                                type="button"
+                                                variant="destructive"
+                                                size="icon"
+                                                className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                onClick={() => handleRemovePhoto(index)}
+                                            >
                           <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ))}
+                                            </Button>
+                                        </div>
+                                    ))}
                     
                     {photos.length < 3 && (
-                      <Button
-                        type="button"
-                        variant="outline"
+                                        <Button
+                                            type="button"
+                                            variant="outline"
                         className="h-20 w-20 border-dashed flex flex-col items-center justify-center"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isUploading}
@@ -290,9 +290,9 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
                             <span className="text-xs">Фото</span>
                           </>
                         )}
-                      </Button>
-                    )}
-                  </div>
+                                        </Button>
+                                    )}
+                                </div>
                 </div>
               </FormControl>
               <FormMessage />
@@ -308,14 +308,14 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
               <FormLabel>Комментарий</FormLabel>
               <FormControl>
                 <Textarea placeholder="Любые детали..." {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                            </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                        />
         
         <Button type="submit">Сохранить</Button>
-      </form>
-    </Form>
+          </form>
+        </Form>
   );
 }

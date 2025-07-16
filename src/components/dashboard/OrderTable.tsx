@@ -339,10 +339,10 @@ export const OrderTable: React.FC<OrderTableProps> = ({
       <CardHeader>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <CardTitle>Список заказов</CardTitle>
-            <CardDescription>
+        <CardTitle>Список заказов</CardTitle>
+        <CardDescription>
                 {currentUser?.role === 'Продавец' ? 'Список всех ваших заказов.' : 'Заказы, требующие вашего внимания.'}
-            </CardDescription>
+        </CardDescription>
           </div>
           {showSearch && onSearchChange && (
             <div className="w-full sm:w-auto sm:min-w-[300px]">
@@ -359,10 +359,9 @@ export const OrderTable: React.FC<OrderTableProps> = ({
           )}
         </div>
       </CardHeader>
-      <CardContent className="p-0">
-        <div className="mobile-table-container scrollbar-thin border-t">
-          <div className="overflow-x-auto">
-            <Table>
+      <CardContent>
+        <div className="overflow-x-auto">
+        <Table>
           <TableHeader>
             <TableRow>
               {useLargeLayout && (
@@ -463,8 +462,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({
               </TableRow>
             )}
           </TableBody>
-          </Table>
-          </div>
+        </Table>
         </div>
       </CardContent>
     </Card>

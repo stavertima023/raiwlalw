@@ -36,7 +36,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
   }
 
   const { toast } = useToast();
-  
+
   const { data: orders = [], error: ordersError } = useSWR<Order[]>('/api/orders', fetcher);
   
   const { data: expenses = [], error: expensesError } = useSWR<Expense[]>(
@@ -226,8 +226,8 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
         orderNumbers: orderNumbers,
         orderCount: validOrders.length,
         comment: `Выплата по ${validOrders.length} заказ(ам)`
-      };
-
+  };
+  
       const payoutResponse = await fetch('/api/payouts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -262,7 +262,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       });
     }
   };
-  
+
   const findOrder = (orderNumber: string): Order | undefined => {
     return orders.find((order: Order) => order.orderNumber === orderNumber);
   };

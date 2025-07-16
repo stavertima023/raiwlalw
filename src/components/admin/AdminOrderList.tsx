@@ -139,10 +139,8 @@ export const AdminOrderList: React.FC<AdminOrderListProps> = ({ allOrders, allUs
             Просмотр, фильтрация и сортировка всех заказов в системе.
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-0">
-          <div className="mobile-table-container scrollbar-thin border-t">
-            <div className="overflow-x-auto">
-              <Table>
+        <CardContent>
+          <Table>
             <TableHeader>
               <TableRow>
                 {renderSortableHeader('orderDate', 'Дата')}
@@ -235,9 +233,7 @@ export const AdminOrderList: React.FC<AdminOrderListProps> = ({ allOrders, allUs
                 </TableRow>
               )}
             </TableBody>
-              </Table>
-            </div>
-          </div>
+          </Table>
         </CardContent>
       </Card>
     </div>
