@@ -74,7 +74,6 @@
   .table-scroll {
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
-    overscroll-behavior: contain;
   }
   
   /* Скрытие скроллбара на мобильных при сохранении функциональности */
@@ -94,8 +93,8 @@
   }
   
   .scrollbar-thin::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
   }
   
   .scrollbar-thin::-webkit-scrollbar-track {
@@ -104,15 +103,15 @@
   
   .scrollbar-thin::-webkit-scrollbar-thumb {
     background-color: rgba(156, 163, 175, 0.5);
-    border-radius: 4px;
+    border-radius: 3px;
   }
   
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     background-color: rgba(156, 163, 175, 0.7);
   }
   
-  /* Контейнер для таблиц с отдельным скроллингом */
-  .table-container {
+  /* Улучшенный контейнер для мобильных таблиц */
+  .mobile-table-container {
     /* Предотвращение bounce эффекта на iOS */
     overscroll-behavior: contain;
     /* Оптимизация для touch устройств */
@@ -121,21 +120,21 @@
     scroll-behavior: smooth;
   }
   
-  /* Мобильные устройства */
+  /* Исправление проблем с height на мобильных */
   @media (max-width: 768px) {
-    .table-container {
+    .mobile-table-container {
+      /* Используем viewport units для более предсказуемой высоты */
       height: 60vh;
       max-height: 500px;
       min-height: 300px;
     }
   }
   
-  /* Планшеты и десктоп */
+  /* Фиксированная высота для десктопа */
   @media (min-width: 769px) {
-    .table-container {
+    .mobile-table-container {
       height: 70vh;
-      max-height: 600px;
-      min-height: 400px;
+      max-height: 700px;
     }
   }
 }
