@@ -64,6 +64,9 @@ interface OrderTableProps {
   findOrders?: (orderNumbers: string[]) => Order[];
   onUpdateStatus?: (orderId: string, newStatus: OrderStatus) => void;
   useLargeLayout?: boolean;
+  searchTerm?: string;
+  onSearchChange?: (value: string) => void;
+  showSearch?: boolean;
 }
 
 const statusConfig: Record<
@@ -87,7 +90,15 @@ const StatusBadge: React.FC<{ status: OrderStatus; useLargeLayout?: boolean }> =
   );
 };
 
-export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onUpdateStatus, useLargeLayout = false }) => {
+export const OrderTable: React.FC<OrderTableProps> = ({ 
+  orders, 
+  currentUser, 
+  onUpdateStatus, 
+  useLargeLayout = false, 
+  searchTerm = '', 
+  onSearchChange, 
+  showSearch = false 
+}) => {
   const getAvailableActions = (orderStatus: OrderStatus): OrderStatus[] => {
     switch (orderStatus) {
       case 'Добавлен':
@@ -326,13 +337,31 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Список заказов</CardTitle>
-        <CardDescription>
-            {currentUser?.role === 'Продавец' ? 'Список всех ваших заказов.' : 'Заказы, требующие вашего внимания.'}
-        </CardDescription>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <CardTitle>Список заказов</CardTitle>
+            <CardDescription>
+                {currentUser?.role === 'Продавец' ? 'Список всех ваших заказов.' : 'Заказы, требующие вашего внимания.'}
+            </CardDescription>
+          </div>
+          {showSearch && onSearchChange && (
+            <div className="w-full sm:w-auto sm:min-w-[300px]">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Поиск по номеру заказа..."
+                  value={searchTerm}
+                  onChange={(e) => onSearchChange(e.target.value)}
+                  className="w-full px-3 py-2 border border-input bg-background text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 rounded-md"
+                />
+              </div>
+            </div>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
-        <Table>
+        <div className="overflow-x-auto">
+          <Table>
           <TableHeader>
             <TableRow>
               {useLargeLayout && (
@@ -340,18 +369,18 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
                   Действия
                 </TableHead>
               )}
-              <TableHead>Дата</TableHead>
-              <TableHead>Номер заказа</TableHead>
-              <TableHead>Номер отправления</TableHead>
-              <TableHead className={cn(useLargeLayout && 'whitespace-nowrap w-[90px]')}>Статус</TableHead>
-              <TableHead className={cn(useLargeLayout && 'p-2 w-[10px]')}>Тип</TableHead>
-              <TableHead className={cn(useLargeLayout && 'p-2 w-[10px]')}>Размер</TableHead>
-              <TableHead className={cn(useLargeLayout && 'w-[60px]')}>Продавец</TableHead>
-              <TableHead className={cn('text-right', useLargeLayout && 'p-2 w-[60px]')}>Цена</TableHead>
-              <TableHead className={cn(useLargeLayout && 'p-0 w-[100px]')}>Фото</TableHead>
-              <TableHead>Комментарий</TableHead>
+              <TableHead className="min-w-[80px]">Дата</TableHead>
+              <TableHead className="min-w-[100px]">Номер заказа</TableHead>
+              <TableHead className="min-w-[110px]">Номер отправления</TableHead>
+              <TableHead className={cn('min-w-[80px]', useLargeLayout && 'whitespace-nowrap w-[90px]')}>Статус</TableHead>
+              <TableHead className={cn('min-w-[60px]', useLargeLayout && 'p-2 w-[10px]')}>Тип</TableHead>
+              <TableHead className={cn('min-w-[60px]', useLargeLayout && 'p-2 w-[10px]')}>Размер</TableHead>
+              <TableHead className={cn('min-w-[80px]', useLargeLayout && 'w-[60px]')}>Продавец</TableHead>
+              <TableHead className={cn('text-right min-w-[80px]', useLargeLayout && 'p-2 w-[60px]')}>Цена</TableHead>
+              <TableHead className={cn('min-w-[80px]', useLargeLayout && 'p-0 w-[100px]')}>Фото</TableHead>
+              <TableHead className="min-w-[150px]">Комментарий</TableHead>
               {!useLargeLayout && (
-                <TableHead>
+                <TableHead className="min-w-[80px]">
                   <span className="sr-only">Действия</span>
                 </TableHead>
               )}
@@ -434,6 +463,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({ orders, currentUser, onU
             )}
           </TableBody>
         </Table>
+        </div>
       </CardContent>
     </Card>
   );

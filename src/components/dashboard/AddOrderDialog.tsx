@@ -16,9 +16,17 @@ import { PlusCircle } from 'lucide-react';
 
 type AddOrderDialogProps = {
   onAddOrder: (order: Omit<Order, 'id' | 'orderDate' | 'seller'>) => void;
+  buttonSize?: 'default' | 'sm' | 'lg' | 'icon';
+  buttonClassName?: string;
+  buttonVariant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
 };
 
-export function AddOrderDialog({ onAddOrder }: AddOrderDialogProps) {
+export function AddOrderDialog({ 
+  onAddOrder, 
+  buttonSize = 'default',
+  buttonClassName = '',
+  buttonVariant = 'default'
+}: AddOrderDialogProps) {
   const [isOpen, setIsOpen] = React.useState(false);
 
   const handleSave = (formData: {
@@ -42,7 +50,7 @@ export function AddOrderDialog({ onAddOrder }: AddOrderDialogProps) {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button>
+        <Button size={buttonSize} variant={buttonVariant} className={`${buttonClassName} whitespace-nowrap`}>
           <PlusCircle className="mr-2 h-4 w-4" />
           Добавить заказ
         </Button>
