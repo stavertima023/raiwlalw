@@ -11,7 +11,6 @@ import { AdminOrderList } from '@/components/admin/AdminOrderList';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ExpensesList } from '@/components/admin/ExpensesList';
 import { PayoutsList } from '@/components/admin/PayoutsList';
-import { Analytics } from '@/components/admin/Analytics';
 import AIAnalytics from '@/components/admin/AIAnalytics';
 
 const fetcher = (url: string) => fetch(url).then(res => {
@@ -36,7 +35,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
   }
 
   const { toast } = useToast();
-
+  
   const { data: orders = [], error: ordersError } = useSWR<Order[]>('/api/orders', fetcher);
   
   const { data: expenses = [], error: expensesError } = useSWR<Expense[]>(
@@ -226,8 +225,8 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
         orderNumbers: orderNumbers,
         orderCount: validOrders.length,
         comment: `Выплата по ${validOrders.length} заказ(ам)`
-  };
-  
+      };
+
       const payoutResponse = await fetch('/api/payouts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -262,7 +261,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       });
     }
   };
-
+  
   const findOrder = (orderNumber: string): Order | undefined => {
     return orders.find((order: Order) => order.orderNumber === orderNumber);
   };
@@ -327,7 +326,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
                         currentUser={initialUser}
                       />;
             case 'admin-analytics':
-              return <Analytics orders={orders} expenses={expenses} users={users} />;
+              return <PlaceholderComponent title="Аналитика" description="Интерактивные дашборды и графики." />;
             case 'admin-ai-analytics':
                return <AIAnalytics orders={orders} expenses={expenses} />;
             default:
