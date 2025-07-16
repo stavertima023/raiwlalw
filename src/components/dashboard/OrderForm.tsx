@@ -42,7 +42,6 @@ type OrderFormProps = {
 };
 
 export function OrderForm({ onSave, initialData }: OrderFormProps) {
-  const [photos, setPhotos] = React.useState<string[]>(initialData?.photos || []);
   const [isUploading, setIsUploading] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -55,9 +54,12 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
       size: initialData?.size || undefined,
       price: initialData?.price,
       comment: initialData?.comment || '',
-      photos: photos,
+      photos: initialData?.photos || [],
     },
   });
+
+  // Watch photos value from form
+  const photos = form.watch('photos') || [];
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -76,6 +78,8 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
     }
 
     const filesToProcess = Array.from(files).slice(0, totalSlots);
+    
+
     
     // Validate all files first
     for (const file of filesToProcess) {
@@ -103,8 +107,10 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
 
       // Wait for all files to load and update state once
       const results = await Promise.all(loadPromises);
-      const newPhotos = [...photos, ...results];
-      setPhotos(newPhotos);
+      
+      // Update form value directly
+      const currentPhotos = form.getValues('photos') || [];
+      const newPhotos = [...currentPhotos, ...results];
       form.setValue('photos', newPhotos);
       
       // Show success message
@@ -125,13 +131,13 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
   };
 
   const handleRemovePhoto = (index: number) => {
-    const newPhotos = photos.filter((_, i) => i !== index);
-    setPhotos(newPhotos);
+    const currentPhotos = form.getValues('photos') || [];
+    const newPhotos = currentPhotos.filter((_, i) => i !== index);
     form.setValue('photos', newPhotos);
   };
 
   const onSubmit = (data: OrderFormValues) => {
-    onSave({ ...data, photos });
+    onSave(data);
   };
 
   return (
