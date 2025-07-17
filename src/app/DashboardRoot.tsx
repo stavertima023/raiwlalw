@@ -130,18 +130,29 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
   
   const handleAddExpense = async (newExpenseData: Omit<Expense, 'id' | 'date'>) => {
     try {
+      console.log('Sending expense data to API:', newExpenseData);
+      
       const response = await fetch('/api/expenses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newExpenseData),
       });
-       if (!response.ok) {
+      
+      console.log('API response status:', response.status);
+      
+      if (!response.ok) {
         const err = await response.json();
+        console.error('API error response:', err);
         throw new Error(err.message || 'Server error');
       }
+      
+      const result = await response.json();
+      console.log('API success response:', result);
+      
       mutate('/api/expenses');
       toast({ title: 'Расход успешно добавлен' });
     } catch (error: any) {
+      console.error('Error in handleAddExpense:', error);
       toast({ title: 'Ошибка добавления расхода', description: error.message, variant: 'destructive' });
     }
   }

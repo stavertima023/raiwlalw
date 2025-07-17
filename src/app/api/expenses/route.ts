@@ -65,19 +65,40 @@ export async function POST(request: Request) {
     }
 
     const json = await request.json();
+    console.log('Received expense data:', json);
     
-    // Clean up the data - remove empty receiptPhoto
+    // Clean up the data - remove empty receiptPhoto and ensure amount is a number
     const cleanData = {
       ...json,
+      amount: Number(json.amount),
+      category: json.category,
+      comment: json.comment || '',
       receiptPhoto: json.receiptPhoto || undefined,
     };
+    
+    // Additional validation
+    if (!cleanData.amount || cleanData.amount <= 0) {
+      return NextResponse.json({ 
+        message: 'Сумма должна быть больше 0', 
+        field: 'amount'
+      }, { status: 400 });
+    }
+    
+    if (!cleanData.category) {
+      return NextResponse.json({ 
+        message: 'Категория обязательна', 
+        field: 'category'
+      }, { status: 400 });
+    }
+    console.log('Cleaned data:', cleanData);
     
     // Add responsible user and current date
     const expenseData = {
       ...cleanData,
-      responsible: user.username,
+      responsible: user.id, // Use user ID instead of username
       date: new Date().toISOString(),
     };
+    console.log('Final expense data for validation:', expenseData);
     
     // Validate data with Zod schema
     const validatedExpense = ExpenseSchema.omit({ id: true }).parse(expenseData);
@@ -95,9 +116,15 @@ export async function POST(request: Request) {
     return NextResponse.json(data, { status: 201 });
   } catch (error: any) {
     if (error.name === 'ZodError') {
+      console.error('Zod validation error:', error.errors);
       return NextResponse.json({ 
         message: 'Ошибка валидации данных', 
-        errors: error.errors 
+        errors: error.errors,
+        details: error.errors.map((err: any) => ({
+          field: err.path.join('.'),
+          message: err.message,
+          code: err.code
+        }))
       }, { status: 400 });
     }
     

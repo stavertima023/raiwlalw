@@ -154,7 +154,9 @@ export const ExpensesList: React.FC<ExpensesListProps> = ({ allExpenses, allUser
                       {expense.amount.toLocaleString('ru-RU', { style: 'currency', currency: 'RUB' })}
                     </TableCell>
                     <TableCell>{expense.category}</TableCell>
-                    <TableCell>{expense.responsible}</TableCell>
+                    <TableCell>
+                      {allUsers.find(user => user.id === expense.responsible)?.name || expense.responsible}
+                    </TableCell>
                     <TableCell className="min-w-[200px] max-w-[400px] whitespace-pre-wrap break-words">
                         {expense.comment || '–'}
                     </TableCell>

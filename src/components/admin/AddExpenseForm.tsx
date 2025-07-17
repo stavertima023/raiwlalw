@@ -53,9 +53,9 @@ export function AddExpenseForm({ onSave, currentUser }: AddExpenseFormProps) {
   const form = useForm<Omit<ExpenseFormData, 'id' | 'date'>>({
     resolver: zodResolver(ExpenseSchema.omit({ id: true, date: true })),
     defaultValues: {
-      amount: '' as any,
+      amount: 0,
       category: undefined,
-      responsible: currentUser.username,
+      responsible: currentUser.id,
       comment: '',
       receiptPhoto: undefined,
     },
@@ -106,11 +106,18 @@ export function AddExpenseForm({ onSave, currentUser }: AddExpenseFormProps) {
   };
 
   const onSubmit = (data: Omit<ExpenseFormData, 'id' | 'date'>) => {
+    console.log('Form data before cleanup:', data);
+    
     // Clean up the data before sending
     const cleanData = {
       ...data,
+      amount: Number(data.amount),
+      category: data.category,
+      comment: data.comment || '',
       receiptPhoto: data.receiptPhoto || undefined,
     };
+    
+    console.log('Form data after cleanup:', cleanData);
     onSave(cleanData);
     handleClose();
     toast({
@@ -150,7 +157,12 @@ export function AddExpenseForm({ onSave, currentUser }: AddExpenseFormProps) {
                         <FormItem>
                         <FormLabel>Сумма</FormLabel>
                         <FormControl>
-                            <Input type="number" placeholder="5000" {...field} />
+                            <Input 
+                                type="number" 
+                                placeholder="5000" 
+                                {...field}
+                                onChange={(e) => field.onChange(Number(e.target.value))}
+                            />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -163,7 +175,7 @@ export function AddExpenseForm({ onSave, currentUser }: AddExpenseFormProps) {
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel>Категория</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value || ''}>
                             <FormControl>
                             <SelectTrigger>
                                 <SelectValue placeholder="Выберите категорию..." />
@@ -177,6 +189,25 @@ export function AddExpenseForm({ onSave, currentUser }: AddExpenseFormProps) {
                             ))}
                             </SelectContent>
                         </Select>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+
+                    <FormField
+                    control={form.control}
+                    name="responsible"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Ответственный</FormLabel>
+                        <FormControl>
+                            <Input 
+                                {...field} 
+                                value={currentUser.name}
+                                disabled
+                                className="bg-muted"
+                            />
+                        </FormControl>
                         <FormMessage />
                         </FormItem>
                     )}
