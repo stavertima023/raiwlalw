@@ -19,19 +19,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { Payout, PayoutStatus, User } from '@/lib/types';
+import { Payout, User } from '@/lib/types-pure';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
 interface PayoutsListProps {
   allPayouts: Payout[];
   allUsers: User[];
-  onUpdateStatus: (payoutId: string, newStatus: PayoutStatus) => void;
+  onUpdateStatus: (payoutId: string, newStatus: Payout['status']) => void;
   currentUser: Omit<User, 'password_hash'>;
 }
 
 const statusConfig: Record<
-  PayoutStatus,
+  Payout['status'],
   { label: string; color: 'default' | 'secondary' | 'destructive' | 'outline' }
 > = {
   pending: { label: 'Ожидает', color: 'outline' },
@@ -40,7 +40,7 @@ const statusConfig: Record<
   cancelled: { label: 'Отменен', color: 'destructive' },
 };
 
-const StatusBadge: React.FC<{ status: PayoutStatus }> = ({ status }) => {
+const StatusBadge: React.FC<{ status: Payout['status'] }> = ({ status }) => {
   const { label, color } = statusConfig[status] || { label: status, color: 'default' };
   return (
     <Badge variant={color} className="capitalize whitespace-nowrap">
@@ -56,7 +56,7 @@ export const PayoutsList: React.FC<PayoutsListProps> = ({
   currentUser 
 }) => {
   const [filters, setFilters] = React.useState({
-    status: 'all' as PayoutStatus | 'all',
+    status: 'all' as Payout['status'] | 'all',
     seller: 'all' as string | 'all',
   });
 
@@ -94,7 +94,7 @@ export const PayoutsList: React.FC<PayoutsListProps> = ({
         <div className="flex gap-4 mt-4">
           <Select
             value={filters.status}
-            onValueChange={(value) => setFilters(prev => ({ ...prev, status: value as PayoutStatus | 'all' }))}
+            onValueChange={(value) => setFilters(prev => ({ ...prev, status: value as Payout['status'] | 'all' }))}
           >
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="Фильтр по статусу" />

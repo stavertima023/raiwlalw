@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ArrowUpDown } from 'lucide-react';
-import type { Order, OrderStatus, ProductType, SortDescriptor, User } from '@/lib/types';
+import { Order, User } from '@/lib/types-pure';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import AdminOrderFilters from './AdminOrderFilters';
@@ -33,7 +33,7 @@ interface AdminOrderListProps {
 }
 
 const statusConfig: Record<
-  OrderStatus,
+  Order['status'],
   { label: string; color: 'secondary' | 'destructive' | 'outline' | 'default' }
 > = {
   Добавлен: { label: 'Добавлен', color: 'default' },
@@ -44,7 +44,7 @@ const statusConfig: Record<
   Возврат: { label: 'Возврат', color: 'outline' },
 };
 
-const StatusBadge: React.FC<{ status: OrderStatus }> = ({ status }) => {
+const StatusBadge: React.FC<{ status: Order['status'] }> = ({ status }) => {
   const { label, color } = statusConfig[status] || {};
   return (
     <Badge variant={color} className="capitalize whitespace-nowrap">
@@ -55,14 +55,14 @@ const StatusBadge: React.FC<{ status: OrderStatus }> = ({ status }) => {
 
 export const AdminOrderList: React.FC<AdminOrderListProps> = ({ allOrders, allUsers }) => {
   const [filters, setFilters] = React.useState({
-    status: 'all' as OrderStatus | 'all',
-    productType: 'all' as ProductType | 'all',
+    status: 'all' as Order['status'] | 'all',
+    productType: 'all' as Order['productType'] | 'all',
     seller: 'all' as string | 'all',
     orderNumber: '',
   });
 
-  const [sortDescriptor, setSortDescriptor] = React.useState<SortDescriptor>({
-    column: 'orderDate',
+  const [sortDescriptor, setSortDescriptor] = React.useState({
+    column: 'orderDate' as keyof Order,
     direction: 'desc',
   });
 

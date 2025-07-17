@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { Order, OrderStatus, User } from '@/lib/types';
+import { Order, User } from '@/lib/types-pure';
 import { OrderTable } from './OrderTable';
 import { PayoutDialog } from './PayoutDialog';
 import { ReturnOrderDialog } from './ReturnOrderDialog';
@@ -17,7 +17,7 @@ interface DashboardProps {
   onCancelOrder: (orderNumber: string) => void;
   onReturnOrder: (orderNumber: string) => void;
   onPayout: (orderNumbers: string[]) => void;
-  onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void;
+  onUpdateStatus: (orderId: string, newStatus: Order['status']) => void;
   findOrder: (orderNumber: string) => Order | undefined;
   findOrders: (orderNumbers: string[]) => Order[];
 }

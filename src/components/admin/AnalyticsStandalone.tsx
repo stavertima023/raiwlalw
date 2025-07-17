@@ -34,59 +34,7 @@ import {
   Receipt,
   UserCheck
 } from 'lucide-react';
-
-// Встроенные типы без внешних зависимостей
-interface Order {
-  id?: string;
-  orderDate: string | Date;
-  orderNumber: string;
-  shipmentNumber: string;
-  status: 'Добавлен' | 'Готов' | 'Отправлен' | 'Исполнен' | 'Отменен' | 'Возврат';
-  productType: 'фб' | 'фч' | 'хч' | 'хб' | 'хс' | 'шч' | 'лб' | 'лч' | 'другое';
-  size: 'S' | 'M' | 'L' | 'XL';
-  seller: string;
-  price: number;
-  cost?: number;
-  photos?: string[];
-  comment?: string;
-}
-
-interface User {
-  id: string;
-  username: string;
-  name: string;
-  password_hash?: string;
-  role: 'Продавец' | 'Принтовщик' | 'Администратор';
-}
-
-interface Expense {
-  id: string;
-  date: string | Date;
-  amount: number;
-  category: 'Аренда' | 'Зарплата' | 'Расходники' | 'Маркетинг' | 'Налоги' | 'Другое';
-  responsible: string;
-  comment?: string;
-  receiptPhoto?: string;
-}
-
-interface Payout {
-  id?: string;
-  date: string | Date;
-  seller: string;
-  amount: number;
-  orderNumbers: string[];
-  orderCount: number;
-  status: 'pending' | 'processing' | 'completed' | 'cancelled';
-  processedBy: string;
-  comment?: string;
-}
-
-interface AnalyticsProps {
-  orders: Order[];
-  users: User[];
-  expenses: Expense[];
-  payouts: Payout[];
-}
+import { Order, User, Expense, Payout } from '@/lib/types-pure';
 
 interface OrderStats {
   total: number;
@@ -106,7 +54,7 @@ interface ResponsibleStats {
   [key: string]: number;
 }
 
-export function AnalyticsStandalone({ orders, users, expenses, payouts }: AnalyticsProps) {
+export function AnalyticsStandalone({ orders, users, expenses, payouts }: { orders: Order[], users: User[], expenses: Expense[], payouts: Payout[] }) {
   const [dateFrom, setDateFrom] = React.useState('');
   const [dateTo, setDateTo] = React.useState('');
   const [selectedSeller, setSelectedSeller] = React.useState<string>('all');

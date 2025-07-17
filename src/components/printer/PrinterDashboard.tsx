@@ -2,7 +2,8 @@
 'use client';
 
 import * as React from 'react';
-import type { Order, User, OrderStatus, ProductType } from '@/lib/types';
+import { Order, User } from '@/lib/types-pure';
+import type { OrderStatus, ProductType } from '@/lib/types';
 import { OrderTable } from '@/components/dashboard/OrderTable';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"

@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import useSWR, { mutate } from 'swr';
-import { Order, OrderStatus, User, Expense, Payout, PayoutStatus } from '@/lib/types';
+import { Order, User, Expense, Payout } from '@/lib/types-pure';
 import { useToast } from '@/hooks/use-toast';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Dashboard } from '@/components/dashboard/Dashboard';
@@ -115,7 +115,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     }
   };
   
-  const handleUpdateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
     try {
         const response = await fetch(`/api/orders/${orderId}`, {
             method: 'PATCH',
@@ -162,7 +162,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     }
   }
 
-  const handleUpdatePayoutStatus = async (payoutId: string, newStatus: PayoutStatus) => {
+  const handleUpdatePayoutStatus = async (payoutId: string, newStatus: Payout['status']) => {
     try {
       const response = await fetch(`/api/payouts/${payoutId}`, {
         method: 'PATCH',
