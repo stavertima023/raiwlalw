@@ -21,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Order, OrderStatus, User, Expense, Payout, ExpenseCategory, ExpenseCategoryEnum } from '@/lib/types';
+import { Order, OrderStatus, User, Expense, Payout, ExpenseCategory } from '@/lib/types';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { 
@@ -186,10 +186,15 @@ export function Analytics({ orders, users, expenses, payouts }: AnalyticsProps) 
 
   // Calculate expense statistics by category
   const expenseStats: ExpenseStats = React.useMemo(() => {
-    // Initialize stats object dynamically from the enum
-    const stats: ExpenseStats = Object.fromEntries(
-      (ExpenseCategoryEnum.options as readonly ExpenseCategory[]).map(cat => [cat, 0])
-    );
+    // Initialize stats object with static categories to avoid circular dependency
+    const stats: ExpenseStats = {
+      'Аренда': 0,
+      'Зарплата': 0,
+      'Расходники': 0,
+      'Маркетинг': 0,
+      'Налоги': 0,
+      'Другое': 0,
+    };
 
     filteredExpenses.forEach(expense => {
       if (expense.category && stats.hasOwnProperty(expense.category)) {
