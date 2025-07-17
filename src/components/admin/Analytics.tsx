@@ -21,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Order, OrderStatus, User, Expense, Payout, ExpenseCategory } from '@/lib/types';
+import { Order, OrderStatus, User, Expense, Payout, ExpenseCategory, ExpenseCategoryEnum } from '@/lib/types';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { 
@@ -173,21 +173,14 @@ export function Analytics({ orders, users, expenses, payouts }: AnalyticsProps) 
 
   // Calculate expense statistics by category
   const expenseStats: ExpenseStats = React.useMemo(() => {
-    const stats: ExpenseStats = {
-      'Аренда': 0,
-      'Зарплата': 0,
-      'Расходники': 0,
-      'Маркетинг': 0,
-      'Налоги': 0,
-      'Другое': 0,
-    };
-
+    const stats: ExpenseStats = Object.fromEntries(
+      ExpenseCategoryEnum.options.map((cat) => [cat, 0])
+    ) as ExpenseStats;
     filteredExpenses.forEach(expense => {
       if (expense.category in stats) {
         stats[expense.category] += expense.amount;
       }
     });
-
     return stats;
   }, [filteredExpenses]);
 
@@ -338,7 +331,7 @@ export function Analytics({ orders, users, expenses, payouts }: AnalyticsProps) 
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              {Object.values(expenseStats).reduce((sum, amount) => sum + amount, 0).toLocaleString('ru-RU')} ₽
+              {ExpenseCategoryEnum.options.reduce((sum, cat) => sum + (expenseStats[cat] || 0), 0).toLocaleString('ru-RU')} ₽
             </div>
           </CardContent>
         </Card>
@@ -472,8 +465,9 @@ export function Analytics({ orders, users, expenses, payouts }: AnalyticsProps) 
               </TableRow>
             </TableHeader>
             <TableBody>
-              {Object.entries(expenseStats).map(([category, amount]) => {
-                const totalExpenses = Object.values(expenseStats).reduce((sum, val) => sum + val, 0);
+              {ExpenseCategoryEnum.options.map((category) => {
+                const amount = expenseStats[category] || 0;
+                const totalExpenses = ExpenseCategoryEnum.options.reduce((sum, cat) => sum + (expenseStats[cat] || 0), 0);
                 const percentage = totalExpenses > 0 ? Math.round((amount / totalExpenses) * 100) : 0;
                 
                 return (
@@ -489,7 +483,7 @@ export function Analytics({ orders, users, expenses, payouts }: AnalyticsProps) 
               <TableRow className="font-bold">
                 <TableCell>Итого расходов</TableCell>
                 <TableCell>
-                  {Object.values(expenseStats).reduce((sum, amount) => sum + amount, 0).toLocaleString('ru-RU')} ₽
+                  {ExpenseCategoryEnum.options.reduce((sum, cat) => sum + (expenseStats[cat] || 0), 0).toLocaleString('ru-RU')} ₽
                 </TableCell>
                 <TableCell>100%</TableCell>
               </TableRow>
