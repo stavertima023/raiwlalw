@@ -22,6 +22,7 @@ interface PayoutDialogProps {
   children: React.ReactNode;
   findOrders: (orderNumbers: string[]) => Order[];
   onConfirmPayout: (orderNumbers: string[]) => void;
+  currentUser?: { username: string; role: string };
 }
 
 interface ProcessedOrders {
@@ -34,6 +35,7 @@ export function PayoutDialog({
   children,
   findOrders,
   onConfirmPayout,
+  currentUser,
 }: PayoutDialogProps) {
   const [isOpen, setIsOpen] = React.useState(false);
   const [orderNumbersInput, setOrderNumbersInput] = React.useState('');
@@ -59,6 +61,12 @@ export function PayoutDialog({
     const invalid: { number: string; reason: string }[] = [];
 
     found.forEach(order => {
+      // For sellers, check if order belongs to them
+      if (currentUser?.role === 'Продавец' && order.seller !== currentUser.username) {
+        invalid.push({ number: order.orderNumber, reason: 'не ваш заказ' });
+        return;
+      }
+
       if (order.status === 'Готов' || order.status === 'Отправлен') {
         valid.push(order);
       } else if (order.status === 'Исполнен') {

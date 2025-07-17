@@ -77,6 +77,7 @@ export function Dashboard({
                         <PayoutDialog 
                             onConfirmPayout={onPayout}
                             findOrders={findOrders}
+                            currentUser={user}
                         >
                             <Button variant="default" size="sm" className="whitespace-nowrap">
                                 Выплата
@@ -113,6 +114,7 @@ export function Dashboard({
                             <PayoutDialog 
                                 onConfirmPayout={onPayout}
                                 findOrders={findOrders}
+                                currentUser={user}
                             >
                                 <Button variant="default" className="w-full">
                                     Выплата

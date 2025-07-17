@@ -49,6 +49,9 @@ export function AppLayout({ children, currentUser }: AppLayoutProps) {
   };
   
   const navItems = getNavItems(currentUser.role);
+  
+  // Show sidebar only for administrators
+  const showSidebar = currentUser.role === 'Администратор';
 
   React.useEffect(() => {
     if (navItems.length > 0 && !activeView) {
@@ -56,7 +59,29 @@ export function AppLayout({ children, currentUser }: AppLayoutProps) {
   }
   }, [navItems, activeView]);
 
+  // Layout without sidebar for non-admin users
+  if (!showSidebar) {
+    return (
+      <div className="flex min-h-screen w-full">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between p-4 border-b">
+            <h1 className="text-lg font-semibold">
+              {navItems.find(item => item.id === activeView)?.label || 'Панель управления'}
+            </h1>
+            <div className="flex items-center gap-2">
+              <UserNav user={currentUser} />
+              <ThemeToggle />
+            </div>
+          </div>
+          <main className="p-4 md:p-8">
+            {children(activeView)}
+          </main>
+        </div>
+      </div>
+    );
+  }
 
+  // Layout with sidebar for admin users
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full">

@@ -44,7 +44,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
   );
 
   const { data: payouts = [], error: payoutsError } = useSWR<Payout[]>(
-    initialUser.role === 'Администратор' ? '/api/payouts' : null, 
+    (initialUser.role === 'Администратор' || initialUser.role === 'Продавец') ? '/api/payouts' : null, 
     fetcher
   );
 
@@ -174,15 +174,42 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
   };
 
   const handlePayout = async (orderNumbers: string[]) => {
-      const payoutPromises = findOrders(orderNumbers)
-        .filter(order => order.id)
-        .map(order => handleUpdateOrderStatus(order.id!, 'Исполнен'));
-      try {
-        await Promise.all(payoutPromises);
-        toast({ title: 'Оплата проведена', description: `${orderNumbers.length} заказ(а/ов) были отмечены как "Исполнен".` });
-      } catch (error: any) {
-        toast({ title: 'Ошибка проведения оплаты', description: error.message, variant: 'destructive' });
+    try {
+      const selectedOrders = findOrders(orderNumbers);
+      const totalAmount = selectedOrders.reduce((sum, order) => sum + order.price, 0);
+      
+      const payoutData = {
+        orderNumbers,
+        totalAmount,
+        notes: `Выплата по заказам: ${orderNumbers.join(', ')}`,
+      };
+
+      const response = await fetch('/api/payouts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payoutData),
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || 'Ошибка создания выплаты');
       }
+
+      // Refresh both orders and payouts data
+      mutate('/api/orders');
+      mutate('/api/payouts');
+      
+      toast({ 
+        title: 'Выплата создана', 
+        description: `Создана выплата на сумму ${totalAmount.toLocaleString('ru-RU')} ₽. Заказы отмечены как "Исполнен".` 
+      });
+    } catch (error: any) {
+      toast({ 
+        title: 'Ошибка создания выплаты', 
+        description: error.message, 
+        variant: 'destructive' 
+      });
+    }
   };
   
   const findOrder = (orderNumber: string): Order | undefined => {
