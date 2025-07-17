@@ -31,7 +31,9 @@ import {
   DollarSign, 
   Users, 
   Calendar,
-  Filter
+  Filter,
+  Receipt,
+  UserCheck
 } from 'lucide-react';
 
 interface AnalyticsProps {
@@ -55,10 +57,16 @@ interface ExpenseStats {
   [key: string]: number;
 }
 
+interface ResponsibleStats {
+  [key: string]: number;
+}
+
 export function Analytics({ orders, users, expenses, payouts }: AnalyticsProps) {
   const [dateFrom, setDateFrom] = React.useState('');
   const [dateTo, setDateTo] = React.useState('');
   const [selectedSeller, setSelectedSeller] = React.useState<string>('all');
+  const [selectedExpenseCategory, setSelectedExpenseCategory] = React.useState<string>('all');
+  const [selectedResponsible, setSelectedResponsible] = React.useState<string>('all');
 
   // Filter orders based on date range and seller
   const filteredOrders = React.useMemo(() => {
@@ -90,10 +98,21 @@ export function Analytics({ orders, users, expenses, payouts }: AnalyticsProps) 
     return filtered;
   }, [orders, dateFrom, dateTo, selectedSeller]);
 
-  // Filter expenses based on date range
+  // Filter expenses based on date range, category and responsible
   const filteredExpenses = React.useMemo(() => {
     let filtered = [...expenses];
 
+    // Filter by category
+    if (selectedExpenseCategory !== 'all') {
+      filtered = filtered.filter(expense => expense.category === selectedExpenseCategory);
+    }
+
+    // Filter by responsible
+    if (selectedResponsible !== 'all') {
+      filtered = filtered.filter(expense => expense.responsible === selectedResponsible);
+    }
+
+    // Filter by date range
     if (dateFrom) {
       const fromDate = new Date(dateFrom);
       filtered = filtered.filter(expense => {
@@ -112,7 +131,7 @@ export function Analytics({ orders, users, expenses, payouts }: AnalyticsProps) 
     }
 
     return filtered;
-  }, [expenses, dateFrom, dateTo]);
+  }, [expenses, dateFrom, dateTo, selectedExpenseCategory, selectedResponsible]);
 
   // Filter payouts based on date range and seller
   const filteredPayouts = React.useMemo(() => {
@@ -183,10 +202,27 @@ export function Analytics({ orders, users, expenses, payouts }: AnalyticsProps) 
     return stats;
   }, [filteredExpenses]);
 
+  // Calculate expense statistics by responsible
+  const responsibleStats: ResponsibleStats = React.useMemo(() => {
+    const stats: ResponsibleStats = {};
+
+    filteredExpenses.forEach(expense => {
+      const responsibleName = getResponsibleName(expense.responsible);
+      stats[responsibleName] = (stats[responsibleName] || 0) + expense.amount;
+    });
+
+    return stats;
+  }, [filteredExpenses]);
+
   // Calculate total payouts
   const totalPayouts = React.useMemo(() => {
     return filteredPayouts.reduce((sum, payout) => sum + payout.amount, 0);
   }, [filteredPayouts]);
+
+  // Calculate total expenses
+  const totalExpenses = React.useMemo(() => {
+    return filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+  }, [filteredExpenses]);
 
   // Get seller name by username
   const getSellerName = (username: string) => {
@@ -194,10 +230,18 @@ export function Analytics({ orders, users, expenses, payouts }: AnalyticsProps) 
     return user ? user.name : username;
   };
 
+  // Get responsible name by ID
+  const getResponsibleName = (responsibleId: string) => {
+    const user = users.find(u => u.id === responsibleId);
+    return user ? user.name : responsibleId;
+  };
+
   const resetFilters = () => {
     setDateFrom('');
     setDateTo('');
     setSelectedSeller('all');
+    setSelectedExpenseCategory('all');
+    setSelectedResponsible('all');
   };
 
   return (
@@ -228,7 +272,7 @@ export function Analytics({ orders, users, expenses, payouts }: AnalyticsProps) 
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
             <div>
               <Label htmlFor="date-from">Дата от</Label>
               <Input
@@ -265,16 +309,54 @@ export function Analytics({ orders, users, expenses, payouts }: AnalyticsProps) 
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-end">
+            <div>
+              <Label htmlFor="expense-category">Категория расходов</Label>
+              <Select value={selectedExpenseCategory} onValueChange={setSelectedExpenseCategory}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Все категории" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все категории</SelectItem>
+                  <SelectItem value="Аренда">Аренда</SelectItem>
+                  <SelectItem value="Зарплата">Зарплата</SelectItem>
+                  <SelectItem value="Расходники">Расходники</SelectItem>
+                  <SelectItem value="Маркетинг">Маркетинг</SelectItem>
+                  <SelectItem value="Налоги">Налоги</SelectItem>
+                  <SelectItem value="Другое">Другое</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="responsible">Ответственный</Label>
+              <Select value={selectedResponsible} onValueChange={setSelectedResponsible}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Все ответственные" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все ответственные</SelectItem>
+                  {users
+                    .filter(user => user.role === 'Администратор')
+                    .map(user => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-end gap-2">
               <Badge variant="secondary" className="text-sm">
                 {filteredOrders.length} заказов
+              </Badge>
+              <Badge variant="secondary" className="text-sm">
+                {filteredExpenses.length} расходов
               </Badge>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Order Statistics Cards */}
+      {/* Main Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -283,31 +365,24 @@ export function Analytics({ orders, users, expenses, payouts }: AnalyticsProps) 
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{orderStats.total}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Исполнено</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{orderStats.completed}</div>
             <p className="text-xs text-muted-foreground">
-              {orderStats.total > 0 ? Math.round((orderStats.completed / orderStats.total) * 100) : 0}% от общего
+              {filteredOrders.reduce((sum, order) => sum + order.price, 0).toLocaleString('ru-RU')} ₽
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Средняя цена</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Общие расходы</CardTitle>
+            <Receipt className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {orderStats.averagePrice.toLocaleString('ru-RU')} ₽
+            <div className="text-2xl font-bold text-red-600">
+              {totalExpenses.toLocaleString('ru-RU')} ₽
             </div>
+            <p className="text-xs text-muted-foreground">
+              {filteredExpenses.length} записей
+            </p>
           </CardContent>
         </Card>
 
@@ -320,6 +395,24 @@ export function Analytics({ orders, users, expenses, payouts }: AnalyticsProps) 
             <div className="text-2xl font-bold text-blue-600">
               {totalPayouts.toLocaleString('ru-RU')} ₽
             </div>
+            <p className="text-xs text-muted-foreground">
+              {filteredPayouts.length} выплат
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Чистая прибыль</CardTitle>
+            <TrendingUp className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              {(filteredOrders.reduce((sum, order) => sum + order.price, 0) - totalExpenses).toLocaleString('ru-RU')} ₽
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Доходы - Расходы
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -437,7 +530,7 @@ export function Analytics({ orders, users, expenses, payouts }: AnalyticsProps) 
         </CardContent>
       </Card>
 
-      {/* Expense Breakdown */}
+      {/* Expense Breakdown by Category */}
       <Card>
         <CardHeader>
           <CardTitle>Расходы по категориям</CardTitle>
@@ -449,11 +542,12 @@ export function Analytics({ orders, users, expenses, payouts }: AnalyticsProps) 
                 <TableHead>Категория</TableHead>
                 <TableHead>Сумма</TableHead>
                 <TableHead>Процент от общих расходов</TableHead>
+                <TableHead>Количество записей</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {Object.entries(expenseStats).map(([category, amount]) => {
-                const totalExpenses = Object.values(expenseStats).reduce((sum, val) => sum + val, 0);
+                const categoryExpenses = filteredExpenses.filter(expense => expense.category === category);
                 const percentage = totalExpenses > 0 ? Math.round((amount / totalExpenses) * 100) : 0;
                 
                 return (
@@ -463,16 +557,104 @@ export function Analytics({ orders, users, expenses, payouts }: AnalyticsProps) 
                       {amount.toLocaleString('ru-RU')} ₽
                     </TableCell>
                     <TableCell>{percentage}%</TableCell>
+                    <TableCell>{categoryExpenses.length}</TableCell>
                   </TableRow>
                 );
               })}
               <TableRow className="font-bold">
                 <TableCell>Итого расходов</TableCell>
                 <TableCell>
-                  {Object.values(expenseStats).reduce((sum, amount) => sum + amount, 0).toLocaleString('ru-RU')} ₽
+                  {totalExpenses.toLocaleString('ru-RU')} ₽
                 </TableCell>
                 <TableCell>100%</TableCell>
+                <TableCell>{filteredExpenses.length}</TableCell>
               </TableRow>
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Expense Breakdown by Responsible */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Расходы по ответственным</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Ответственный</TableHead>
+                <TableHead>Сумма</TableHead>
+                <TableHead>Процент от общих расходов</TableHead>
+                <TableHead>Количество записей</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {Object.entries(responsibleStats).map(([responsible, amount]) => {
+                const responsibleExpenses = filteredExpenses.filter(expense => getResponsibleName(expense.responsible) === responsible);
+                const percentage = totalExpenses > 0 ? Math.round((amount / totalExpenses) * 100) : 0;
+                
+                return (
+                  <TableRow key={responsible}>
+                    <TableCell>{responsible}</TableCell>
+                    <TableCell className="font-medium">
+                      {amount.toLocaleString('ru-RU')} ₽
+                    </TableCell>
+                    <TableCell>{percentage}%</TableCell>
+                    <TableCell>{responsibleExpenses.length}</TableCell>
+                  </TableRow>
+                );
+              })}
+              <TableRow className="font-bold">
+                <TableCell>Итого расходов</TableCell>
+                <TableCell>
+                  {totalExpenses.toLocaleString('ru-RU')} ₽
+                </TableCell>
+                <TableCell>100%</TableCell>
+                <TableCell>{filteredExpenses.length}</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Recent Expenses */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Последние расходы</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Дата</TableHead>
+                <TableHead>Категория</TableHead>
+                <TableHead>Сумма</TableHead>
+                <TableHead>Ответственный</TableHead>
+                <TableHead>Комментарий</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredExpenses
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                .slice(0, 10)
+                .map((expense) => (
+                <TableRow key={expense.id}>
+                  <TableCell>
+                    {format(new Date(expense.date), 'dd.MM.yyyy', { locale: ru })}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{expense.category}</Badge>
+                  </TableCell>
+                  <TableCell className="font-medium">
+                    {expense.amount.toLocaleString('ru-RU')} ₽
+                  </TableCell>
+                  <TableCell>{getResponsibleName(expense.responsible)}</TableCell>
+                  <TableCell className="max-w-[200px] truncate">
+                    {expense.comment || '–'}
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         </CardContent>
@@ -495,7 +677,10 @@ export function Analytics({ orders, users, expenses, payouts }: AnalyticsProps) 
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredPayouts.slice(0, 10).map((payout) => (
+              {filteredPayouts
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                .slice(0, 10)
+                .map((payout) => (
                 <TableRow key={payout.id}>
                   <TableCell>
                     {format(new Date(payout.date), 'dd.MM.yyyy', { locale: ru })}

@@ -53,7 +53,7 @@ export function AddExpenseForm({ onSave, currentUser }: AddExpenseFormProps) {
   const form = useForm<Omit<ExpenseFormData, 'id' | 'date'>>({
     resolver: zodResolver(ExpenseSchema.omit({ id: true, date: true })),
     defaultValues: {
-      amount: '',
+      amount: 0,
       category: undefined,
       responsible: currentUser.id,
       comment: '',
@@ -161,7 +161,8 @@ export function AddExpenseForm({ onSave, currentUser }: AddExpenseFormProps) {
                                 type="number" 
                                 placeholder="5000" 
                                 {...field}
-                                onChange={(e) => field.onChange(Number(e.target.value))}
+                                value={field.value || ''}
+                                onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : 0)}
                             />
                         </FormControl>
                         <FormMessage />
