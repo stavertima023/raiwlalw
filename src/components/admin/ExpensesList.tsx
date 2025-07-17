@@ -42,7 +42,8 @@ interface ExpenseSortDescriptor {
 export const ExpensesList: React.FC<ExpensesListProps> = ({ allExpenses, allUsers, onAddExpense, currentUser }) => {
   const [filters, setFilters] = React.useState({
     category: 'all' as ExpenseCategory | 'all',
-    responsible: 'all' as string | 'all',
+    dateFrom: '',
+    dateTo: '',
   });
 
   const [sortDescriptor, setSortDescriptor] = React.useState<ExpenseSortDescriptor>({
@@ -61,13 +62,28 @@ export const ExpensesList: React.FC<ExpensesListProps> = ({ allExpenses, allUser
     if (filters.category !== 'all') {
       filtered = filtered.filter(expense => expense.category === filters.category);
     }
-    if (filters.responsible !== 'all') {
-      filtered = filtered.filter(expense => expense.responsible === filters.responsible);
+    
+    // Filter by date range
+    if (filters.dateFrom) {
+      const fromDate = new Date(filters.dateFrom);
+      filtered = filtered.filter(expense => {
+        const expenseDate = new Date(expense.date);
+        return expenseDate >= fromDate;
+      });
+    }
+
+    if (filters.dateTo) {
+      const toDate = new Date(filters.dateTo);
+      toDate.setHours(23, 59, 59, 999); // End of day
+      filtered = filtered.filter(expense => {
+        const expenseDate = new Date(expense.date);
+        return expenseDate <= toDate;
+      });
     }
 
     filtered.sort((a, b) => {
-      const aValue = a[sortDescriptor.column];
-      const bValue = b[sortDescriptor.column];
+      const aValue = a[sortDescriptor.column] ?? 0;
+      const bValue = b[sortDescriptor.column] ?? 0;
       
       let cmp = 0;
       if (aValue > bValue) cmp = 1;
@@ -97,14 +113,17 @@ export const ExpensesList: React.FC<ExpensesListProps> = ({ allExpenses, allUser
             Отслеживайте и управляйте всеми расходами компании.
           </p>
         </div>
-        <AddExpenseForm onSave={onAddExpense} allUsers={[]} currentUser={currentUser} />
+        <AddExpenseForm onSave={onAddExpense} currentUser={currentUser} />
       </div>
 
       <ExpensesFilters
-        onFilterChange={setFilters}
+        onFilterChange={(newFilters) => setFilters({
+          category: newFilters.category,
+          dateFrom: newFilters.dateFrom || '',
+          dateTo: newFilters.dateTo || '',
+        })}
         currentFilters={filters}
-        allUsers={[]}
-        onClear={() => setFilters({ category: 'all', responsible: 'all' })}
+        onClear={() => setFilters({ category: 'all', dateFrom: '', dateTo: '' })}
       />
 
       <Card>

@@ -55,7 +55,7 @@ export function AddExpenseForm({ onSave, currentUser }: AddExpenseFormProps) {
     defaultValues: {
       amount: '' as any,
       category: undefined,
-      responsible: currentUser.telegramId,
+      responsible: currentUser.username,
       comment: '',
       receiptPhoto: undefined,
     },

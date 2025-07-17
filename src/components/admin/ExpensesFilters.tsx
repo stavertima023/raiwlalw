@@ -11,14 +11,20 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { ExpenseCategory, ExpenseCategoryEnum, User } from '@/lib/types';
 
 interface ExpensesFiltersProps {
   onFilterChange: (filters: {
     category: ExpenseCategory | 'all';
+    dateFrom?: string;
+    dateTo?: string;
   }) => void;
   currentFilters: {
     category: ExpenseCategory | 'all';
+    dateFrom?: string;
+    dateTo?: string;
   };
   onClear: () => void;
 }
@@ -29,13 +35,17 @@ export const ExpensesFilters: React.FC<ExpensesFiltersProps> = ({
   onClear
 }: ExpensesFiltersProps) => {
   const [category, setCategory] = React.useState<ExpenseCategory | 'all'>(currentFilters.category);
+  const [dateFrom, setDateFrom] = React.useState<string>(currentFilters.dateFrom || '');
+  const [dateTo, setDateTo] = React.useState<string>(currentFilters.dateTo || '');
 
   React.useEffect(() => {
-    onFilterChange({ category });
-  }, [category, onFilterChange]);
+    onFilterChange({ category, dateFrom, dateTo });
+  }, [category, dateFrom, dateTo, onFilterChange]);
   
   const handleClear = () => {
     setCategory('all');
+    setDateFrom('');
+    setDateTo('');
     onClear();
   }
 
@@ -43,9 +53,23 @@ export const ExpensesFilters: React.FC<ExpensesFiltersProps> = ({
     <Card>
       <CardContent className="p-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-          {/* Placeholder for Date Range Picker */}
-          <div className="p-2 h-10 flex items-center justify-center border rounded-md text-sm text-muted-foreground">
-              Фильтр по дате (в разработке)
+          <div>
+            <Label htmlFor="date-from">Дата от</Label>
+            <Input
+              id="date-from"
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="date-to">Дата до</Label>
+            <Input
+              id="date-to"
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+            />
           </div>
 
           <Select
