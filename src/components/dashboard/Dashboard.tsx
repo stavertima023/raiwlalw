@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 interface DashboardProps {
   user: Omit<User, 'password_hash'>;
   orders: Order[];
-  onAddOrder: (order: Omit<Order, 'id' | 'orderDate' | 'seller'>) => void;
+  onAddOrder: (order: Omit<Order, 'id' | 'order_date' | 'seller'>) => void;
   onCancelOrder: (orderNumber: string) => void;
   onReturnOrder: (orderNumber: string) => void;
   onPayout: (orderNumbers: string[]) => void;

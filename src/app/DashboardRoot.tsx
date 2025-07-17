@@ -69,7 +69,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     }
   }, [ordersError, expensesError, payoutsError, usersError, toast]);
 
-  const handleAddOrder = async (newOrderData: Omit<Order, 'id' | 'orderDate' | 'seller'>) => {
+  const handleAddOrder = async (newOrderData: Omit<Order, 'id' | 'order_date' | 'seller'>) => {
     try {
       const response = await fetch('/api/orders', {
         method: 'POST',
