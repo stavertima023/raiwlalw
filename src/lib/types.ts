@@ -28,7 +28,7 @@ export type Size = z.infer<typeof SizeEnum>;
 
 export const OrderSchema = z.object({
   id: z.string().optional(), 
-  order_date: z.union([z.date(), z.string().transform((str) => new Date(str))]), 
+  orderDate: z.union([z.date(), z.string().transform((str) => new Date(str))]), 
   orderNumber: z.string().min(1, 'Номер заказа обязателен'),
   shipmentNumber: z.string().min(1, 'Номер отправления обязателен'),
   status: OrderStatusEnum,
@@ -59,25 +59,22 @@ export type User = z.infer<typeof UserSchema>;
 
 export const ExpenseCategoryEnum = z.enum([
   'Аренда',
-  'Зарплата', 
+  'Зарплата',
   'Расходники',
   'Маркетинг',
   'Налоги',
-  'Ткань',
-  'Курьер',
-  'Расходники швейки',
   'Другое',
 ]);
 export type ExpenseCategory = z.infer<typeof ExpenseCategoryEnum>;
 
 export const ExpenseSchema = z.object({
   id: z.string(),
-  date: z.union([z.date(), z.string().transform((str) => new Date(str))]),
+  date: z.date(),
   amount: z.coerce.number().positive('Сумма должна быть положительной'),
   category: ExpenseCategoryEnum,
-  responsible: z.string(), // User's username
+  responsible: z.string(), // User's telegramId
   comment: z.string().optional(),
-  receiptPhoto: z.string().optional(), // Proper camelCase naming
+  receiptPhoto: z.string().url().optional(),
 });
 
 export type Expense = z.infer<typeof ExpenseSchema>;
@@ -104,19 +101,4 @@ export type SortDirection = 'asc' | 'desc';
 export interface SortDescriptor {
   column: keyof Order;
   direction: SortDirection;
-}
-
-// Analytics types
-export interface AnalyticsData {
-  totalOrders: number;
-  ordersByStatus: Record<OrderStatus, number>;
-  totalPayouts: number;
-  averageOrderPrice: number;
-  expensesByCategory: Record<ExpenseCategory, number>;
-}
-
-export interface AnalyticsFilters {
-  dateFrom?: string;
-  dateTo?: string;
-  sellers?: string[];
 }

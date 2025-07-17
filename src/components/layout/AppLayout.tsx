@@ -58,7 +58,7 @@ export function AppLayout({ children, currentUser }: AppLayoutProps) {
 
   // Only show sidebar for administrators
   if (currentUser.role === 'Администратор') {
-     return (
+    return (
       <SidebarProvider>
         <div className="flex min-h-screen w-full">
           <Sidebar>
@@ -84,10 +84,10 @@ export function AppLayout({ children, currentUser }: AppLayoutProps) {
               </div>
             </div>
             <main className="p-4 md:p-8">
-           {children(activeView)}
-        </main>
+              {children(activeView)}
+            </main>
           </SidebarInset>
-      </div>
+        </div>
       </SidebarProvider>
     );
   }
@@ -99,14 +99,14 @@ export function AppLayout({ children, currentUser }: AppLayoutProps) {
         <h1 className="text-lg font-semibold">
           {currentUser.role === 'Продавец' ? 'Панель продавца' : 'Панель принтовщика'}
         </h1>
-           <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
           <UserNav user={currentUser} />
-            <ThemeToggle />
-          </div>
-        </header>
+          <ThemeToggle />
+        </div>
+      </header>
       <main className="flex-1 p-4 md:p-8">
-          {children(activeView)}
-        </main>
+        {children(activeView)}
+      </main>
     </div>
   );
 }

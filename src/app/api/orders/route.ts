@@ -23,7 +23,7 @@ export async function GET() {
       return NextResponse.json({ message: 'Пользователь не авторизован' }, { status: 401 });
     }
 
-    let query = supabaseAdmin.from('orders').select('*').order('order_date', { ascending: false });
+    let query = supabaseAdmin.from('orders').select('*').order('orderDate', { ascending: false });
 
     // If the user is a seller, only fetch their orders
     if (user.role === 'Продавец') {
@@ -38,7 +38,7 @@ export async function GET() {
     }
 
     // Parse dates before sending to client
-    const parsedData = data.map(item => ({...item, order_date: new Date(item.order_date) }))
+    const parsedData = data.map(item => ({...item, orderDate: new Date(item.orderDate) }))
 
     return NextResponse.json(parsedData);
   } catch (error: any) {
@@ -86,15 +86,15 @@ export async function POST(request: Request) {
     const newOrderData = {
       ...json,
       seller: user.username,
-      order_date: new Date().toISOString(), // Use ISO string and snake_case
+      orderDate: new Date().toISOString(), // Use ISO string for better database compatibility
     };
     
     console.log('Order data with seller and date:', newOrderData);
     
-    // Validate data with Zod schema
-    const validatedExpense = OrderSchema.omit({ id: true }).parse(newOrderData);
+    // Validate data with Zod schema before inserting
+    const validatedOrder = OrderSchema.omit({ id: true }).parse(newOrderData);
     
-    console.log('Validated order:', validatedExpense);
+    console.log('Validated order:', validatedOrder);
 
     // Test Supabase connection
     const { data: testData, error: testError } = await supabaseAdmin.from('orders').select('count').limit(1);
@@ -106,7 +106,7 @@ export async function POST(request: Request) {
       }, { status: 500 });
     }
 
-    const { data, error } = await supabaseAdmin.from('orders').insert(validatedExpense).select().single();
+    const { data, error } = await supabaseAdmin.from('orders').insert(validatedOrder).select().single();
 
     if (error) {
       console.error('Supabase insert error:', error);

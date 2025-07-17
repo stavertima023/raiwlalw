@@ -12,7 +12,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { ExpensesList } from '@/components/admin/ExpensesList';
 import { PayoutsList } from '@/components/admin/PayoutsList';
 import AIAnalytics from '@/components/admin/AIAnalytics';
-import { Analytics } from '@/components/admin/Analytics';
 
 const fetcher = (url: string) => fetch(url).then(res => {
     if (!res.ok) {
@@ -69,7 +68,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     }
   }, [ordersError, expensesError, payoutsError, usersError, toast]);
 
-  const handleAddOrder = async (newOrderData: Omit<Order, 'id' | 'order_date' | 'seller'>) => {
+  const handleAddOrder = async (newOrderData: Omit<Order, 'id' | 'orderDate' | 'seller'>) => {
     try {
       const response = await fetch('/api/orders', {
         method: 'POST',
@@ -130,47 +129,19 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
   
   const handleAddExpense = async (newExpenseData: Omit<Expense, 'id' | 'date' | 'responsible'>) => {
     try {
-      console.log('Sending expense data:', newExpenseData); // Debug log
-      
       const response = await fetch('/api/expenses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newExpenseData),
       });
-      
        if (!response.ok) {
-        let errorData;
-        try {
-          errorData = await response.json();
-        } catch (jsonError) {
-          // If response is not JSON, get text
-          const errorText = await response.text();
-          console.error('Non-JSON API Error (Status:', response.status, '):', errorText);
-          throw new Error(`Ошибка сервера (${response.status}): ${errorText || 'Неизвестная ошибка'}`);
-        }
-        
-        console.error('API Error (Status:', response.status, '):', errorData);
-        
-        // Show detailed validation errors if available
-        if (errorData.errors && Array.isArray(errorData.errors)) {
-          const errorMessages = errorData.errors.map((e: any) => `${e.path?.join('.')}: ${e.message}`).join(', ');
-          throw new Error(`Ошибка валидации: ${errorMessages}`);
-        }
-        
-        // Handle different error types
-        const errorMessage = errorData.message || errorData.error || 'Неизвестная ошибка сервера';
-        throw new Error(`Ошибка сервера (${response.status}): ${errorMessage}`);
+        const err = await response.json();
+        throw new Error(err.message || 'Server error');
       }
-      
       mutate('/api/expenses');
       toast({ title: 'Расход успешно добавлен' });
     } catch (error: any) {
-      console.error('Expense creation error:', error); // Debug log
-      toast({ 
-        title: 'Ошибка добавления расхода', 
-        description: error.message || 'Произошла неизвестная ошибка', 
-        variant: 'destructive' 
-      });
+      toast({ title: 'Ошибка добавления расхода', description: error.message, variant: 'destructive' });
     }
   }
 
@@ -327,7 +298,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
                         currentUser={initialUser}
                       />;
             case 'admin-analytics':
-              return <Analytics allUsers={users} />;
+              return <PlaceholderComponent title="Аналитика" description="Интерактивные дашборды и графики." />;
             case 'admin-ai-analytics':
                return <AIAnalytics orders={orders} expenses={expenses} />;
             default:

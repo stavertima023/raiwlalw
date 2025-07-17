@@ -41,8 +41,8 @@ import { ScrollArea } from '../ui/scroll-area';
 type ExpenseFormData = z.infer<typeof ExpenseSchema>;
 
 interface AddExpenseFormProps {
-  onSave: (data: Omit<Expense, 'id' | 'date' | 'responsible'>) => void;
-  currentUser: Omit<User, 'password_hash'>;
+  onSave: (data: Omit<Expense, 'id' | 'date'>) => void;
+  currentUser: User;
 }
 
 export function AddExpenseForm({ onSave, currentUser }: AddExpenseFormProps) {
@@ -55,29 +55,18 @@ export function AddExpenseForm({ onSave, currentUser }: AddExpenseFormProps) {
     defaultValues: {
       amount: '' as any,
       category: undefined,
-      responsible: currentUser.username, // Use username instead of telegramId
+      responsible: currentUser.telegramId,
       comment: '',
-      receiptPhoto: undefined, // Proper camelCase naming
+      receiptPhoto: undefined,
     },
     mode: 'onChange',
   });
   
   const { watch, setValue, getValues } = form;
-  const watchedPhoto = watch('receiptPhoto'); // Use proper camelCase naming
+  const watchedPhoto = watch('receiptPhoto');
 
   const onSubmit = (data: Omit<ExpenseFormData, 'id' | 'date'>) => {
-    // Remove responsible field as it's added by the backend
-    const { responsible, ...expenseData } = data;
-    
-    // Clean up the data - remove empty strings and undefined values
-    const cleanedEntries = Object.entries(expenseData).filter(([key, value]) => {
-      // Keep all values except empty strings and undefined
-      return value !== '' && value !== undefined && value !== null;
-    });
-    
-    const cleanedData = Object.fromEntries(cleanedEntries);
-    
-    onSave(cleanedData as any); // Type assertion needed due to dynamic filtering
+    onSave(data);
     handleClose();
     toast({
       title: 'Расход добавлен',
