@@ -53,7 +53,7 @@ export function AddExpenseForm({ onSave, currentUser }: AddExpenseFormProps) {
   const form = useForm<Omit<ExpenseFormData, 'id' | 'date'>>({
     resolver: zodResolver(ExpenseSchema.omit({ id: true, date: true })),
     defaultValues: {
-      amount: 0,
+      amount: '',
       category: undefined,
       responsible: currentUser.id,
       comment: '',
