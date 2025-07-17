@@ -115,7 +115,7 @@ export async function POST(request: Request) {
       ...json,
       processedBy: user.username,
       date: new Date().toISOString(),
-      status: user.role === 'Продавец' ? 'pending' : 'pending', // Sellers create pending payouts
+      status: 'pending', // All payouts start as pending
     };
     
     // Validate data with Zod schema

@@ -180,8 +180,10 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       
       const payoutData = {
         orderNumbers,
-        totalAmount,
-        notes: `Выплата по заказам: ${orderNumbers.join(', ')}`,
+        amount: totalAmount,
+        orderCount: selectedOrders.length,
+        seller: initialUser.username,
+        comment: `Выплата по заказам: ${orderNumbers.join(', ')}`,
       };
 
       const response = await fetch('/api/payouts', {
@@ -201,7 +203,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       
       toast({ 
         title: 'Выплата создана', 
-        description: `Создана выплата на сумму ${totalAmount.toLocaleString('ru-RU')} ₽. Заказы отмечены как "Исполнен".` 
+        description: `Создана выплата на сумму ${totalAmount.toLocaleString('ru-RU')} ₽ по ${selectedOrders.length} заказ(ам). Заказы отмечены как "Исполнен".` 
       });
     } catch (error: any) {
       toast({ 
