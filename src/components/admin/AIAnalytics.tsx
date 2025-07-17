@@ -126,14 +126,14 @@ export default function AIAnalytics({ orders, expenses }: AIAnalyticsProps) {
     switch (analysisResult.chartType) {
         case 'line':
             return (
-                <LineChart {...chartProps}>
+                 <LineChart {...chartProps}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="name" />
                     <YAxis />
                     <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}/>
                     <Legend />
                     {analysisResult.chartKeys?.map((key, index) => (
-                      <Line key={key} type="monotone" dataKey={key} stroke={colors[index % colors.length]} />
+                      <Line key={key} type="monotone" dataKey={key} stroke={`var(--chart-${(index % 5) + 1})`} />
                     ))}
                 </LineChart>
             );
@@ -148,7 +148,7 @@ export default function AIAnalytics({ orders, expenses }: AIAnalyticsProps) {
                      <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}/>
                     <Legend />
                 </PieChart>
-             );
+             )
         case 'bar':
         default:
             return (
@@ -159,7 +159,7 @@ export default function AIAnalytics({ orders, expenses }: AIAnalyticsProps) {
                     <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}/>
                     <Legend />
                     {analysisResult.chartKeys?.map((key, index) => (
-                      <Bar key={key} dataKey={key} fill={colors[index % colors.length]} />
+                      <Bar key={key} dataKey={key} fill={`var(--chart-${(index % 5) + 1})`} />
                     ))}
                 </RechartsBarChart>
             );

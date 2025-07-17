@@ -59,24 +59,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Пользователь не авторизован' }, { status: 401 });
     }
 
-    // Allow both admins and sellers to create payouts
-    if (user.role !== 'Администратор' && user.role !== 'Продавец') {
+    // Only admins can create payouts
+    if (user.role !== 'Администратор') {
       return NextResponse.json({ message: 'Доступ запрещен' }, { status: 403 });
     }
 
     const json = await request.json();
-    
-    // For sellers, ensure they can only create payouts for themselves
-    if (user.role === 'Продавец' && json.seller !== user.username) {
-      return NextResponse.json({ message: 'Продавцы могут создавать выводы только для себя' }, { status: 403 });
-    }
     
     // Add processed by user and current date
     const payoutData = {
       ...json,
       processedBy: user.username,
       date: new Date().toISOString(),
-      status: user.role === 'Продавец' ? 'pending' : json.status || 'pending',
+      status: 'pending',
     };
     
     // Validate data with Zod schema
