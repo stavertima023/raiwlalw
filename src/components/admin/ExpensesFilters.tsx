@@ -13,7 +13,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ExpenseCategory, User } from '@/lib/types';
+import { ExpenseCategory, ExpenseCategoryEnum, User } from '@/lib/types';
 
 interface ExpensesFiltersProps {
   onFilterChange: (filters: {
@@ -81,12 +81,11 @@ export const ExpensesFilters: React.FC<ExpensesFiltersProps> = ({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Все категории</SelectItem>
-              <SelectItem value="Аренда">Аренда</SelectItem>
-              <SelectItem value="Зарплата">Зарплата</SelectItem>
-              <SelectItem value="Расходники">Расходники</SelectItem>
-              <SelectItem value="Маркетинг">Маркетинг</SelectItem>
-              <SelectItem value="Налоги">Налоги</SelectItem>
-              <SelectItem value="Другое">Другое</SelectItem>
+              {ExpenseCategoryEnum.options.map((cat: ExpenseCategory) => (
+                <SelectItem key={cat} value={cat}>
+                  {cat}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           

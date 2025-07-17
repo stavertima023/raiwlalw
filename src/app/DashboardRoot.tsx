@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import useSWR, { mutate } from 'swr';
-import { Order, User, Expense, Payout } from '@/lib/types-pure';
+import { Order, OrderStatus, User, Expense, Payout, PayoutStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Dashboard } from '@/components/dashboard/Dashboard';
@@ -12,12 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { ExpensesList } from '@/components/admin/ExpensesList';
 import { PayoutsList } from '@/components/admin/PayoutsList';
 import AIAnalytics from '@/components/admin/AIAnalytics';
-import dynamic from 'next/dynamic';
-
-const Analytics = dynamic(() => import('@/components/admin/AnalyticsStandalone').then(mod => ({ default: mod.AnalyticsStandalone })), {
-  ssr: false,
-  loading: () => <div>Загрузка аналитики...</div>
-});
+import { Analytics } from '@/components/admin/Analytics';
 
 const fetcher = (url: string) => fetch(url).then(res => {
     if (!res.ok) {
@@ -115,7 +110,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     }
   };
   
-  const handleUpdateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
     try {
         const response = await fetch(`/api/orders/${orderId}`, {
             method: 'PATCH',
@@ -162,7 +157,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     }
   }
 
-  const handleUpdatePayoutStatus = async (payoutId: string, newStatus: Payout['status']) => {
+  const handleUpdatePayoutStatus = async (payoutId: string, newStatus: PayoutStatus) => {
     try {
       const response = await fetch(`/api/payouts/${payoutId}`, {
         method: 'PATCH',

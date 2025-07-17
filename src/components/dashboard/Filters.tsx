@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
-import { OrderStatus, ProductType } from '@/lib/types';
+import { OrderStatus, OrderStatusEnum, ProductType, ProductTypeEnum } from '@/lib/types';
 import { Input } from '../ui/input';
 
 interface FiltersProps {
@@ -67,12 +67,11 @@ const Filters: React.FC<FiltersProps> = ({ onFilterChange, currentFilters }) => 
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Все статусы</SelectItem>
-              <SelectItem value="Добавлен">Добавлен</SelectItem>
-              <SelectItem value="Готов">Готов</SelectItem>
-              <SelectItem value="Отправлен">Отправлен</SelectItem>
-              <SelectItem value="Исполнен">Исполнен</SelectItem>
-              <SelectItem value="Отменен">Отменен</SelectItem>
-              <SelectItem value="Возврат">Возврат</SelectItem>
+              {OrderStatusEnum.options.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <Select
@@ -84,15 +83,11 @@ const Filters: React.FC<FiltersProps> = ({ onFilterChange, currentFilters }) => 
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Все типы</SelectItem>
-              <SelectItem value="фб">фб</SelectItem>
-              <SelectItem value="фч">фч</SelectItem>
-              <SelectItem value="хч">хч</SelectItem>
-              <SelectItem value="хб">хб</SelectItem>
-              <SelectItem value="хс">хс</SelectItem>
-              <SelectItem value="шч">шч</SelectItem>
-              <SelectItem value="лб">лб</SelectItem>
-              <SelectItem value="лч">лч</SelectItem>
-              <SelectItem value="другое">другое</SelectItem>
+              {ProductTypeEnum.options.map((pt) => (
+                <SelectItem key={pt} value={pt}>
+                  {pt}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

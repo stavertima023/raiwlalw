@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { OrderSchema } from '@/lib/types';
+import { OrderSchema, ProductTypeEnum, SizeEnum } from '@/lib/types';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { X, Plus, Upload } from 'lucide-react';
 import Image from 'next/image';
@@ -177,15 +177,9 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
                   <SelectTrigger><SelectValue placeholder="Выберите тип" /></SelectTrigger>
                                 </FormControl>
                  <SelectContent>
-                    <SelectItem value="фб">фб</SelectItem>
-                    <SelectItem value="фч">фч</SelectItem>
-                    <SelectItem value="хч">хч</SelectItem>
-                    <SelectItem value="хб">хб</SelectItem>
-                    <SelectItem value="хс">хс</SelectItem>
-                    <SelectItem value="шч">шч</SelectItem>
-                    <SelectItem value="лб">лб</SelectItem>
-                    <SelectItem value="лч">лч</SelectItem>
-                    <SelectItem value="другое">другое</SelectItem>
+                    {ProductTypeEnum.options.map(option => (
+                        <SelectItem key={option} value={option}>{option}</SelectItem>
+                    ))}
                  </SelectContent>
                </Select>
                               <FormMessage />
@@ -204,10 +198,9 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
                   <SelectTrigger><SelectValue placeholder="Выберите размер" /></SelectTrigger>
                  </FormControl>
                  <SelectContent>
-                    <SelectItem value="S">S</SelectItem>
-                    <SelectItem value="M">M</SelectItem>
-                    <SelectItem value="L">L</SelectItem>
-                    <SelectItem value="XL">XL</SelectItem>
+                    {SizeEnum.options.map(option => (
+                        <SelectItem key={option} value={option}>{option}</SelectItem>
+                                ))}
                  </SelectContent>
                </Select>
                         <FormMessage />

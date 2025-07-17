@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Wand2, Lightbulb, BarChart, FileText, Table2 } from 'lucide-react';
-import { Order, Expense } from '@/lib/types-pure';
+import type { Order, Expense } from '@/lib/types';
 import { analyzeData, AIAnalyticsOutput } from '@/ai/flows/ai-analytics-flow';
 import { useToast } from '@/hooks/use-toast';
 import { BarChart as RechartsBarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';

@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ArrowUpDown } from 'lucide-react';
-import { Expense, User } from '@/lib/types-pure';
+import type { Expense, User, ExpenseCategory } from '@/lib/types';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { AddExpenseForm } from './AddExpenseForm';
@@ -41,7 +41,7 @@ interface ExpenseSortDescriptor {
 
 export const ExpensesList: React.FC<ExpensesListProps> = ({ allExpenses, allUsers, onAddExpense, currentUser }) => {
   const [filters, setFilters] = React.useState({
-    category: 'all' as Expense['category'] | 'all',
+    category: 'all' as ExpenseCategory | 'all',
     dateFrom: '',
     dateTo: '',
   });

@@ -47,7 +47,7 @@ import {
   Check,
   X,
 } from 'lucide-react';
-import { Order, User, OrderStatus } from '@/lib/types-pure';
+import type { Order, OrderStatus, User } from '@/lib/types';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -392,7 +392,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                 <TableRow key={order.id}>
                   {useLargeLayout && renderActionsCell(order)}
                   <TableCell className="font-medium whitespace-nowrap">
-                    {format(new Date(order.orderDate), 'd MMM yyyy', { locale: ru })}
+                    {format(order.orderDate, 'd MMM yyyy', { locale: ru })}
                   </TableCell>
                   <TableCell className="whitespace-nowrap">
                     {order.orderNumber}

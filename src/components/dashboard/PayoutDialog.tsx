@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { Terminal, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
-import { Order } from '@/lib/types-pure';
+import type { Order } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
 
 interface PayoutDialogProps {

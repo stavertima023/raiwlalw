@@ -33,7 +33,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
-import { ExpenseSchema, User, Expense } from '@/lib/types';
+import { ExpenseSchema, ExpenseCategoryEnum, User, Expense } from '@/lib/types';
 import { Check, PlusCircle, Plus, X } from 'lucide-react';
 import Image from 'next/image';
 import { ScrollArea } from '../ui/scroll-area';
@@ -53,7 +53,7 @@ export function AddExpenseForm({ onSave, currentUser }: AddExpenseFormProps) {
   const form = useForm<Omit<ExpenseFormData, 'id' | 'date'>>({
     resolver: zodResolver(ExpenseSchema.omit({ id: true, date: true })),
     defaultValues: {
-      amount: 0,
+      amount: undefined,
       category: undefined,
       responsible: currentUser.id,
       comment: '',
@@ -161,8 +161,7 @@ export function AddExpenseForm({ onSave, currentUser }: AddExpenseFormProps) {
                                 type="number" 
                                 placeholder="5000" 
                                 {...field}
-                                value={field.value || ''}
-                                onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : 0)}
+                                onChange={(e) => field.onChange(Number(e.target.value))}
                             />
                         </FormControl>
                         <FormMessage />
@@ -183,12 +182,11 @@ export function AddExpenseForm({ onSave, currentUser }: AddExpenseFormProps) {
                             </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                            <SelectItem value="Аренда">Аренда</SelectItem>
-                            <SelectItem value="Зарплата">Зарплата</SelectItem>
-                            <SelectItem value="Расходники">Расходники</SelectItem>
-                            <SelectItem value="Маркетинг">Маркетинг</SelectItem>
-                            <SelectItem value="Налоги">Налоги</SelectItem>
-                            <SelectItem value="Другое">Другое</SelectItem>
+                            {ExpenseCategoryEnum.options.map((cat) => (
+                                <SelectItem key={cat} value={cat}>
+                                {cat}
+                                </SelectItem>
+                            ))}
                             </SelectContent>
                         </Select>
                         <FormMessage />
