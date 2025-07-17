@@ -125,7 +125,6 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                   <AlertDialogTrigger asChild>
                     <Button size="icon" variant="success">
                       <Check className="h-4 w-4" />
-                      <span className="sr-only">Готов</span>
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
@@ -176,7 +175,6 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                   <AlertDialogTrigger asChild>
                     <Button size="icon" variant="success">
                       <Send className="h-4 w-4" />
-                      <span className="sr-only">Отправлен</span>
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
@@ -222,7 +220,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({
 
     return (
        <DropdownMenu>
-        <DropdownMenuTrigger asChild>
+         <DropdownMenuTrigger asChild>
             <Button aria-haspopup="true" size="icon" variant="ghost">
             <MoreHorizontal className="h-4 w-4" />
             <span className="sr-only">Toggle menu</span>
