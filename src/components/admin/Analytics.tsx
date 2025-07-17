@@ -21,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Order, OrderStatus, User, Expense, Payout, ExpenseCategory } from '@/lib/types';
+import { Order, User, Expense, Payout } from '@/lib/analytics-types';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { 

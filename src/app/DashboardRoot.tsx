@@ -12,7 +12,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { ExpensesList } from '@/components/admin/ExpensesList';
 import { PayoutsList } from '@/components/admin/PayoutsList';
 import AIAnalytics from '@/components/admin/AIAnalytics';
-import { Analytics } from '@/components/admin/Analytics';
+import dynamic from 'next/dynamic';
+
+const Analytics = dynamic(() => import('@/components/admin/Analytics').then(mod => ({ default: mod.Analytics })), {
+  ssr: false,
+  loading: () => <div>Загрузка аналитики...</div>
+});
 
 const fetcher = (url: string) => fetch(url).then(res => {
     if (!res.ok) {
