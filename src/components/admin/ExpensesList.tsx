@@ -117,13 +117,13 @@ export const ExpensesList: React.FC<ExpensesListProps> = ({ allExpenses, allUser
       </div>
 
       <ExpensesFilters
-        onFilterChange={(newFilters) => setFilters({
+        onFilterChange={React.useCallback((newFilters) => setFilters({
           category: newFilters.category,
           dateFrom: newFilters.dateFrom || '',
           dateTo: newFilters.dateTo || '',
-        })}
+        }), [])}
         currentFilters={filters}
-        onClear={() => setFilters({ category: 'all', dateFrom: '', dateTo: '' })}
+        onClear={React.useCallback(() => setFilters({ category: 'all', dateFrom: '', dateTo: '' }), [])}
       />
 
       <Card>

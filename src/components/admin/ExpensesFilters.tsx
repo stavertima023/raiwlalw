@@ -40,7 +40,7 @@ export const ExpensesFilters: React.FC<ExpensesFiltersProps> = ({
 
   React.useEffect(() => {
     onFilterChange({ category, dateFrom, dateTo });
-  }, [category, dateFrom, dateTo, onFilterChange]);
+  }, [category, dateFrom, dateTo]);
   
   const handleClear = () => {
     setCategory('all');
