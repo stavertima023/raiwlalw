@@ -74,7 +74,7 @@ export const ExpenseSchema = z.object({
   category: ExpenseCategoryEnum,
   responsible: z.string(), // User's telegramId
   comment: z.string().optional(),
-  receiptPhoto: z.string().url().optional(),
+  receiptPhoto: z.union([z.string().url(), z.literal(''), z.undefined()]).optional(),
 });
 
 export type Expense = z.infer<typeof ExpenseSchema>;

@@ -128,7 +128,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     }
   };
   
-  const handleAddExpense = async (newExpenseData: Omit<Expense, 'id' | 'date' | 'responsible'>) => {
+  const handleAddExpense = async (newExpenseData: Omit<Expense, 'id' | 'date'>) => {
     try {
       const response = await fetch('/api/expenses', {
         method: 'POST',

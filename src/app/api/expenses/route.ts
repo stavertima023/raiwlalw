@@ -66,9 +66,15 @@ export async function POST(request: Request) {
 
     const json = await request.json();
     
+    // Clean up the data - remove empty receiptPhoto
+    const cleanData = {
+      ...json,
+      receiptPhoto: json.receiptPhoto || undefined,
+    };
+    
     // Add responsible user and current date
     const expenseData = {
-      ...json,
+      ...cleanData,
       responsible: user.username,
       date: new Date().toISOString(),
     };

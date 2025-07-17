@@ -30,7 +30,7 @@ import { ExpensesFilters } from './ExpensesFilters';
 interface ExpensesListProps {
   allExpenses: Expense[];
   allUsers: User[];
-  onAddExpense: (expense: Omit<Expense, 'id' | 'date' | 'responsible'>) => void;
+  onAddExpense: (expense: Omit<Expense, 'id' | 'date'>) => void;
   currentUser: Omit<User, 'password_hash'>;
 }
 

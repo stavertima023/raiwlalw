@@ -65,14 +65,7 @@ export function AddExpenseForm({ onSave, currentUser }: AddExpenseFormProps) {
   const { watch, setValue, getValues } = form;
   const watchedPhoto = watch('receiptPhoto');
 
-  const onSubmit = (data: Omit<ExpenseFormData, 'id' | 'date'>) => {
-    onSave(data);
-    handleClose();
-    toast({
-      title: 'Расход добавлен',
-      description: 'Новая запись о расходах успешно создана.',
-    });
-  };
+
 
   const handleClose = () => {
     form.reset();
@@ -110,7 +103,21 @@ export function AddExpenseForm({ onSave, currentUser }: AddExpenseFormProps) {
   
   const handleRemovePhoto = () => {
     setValue('receiptPhoto', undefined, { shouldValidate: true });
-  }
+  };
+
+  const onSubmit = (data: Omit<ExpenseFormData, 'id' | 'date'>) => {
+    // Clean up the data before sending
+    const cleanData = {
+      ...data,
+      receiptPhoto: data.receiptPhoto || undefined,
+    };
+    onSave(cleanData);
+    handleClose();
+    toast({
+      title: 'Расход добавлен',
+      description: 'Новая запись о расходах успешно создана.',
+    });
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
