@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { ExpenseSchema, ExpenseCategoryEnum } from '@/lib/types';
+import { ExpenseSchema } from '@/lib/types';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { X, Upload } from 'lucide-react';
 import Image from 'next/image';
@@ -128,9 +128,12 @@ export function ExpenseForm({ onSave, onCancel }: ExpenseFormProps) {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {ExpenseCategoryEnum.options.map(option => (
-                    <SelectItem key={option} value={option}>{option}</SelectItem>
-                  ))}
+                  <SelectItem value="Аренда">Аренда</SelectItem>
+                  <SelectItem value="Зарплата">Зарплата</SelectItem>
+                  <SelectItem value="Расходники">Расходники</SelectItem>
+                  <SelectItem value="Маркетинг">Маркетинг</SelectItem>
+                  <SelectItem value="Налоги">Налоги</SelectItem>
+                  <SelectItem value="Другое">Другое</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />

@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
-import { OrderStatus, OrderStatusEnum, ProductType, ProductTypeEnum, User } from '@/lib/types';
+import { OrderStatus, ProductType, User } from '@/lib/types';
 import { Input } from '../ui/input';
 
 interface AdminOrderFiltersProps {
@@ -73,11 +73,12 @@ const AdminOrderFilters: React.FC<AdminOrderFiltersProps> = ({ onFilterChange, c
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Все статусы</SelectItem>
-              {OrderStatusEnum.options.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {s}
-                </SelectItem>
-              ))}
+              <SelectItem value="Добавлен">Добавлен</SelectItem>
+              <SelectItem value="Готов">Готов</SelectItem>
+              <SelectItem value="Отправлен">Отправлен</SelectItem>
+              <SelectItem value="Исполнен">Исполнен</SelectItem>
+              <SelectItem value="Отменен">Отменен</SelectItem>
+              <SelectItem value="Возврат">Возврат</SelectItem>
             </SelectContent>
           </Select>
           <Select
@@ -89,11 +90,15 @@ const AdminOrderFilters: React.FC<AdminOrderFiltersProps> = ({ onFilterChange, c
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Все типы</SelectItem>
-              {ProductTypeEnum.options.map((pt) => (
-                <SelectItem key={pt} value={pt}>
-                  {pt}
-                </SelectItem>
-              ))}
+              <SelectItem value="фб">фб</SelectItem>
+              <SelectItem value="фч">фч</SelectItem>
+              <SelectItem value="хч">хч</SelectItem>
+              <SelectItem value="хб">хб</SelectItem>
+              <SelectItem value="хс">хс</SelectItem>
+              <SelectItem value="шч">шч</SelectItem>
+              <SelectItem value="лб">лб</SelectItem>
+              <SelectItem value="лч">лч</SelectItem>
+              <SelectItem value="другое">другое</SelectItem>
             </SelectContent>
           </Select>
            <Select
@@ -106,7 +111,7 @@ const AdminOrderFilters: React.FC<AdminOrderFiltersProps> = ({ onFilterChange, c
             <SelectContent>
               <SelectItem value="all">Все продавцы</SelectItem>
               {sellerUsers.map((u) => (
-                <SelectItem key={u.telegramId} value={u.telegramId}>
+                <SelectItem key={u.username} value={u.username}>
                   {u.name}
                 </SelectItem>
               ))}
