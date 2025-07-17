@@ -36,7 +36,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
   }
 
   const { toast } = useToast();
-  
+
   const { data: orders = [], error: ordersError } = useSWR<Order[]>('/api/orders', fetcher);
   
   const { data: expenses = [], error: expensesError } = useSWR<Expense[]>(
@@ -109,7 +109,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       });
     }
   };
-
+  
   const handleUpdateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
     try {
         const response = await fetch(`/api/orders/${orderId}`, {
@@ -124,7 +124,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
         mutate('/api/orders');
         toast({ title: 'Статус заказа обновлен', description: `Заказ получил новый статус: "${newStatus}".` });
     } catch (error: any) {
-        toast({ title: 'Ошибка обновления статуса', description: error.message, variant: 'destructive' });
+       toast({ title: 'Ошибка обновления статуса', description: error.message, variant: 'destructive' });
     }
   };
   
@@ -225,7 +225,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       });
     }
   };
-  
+
   const findOrder = (orderNumber: string): Order | undefined => {
     return orders.find((order: Order) => order.orderNumber === orderNumber);
   };

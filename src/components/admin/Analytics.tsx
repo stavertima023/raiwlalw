@@ -186,7 +186,7 @@ export function Analytics({ orders, users, expenses, payouts }: AnalyticsProps) 
 
   // Calculate expense statistics by category
   const expenseStats: ExpenseStats = React.useMemo(() => {
-    const stats = {
+    const stats: ExpenseStats = {
       'Аренда': 0,
       'Зарплата': 0,
       'Расходники': 0,
@@ -196,7 +196,9 @@ export function Analytics({ orders, users, expenses, payouts }: AnalyticsProps) 
     };
 
     filteredExpenses.forEach(expense => {
-      stats[expense.category] += expense.amount;
+      if (expense.category && stats.hasOwnProperty(expense.category)) {
+        stats[expense.category] += expense.amount;
+      }
     });
 
     return stats;

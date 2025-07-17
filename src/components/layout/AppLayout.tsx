@@ -56,12 +56,12 @@ export function AppLayout({ children, currentUser }: AppLayoutProps) {
   React.useEffect(() => {
     if (navItems.length > 0 && !activeView) {
         setActiveView(navItems[0].id);
-  }
+    }
   }, [navItems, activeView]);
 
   // Layout without sidebar for non-admin users
   if (!showSidebar) {
-    return (
+     return (
       <div className="flex min-h-screen w-full">
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between p-4 border-b">
@@ -74,8 +74,8 @@ export function AppLayout({ children, currentUser }: AppLayoutProps) {
             </div>
           </div>
           <main className="p-4 md:p-8">
-            {children(activeView)}
-          </main>
+           {children(activeView)}
+        </main>
         </div>
       </div>
     );
@@ -85,17 +85,17 @@ export function AppLayout({ children, currentUser }: AppLayoutProps) {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full">
-        <Sidebar>
+      <Sidebar>
           <SidebarHeader className="p-4">
             <div className="flex items-center justify-between">
               <UserNav user={currentUser} />
               <SidebarTrigger className="lg:hidden" />
             </div>
-          </SidebarHeader>
+        </SidebarHeader>
           <SidebarBody className="p-4">
             <MainNav items={navItems} activeItem={activeView} onItemSelect={setActiveView} />
-          </SidebarBody>
-        </Sidebar>
+        </SidebarBody>
+      </Sidebar>
         
         <SidebarInset className="flex-1 min-w-0">
           <div className="flex items-center justify-between p-4 border-b lg:hidden">
@@ -103,14 +103,14 @@ export function AppLayout({ children, currentUser }: AppLayoutProps) {
               {navItems.find(item => item.id === activeView)?.label || 'Панель управления'}
             </h1>
             <div className="flex items-center gap-2">
-              <SidebarTrigger />
-              <ThemeToggle />
+          <SidebarTrigger />
+            <ThemeToggle />
             </div>
           </div>
           <main className="p-4 md:p-8">
-            {children(activeView)}
-          </main>
-        </SidebarInset>
+          {children(activeView)}
+        </main>
+      </SidebarInset>
       </div>
     </SidebarProvider>
   );
