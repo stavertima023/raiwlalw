@@ -14,7 +14,7 @@ import { PayoutsList } from '@/components/admin/PayoutsList';
 import AIAnalytics from '@/components/admin/AIAnalytics';
 import dynamic from 'next/dynamic';
 
-const Analytics = dynamic(() => import('@/components/admin/Analytics').then(mod => ({ default: mod.Analytics })), {
+const Analytics = dynamic(() => import('@/components/admin/AnalyticsStandalone').then(mod => ({ default: mod.AnalyticsStandalone })), {
   ssr: false,
   loading: () => <div>Загрузка аналитики...</div>
 });
