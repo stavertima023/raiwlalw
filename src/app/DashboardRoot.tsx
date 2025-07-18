@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import useSWR, { mutate } from 'swr';
-import { Order, OrderStatus, User, Expense, Payout, PayoutStatus } from '@/lib/types';
+import { Order, OrderStatus, User, Expense, Payout, PayoutStatus, Debt, DebtPayment } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Dashboard } from '@/components/dashboard/Dashboard';
@@ -54,6 +54,16 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     fetcher
   );
 
+  const { data: debts = [], error: debtsError } = useSWR<Debt[]>(
+    initialUser.role === 'Администратор' ? '/api/debts' : null, 
+    fetcher
+  );
+
+  const { data: debtPayments = [], error: debtPaymentsError } = useSWR<DebtPayment[]>(
+    initialUser.role === 'Администратор' ? '/api/debts/payments' : null, 
+    fetcher
+  );
+
   React.useEffect(() => {
     if (ordersError) {
       toast({ title: 'Ошибка загрузки заказов', description: ordersError.message, variant: 'destructive' });
@@ -67,7 +77,13 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     if (usersError) {
       toast({ title: 'Ошибка загрузки пользователей', description: usersError.message, variant: 'destructive' });
     }
-  }, [ordersError, expensesError, payoutsError, usersError, toast]);
+    if (debtsError) {
+      toast({ title: 'Ошибка загрузки долгов', description: debtsError.message, variant: 'destructive' });
+    }
+    if (debtPaymentsError) {
+      toast({ title: 'Ошибка загрузки истории погашений', description: debtPaymentsError.message, variant: 'destructive' });
+    }
+  }, [ordersError, expensesError, payoutsError, usersError, debtsError, debtPaymentsError, toast]);
 
   const handleAddOrder = async (newOrderData: Omit<Order, 'id' | 'orderDate' | 'seller'>) => {
     try {
@@ -155,7 +171,36 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       console.error('Error in handleAddExpense:', error);
       toast({ title: 'Ошибка добавления расхода', description: error.message, variant: 'destructive' });
     }
-  }
+  };
+
+  const handlePayDebt = async (debtId: string, amount: number, personName: string, comment?: string, receiptPhoto?: string) => {
+    try {
+      const paymentData = {
+        debtId,
+        amount,
+        personName,
+        comment,
+        receiptPhoto,
+      };
+
+      const response = await fetch('/api/debts/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(paymentData),
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || 'Server error');
+      }
+
+      mutate('/api/debts');
+      mutate('/api/debts/payments');
+      toast({ title: 'Долг успешно погашен' });
+    } catch (error: any) {
+      toast({ title: 'Ошибка погашения долга', description: error.message, variant: 'destructive' });
+    }
+  };
 
   const handleUpdatePayoutStatus = async (payoutId: string, newStatus: PayoutStatus) => {
     try {
@@ -279,7 +324,10 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
               return <ExpensesList 
                         allExpenses={expenses} 
                         allUsers={users} 
+                        debts={debts}
+                        debtPayments={debtPayments}
                         onAddExpense={handleAddExpense}
+                        onPayDebt={handlePayDebt}
                         currentUser={initialUser}
                       />;
             case 'admin-payouts':

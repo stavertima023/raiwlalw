@@ -99,6 +99,29 @@ export const PayoutSchema = z.object({
 
 export type Payout = z.infer<typeof PayoutSchema>;
 
+// Debt system types
+export const DebtSchema = z.object({
+  id: z.string().optional(),
+  personName: z.string().min(1, 'Имя обязателено'),
+  baseAmount: z.coerce.number().positive('Базовая сумма должна быть положительной'),
+  currentAmount: z.coerce.number().min(0, 'Текущая сумма не может быть отрицательной'),
+  createdAt: z.union([z.date(), z.string().transform((str) => new Date(str))]).optional(),
+  updatedAt: z.union([z.date(), z.string().transform((str) => new Date(str))]).optional(),
+});
+
+export const DebtPaymentSchema = z.object({
+  id: z.string().optional(),
+  debtId: z.string().min(1, 'ID долга обязателен'),
+  amount: z.coerce.number().positive('Сумма погашения должна быть положительной'),
+  personName: z.string().min(1, 'Имя обязателено'),
+  comment: z.string().optional(),
+  receiptPhoto: z.union([z.string().url(), z.literal(''), z.undefined()]).optional(),
+  createdAt: z.union([z.date(), z.string().transform((str) => new Date(str))]).optional(),
+});
+
+export type Debt = z.infer<typeof DebtSchema>;
+export type DebtPayment = z.infer<typeof DebtPaymentSchema>;
+
 export type SortDirection = 'asc' | 'desc';
 
 export interface SortDescriptor {
