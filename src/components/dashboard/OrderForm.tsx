@@ -71,9 +71,17 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
   const photos = form.watch('photos') || [];
   
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('=== НАЧАЛО ОБРАБОТКИ ФАЙЛОВ ===');
+    console.log('Event:', event);
+    console.log('Event target:', event.target);
+    console.log('Event target files:', event.target.files);
+    
     const files = event.target.files;
+    console.log('Files object:', files);
+    console.log('Files length:', files?.length);
+    
     if (!files || files.length === 0) {
-      console.log('No files selected or selection cancelled');
+      console.log('❌ НЕТ ФАЙЛОВ - ВЫХОД');
       // Сбрасываем input даже при отмене выбора
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -81,17 +89,27 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
       return;
     }
 
-    console.log(`Selected ${files.length} files:`, Array.from(files).map(f => ({ 
-      name: f.name, 
-      size: f.size, 
-      type: f.type,
-      lastModified: f.lastModified 
-    })));
+    console.log(`✅ ВЫБРАНО ${files.length} ФАЙЛОВ`);
+    
+    // Логируем каждый файл подробно
+    Array.from(files).forEach((file, index) => {
+      console.log(`Файл ${index + 1}:`, {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        lastModified: file.lastModified,
+        lastModifiedDate: new Date(file.lastModified)
+      });
+    });
 
     const currentPhotos = form.getValues('photos') || [];
+    console.log('Текущие фото в форме:', currentPhotos.length);
+    
     const totalSlots = 3 - currentPhotos.length;
+    console.log('Доступно слотов:', totalSlots);
 
     if (files.length > totalSlots) {
+      console.log(`❌ СЛИШКОМ МНОГО ФАЙЛОВ: выбрано ${files.length}, доступно ${totalSlots}`);
       if (totalSlots === 0) {
         alert('Достигнут лимит фотографий (максимум 3)');
       } else {
@@ -105,10 +123,16 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
     }
 
     const filesToProcess = Array.from(files).slice(0, totalSlots);
+    console.log('Файлы для обработки:', filesToProcess.length);
 
     // Validate all files first
-    for (const file of filesToProcess) {
+    console.log('=== ПРОВЕРКА ФАЙЛОВ ===');
+    for (let i = 0; i < filesToProcess.length; i++) {
+      const file = filesToProcess[i];
+      console.log(`Проверка файла ${i + 1}: ${file.name}`);
+      
       if (!file.type.startsWith('image/')) {
+        console.log(`❌ ФАЙЛ НЕ ИЗОБРАЖЕНИЕ: ${file.name}, тип: ${file.type}`);
         alert(`Файл "${file.name}" не является изображением`);
         // Сбрасываем input при ошибке
         if (fileInputRef.current) {
@@ -119,6 +143,7 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
       
       // Проверяем размер файла (максимум 10MB)
       if (file.size > 10 * 1024 * 1024) {
+        console.log(`❌ ФАЙЛ СЛИШКОМ БОЛЬШОЙ: ${file.name}, размер: ${file.size} байт`);
         alert(`Файл "${file.name}" слишком большой (максимум 10MB)`);
         // Сбрасываем input при ошибке
         if (fileInputRef.current) {
@@ -126,28 +151,39 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
         }
         return;
       }
+      
+      console.log(`✅ ФАЙЛ ПРОШЕЛ ПРОВЕРКУ: ${file.name}`);
     }
 
+    console.log('=== НАЧАЛО ЗАГРУЗКИ ===');
     setIsUploading(true);
 
     try {
+      console.log('Создание промисов для загрузки файлов...');
+      
       // Process all files and collect results
-      const loadPromises = filesToProcess.map(file => {
+      const loadPromises = filesToProcess.map((file, index) => {
+        console.log(`Создание промиса для файла ${index + 1}: ${file.name}`);
+        
         return new Promise<string>((resolve, reject) => {
+          console.log(`Начало чтения файла: ${file.name}`);
+          
           const reader = new FileReader();
           
           reader.onload = (e) => {
+            console.log(`✅ ФАЙЛ ПРОЧИТАН: ${file.name}`);
             const result = e.target?.result as string;
             if (result) {
-              console.log(`Successfully loaded file: ${file.name} (${file.size} bytes)`);
+              console.log(`✅ ФАЙЛ УСПЕШНО ЗАГРУЖЕН: ${file.name} (${file.size} bytes, результат: ${result.substring(0, 50)}...)`);
               resolve(result);
             } else {
+              console.log(`❌ ПУСТОЙ РЕЗУЛЬТАТ: ${file.name}`);
               reject(new Error(`Failed to load file: ${file.name}`));
             }
           };
           
           reader.onerror = () => {
-            console.error(`Error reading file: ${file.name}`, reader.error);
+            console.error(`❌ ОШИБКА ЧТЕНИЯ ФАЙЛА: ${file.name}`, reader.error);
             const errorMessage = reader.error?.name === 'QuotaExceededError' 
               ? `Файл "${file.name}" слишком большой для обработки. Попробуйте уменьшить размер изображения.`
               : `Ошибка чтения файла ${file.name}`;
@@ -155,45 +191,62 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
           };
           
           reader.onabort = () => {
-            console.error(`File reading aborted: ${file.name}`);
+            console.error(`❌ ЧТЕНИЕ ПРЕРВАНО: ${file.name}`);
             reject(new Error(`Чтение файла прервано: ${file.name}`));
           };
           
+          console.log(`Запуск readAsDataURL для файла: ${file.name}`);
           // Используем readAsDataURL для лучшей совместимости с Android и iPhone
           reader.readAsDataURL(file);
         });
       });
 
+      console.log('Ожидание завершения всех промисов...');
       // Wait for all files to load and update state once
       const results = await Promise.all(loadPromises);
-      console.log(`Successfully processed ${results.length} files`);
+      console.log(`✅ ВСЕ ФАЙЛЫ ОБРАБОТАНЫ: ${results.length} файлов`);
       
+      console.log('Обновление формы...');
       // Update form value directly
       const currentPhotos = form.getValues('photos') || [];
       const newPhotos = [...currentPhotos, ...results];
-      form.setValue('photos', newPhotos);
+      console.log(`Старых фото: ${currentPhotos.length}, новых: ${results.length}, всего: ${newPhotos.length}`);
       
-      console.log(`Total photos now: ${newPhotos.length}`);
+      form.setValue('photos', newPhotos);
+      console.log('✅ ФОРМА ОБНОВЛЕНА');
+      
     } catch (error) {
-      console.error('Ошибка загрузки фото:', error);
+      console.error('❌ ОШИБКА В ПРОЦЕССЕ ЗАГРУЗКИ:', error);
       const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
       alert(`Произошла ошибка при загрузке фотографий: ${errorMessage}`);
     } finally {
+      console.log('Завершение загрузки...');
       setIsUploading(false);
     }
 
     // Reset file input - важно для Android и iPhone
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+      console.log('✅ INPUT СБРОШЕН');
     }
+    
+    console.log('=== КОНЕЦ ОБРАБОТКИ ФАЙЛОВ ===');
   };
 
   // Обработчик для выбора файлов из галереи
   const handleFileInputClick = () => {
+    console.log('=== КЛИК ПО КНОПКЕ ФОТО ===');
+    console.log('fileInputRef.current:', fileInputRef.current);
+    
     if (fileInputRef.current) {
+      console.log('Сброс значения input...');
       // Сбрасываем значение перед кликом для Android и iPhone
       fileInputRef.current.value = '';
+      console.log('Клик по input...');
       fileInputRef.current.click();
+      console.log('Клик выполнен');
+    } else {
+      console.log('❌ fileInputRef.current НЕ НАЙДЕН');
     }
   };
 
@@ -204,6 +257,27 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
 
   const handleFileInputBlur = () => {
     console.log('File input blurred');
+  };
+
+  // Обработчик для drag & drop
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    console.log('=== DROP EVENT ===');
+    console.log('Dropped files:', e.dataTransfer.files);
+    
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      // Создаем искусственное событие для обработки файлов
+      const fakeEvent = {
+        target: { files }
+      } as React.ChangeEvent<HTMLInputElement>;
+      
+      handlePhotoUpload(fakeEvent);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
   };
 
   const handleRemovePhoto = (index: number) => {
@@ -362,7 +436,6 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
               </p>
                             <FormControl>
                 <div className="space-y-4">
-                                    {/* Input для камеры */}
                                     <input 
                                         type="file" 
                                         ref={fileInputRef} 
@@ -372,8 +445,19 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
                                         className="hidden" 
                                         accept="image/*"
                                         multiple
-                                        onTouchStart={() => console.log('Touch start on file input')}
-                                        onTouchEnd={() => console.log('Touch end on file input')}
+                                        onTouchStart={(e) => {
+                                          console.log('=== TOUCH START ===');
+                                          e.preventDefault();
+                                          console.log('Touch start on file input');
+                                        }}
+                                        onTouchEnd={(e) => {
+                                          console.log('=== TOUCH END ===');
+                                          console.log('Touch end on file input');
+                                          setTimeout(() => {
+                                            console.log('Выполнение handleFileInputClick после задержки...');
+                                            handleFileInputClick();
+                                          }, 100);
+                                        }}
                                      />
                   
                   <div className="flex flex-wrap gap-2">
@@ -399,21 +483,15 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
                                     ))}
                     
                     {photos.length < 3 && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="h-20 w-20 border-dashed flex flex-col items-center justify-center"
+                      <div 
+                        className="h-20 w-20 border-dashed border-2 border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-gray-400 transition-colors"
                         onClick={handleFileInputClick}
-                        disabled={isUploading}
-                        onTouchStart={(e) => {
-                          e.preventDefault();
-                          console.log('Touch start on file input');
-                        }}
-                        onTouchEnd={(e) => {
-                          console.log('Touch end on file input');
-                          setTimeout(() => {
-                            handleFileInputClick();
-                          }, 100);
+                        onDrop={handleDrop}
+                        onDragOver={handleDragOver}
+                        style={{ 
+                          background: 'linear-gradient(45deg, #f0f0f0 25%, transparent 25%), linear-gradient(-45deg, #f0f0f0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f0f0f0 75%), linear-gradient(-45deg, transparent 75%, #f0f0f0 75%)',
+                          backgroundSize: '20px 20px',
+                          backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px'
                         }}
                       >
                         {isUploading ? (
@@ -425,9 +503,10 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
                           <>
                             <ImageIcon className="h-4 w-4 mb-1" />
                             <span className="text-xs">Фото</span>
+                            <span className="text-xs text-gray-500">или перетащите</span>
                           </>
                         )}
-                      </Button>
+                      </div>
                     )}
                                 </div>
                 </div>
