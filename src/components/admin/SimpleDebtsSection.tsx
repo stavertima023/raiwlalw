@@ -22,6 +22,7 @@ export function SimpleDebtsSection({ debts, currentUser, onDebtUpdate }: SimpleD
   const [isInitializing, setIsInitializing] = React.useState(false);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const [isRecalculating, setIsRecalculating] = React.useState(false);
+  const [isFixingTrigger, setIsFixingTrigger] = React.useState(false);
   const [selectedDebt, setSelectedDebt] = React.useState<Debt | null>(null);
   const [showPayDialog, setShowPayDialog] = React.useState(false);
   const [showHistoryDialog, setShowHistoryDialog] = React.useState(false);
@@ -104,6 +105,37 @@ export function SimpleDebtsSection({ debts, currentUser, onDebtUpdate }: SimpleD
     }
   };
 
+  const handleFixTrigger = async () => {
+    setIsFixingTrigger(true);
+    try {
+      const response = await fetch('/api/debts/fix-trigger', {
+        method: 'POST',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fix trigger');
+      }
+      
+      const result = await response.json();
+      onDebtUpdate();
+      toast({
+        title: 'Успешно',
+        description: result.triggerFixed 
+          ? 'Триггер исправлен и долги пересчитаны автоматически.' 
+          : 'Долги пересчитаны (триггер исправлен через fallback).',
+      });
+    } catch (error) {
+      console.error('Error fixing trigger:', error);
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось исправить триггер.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsFixingTrigger(false);
+    }
+  };
+
   const handlePayDebt = (debt: Debt) => {
     if (debt.is_temporary) {
       toast({
@@ -171,6 +203,16 @@ export function SimpleDebtsSection({ debts, currentUser, onDebtUpdate }: SimpleD
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${isRecalculating ? 'animate-spin' : ''}`} />
                 {isRecalculating ? 'Пересчет...' : 'Пересчитать'}
+              </Button>
+              <Button
+                onClick={handleFixTrigger}
+                disabled={isFixingTrigger}
+                variant="outline"
+                size="sm"
+                className="bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100"
+              >
+                <Database className={`h-4 w-4 mr-2 ${isFixingTrigger ? 'animate-spin' : ''}`} />
+                {isFixingTrigger ? 'Исправление...' : 'Исправить триггер'}
               </Button>
               {!hasRealDebts && (
                 <Button
