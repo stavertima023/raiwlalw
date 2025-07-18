@@ -3,45 +3,38 @@ import { supabaseAdmin } from '@/lib/supabaseClient';
 
 export async function GET() {
   try {
-    // Проверяем переменные окружения
-    const envCheck = {
-      supabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-      supabaseAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      supabaseServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-      supabaseAdmin: !!supabaseAdmin,
-    };
-
     if (!supabaseAdmin) {
-      return NextResponse.json({
-        error: 'Supabase admin client not available',
-        envCheck
-      }, { status: 500 });
+      return NextResponse.json({ error: 'Admin client not available' }, { status: 500 });
     }
 
-    // Простой тест подключения
-    const { data, error } = await supabaseAdmin
-      .from('users')
-      .select('count')
-      .limit(1);
+    // Проверяем таблицу долгов
+    const { data: debts, error: debtsError } = await supabaseAdmin
+      .from('debts')
+      .select('*');
 
-    if (error) {
-      return NextResponse.json({
-        error: 'Database connection failed',
-        details: error,
-        envCheck
-      }, { status: 500 });
-    }
+    // Проверяем таблицу платежей
+    const { data: payments, error: paymentsError } = await supabaseAdmin
+      .from('debt_payments')
+      .select('*');
+
+    // Проверяем расходы
+    const { data: expenses, error: expensesError } = await supabaseAdmin
+      .from('expenses')
+      .select('responsible, amount')
+      .in('responsible', ['Администратор', 'Максим']);
 
     return NextResponse.json({
-      message: 'Connection successful',
-      envCheck,
-      data
+      debts: debts || [],
+      payments: payments || [],
+      expenses: expenses || [],
+      errors: {
+        debts: debtsError?.message,
+        payments: paymentsError?.message,
+        expenses: expensesError?.message,
+      }
     });
   } catch (error) {
-    console.error('Test API error:', error);
-    return NextResponse.json({ 
-      error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    console.error('Error in test API:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 } 

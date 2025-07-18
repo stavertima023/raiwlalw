@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
-import { DebtPaymentSchema } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,13 +10,21 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     // Валидация данных
-    const validatedData = DebtPaymentSchema.parse(body);
+    const { debtId, paymentAmount, comment, processedBy } = body;
+    
+    if (!debtId || !paymentAmount || !processedBy) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    if (paymentAmount <= 0) {
+      return NextResponse.json({ error: 'Payment amount must be positive' }, { status: 400 });
+    }
     
     // Получаем текущий долг
     const { data: currentDebt, error: debtError } = await supabaseAdmin
       .from('debts')
       .select('current_amount')
-      .eq('id', validatedData.debt_id)
+      .eq('id', debtId)
       .single();
 
     if (debtError || !currentDebt) {
@@ -25,23 +32,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Проверяем, что сумма погашения не превышает долг
-    if (validatedData.payment_amount > currentDebt.current_amount) {
+    if (paymentAmount > currentDebt.current_amount) {
       return NextResponse.json({ error: 'Payment amount exceeds debt amount' }, { status: 400 });
     }
 
     // Вычисляем остаток долга
-    const remainingDebt = currentDebt.current_amount - validatedData.payment_amount;
+    const remainingDebt = currentDebt.current_amount - paymentAmount;
 
     // Создаем запись о погашении
     const { data: payment, error: paymentError } = await supabaseAdmin
       .from('debt_payments')
       .insert({
-        debt_id: validatedData.debt_id,
-        payment_amount: validatedData.payment_amount,
+        debt_id: debtId,
+        payment_amount: paymentAmount,
         remaining_debt: remainingDebt,
-        receipt_photo: validatedData.receipt_photo,
-        comment: validatedData.comment,
-        processed_by: validatedData.processed_by,
+        comment: comment || null,
+        processed_by: processedBy,
       })
       .select()
       .single();
@@ -55,14 +61,17 @@ export async function POST(request: NextRequest) {
     const { error: updateError } = await supabaseAdmin
       .from('debts')
       .update({ current_amount: remainingDebt })
-      .eq('id', validatedData.debt_id);
+      .eq('id', debtId);
 
     if (updateError) {
       console.error('Error updating debt:', updateError);
       return NextResponse.json({ error: 'Failed to update debt' }, { status: 500 });
     }
 
-    return NextResponse.json(payment);
+    return NextResponse.json({ 
+      message: 'Payment created successfully',
+      payment 
+    });
   } catch (error) {
     console.error('Error in POST /api/debts/payments:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -76,16 +85,11 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const debtId = searchParams.get('debt_id');
+    const debtId = searchParams.get('debtId');
 
     let query = supabaseAdmin
       .from('debt_payments')
-      .select(`
-        *,
-        debts (
-          person_name
-        )
-      `)
+      .select('*')
       .order('payment_date', { ascending: false });
 
     if (debtId) {
@@ -99,7 +103,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch payments' }, { status: 500 });
     }
 
-    return NextResponse.json(payments || []);
+    return NextResponse.json({ payments: payments || [] });
   } catch (error) {
     console.error('Error in GET /api/debts/payments:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

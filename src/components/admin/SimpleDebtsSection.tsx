@@ -7,8 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { Debt, User } from '@/lib/types';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { DollarSign, CreditCard, RefreshCw, Database } from 'lucide-react';
+import { DollarSign, CreditCard, RefreshCw, Database, History, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { PayDebtDialog } from './PayDebtDialog';
+import { DebtHistoryDialog } from './DebtHistoryDialog';
 
 interface SimpleDebtsSectionProps {
   debts: Debt[];
@@ -19,6 +21,9 @@ interface SimpleDebtsSectionProps {
 export function SimpleDebtsSection({ debts, currentUser, onDebtUpdate }: SimpleDebtsSectionProps) {
   const [isInitializing, setIsInitializing] = React.useState(false);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
+  const [selectedDebt, setSelectedDebt] = React.useState<Debt | null>(null);
+  const [showPayDialog, setShowPayDialog] = React.useState(false);
+  const [showHistoryDialog, setShowHistoryDialog] = React.useState(false);
   const { toast } = useToast();
 
   const handleInitializeDebts = async () => {
@@ -79,10 +84,8 @@ export function SimpleDebtsSection({ debts, currentUser, onDebtUpdate }: SimpleD
       return;
     }
     
-    toast({
-      title: 'Функция в разработке',
-      description: 'Функция погашения долгов будет доступна после создания таблиц.',
-    });
+    setSelectedDebt(debt);
+    setShowPayDialog(true);
   };
 
   const handleViewHistory = (debt: Debt) => {
@@ -95,11 +98,21 @@ export function SimpleDebtsSection({ debts, currentUser, onDebtUpdate }: SimpleD
       return;
     }
     
+    setSelectedDebt(debt);
+    setShowHistoryDialog(true);
+  };
+
+  const handlePaymentSuccess = () => {
+    setShowPayDialog(false);
+    onDebtUpdate();
     toast({
-      title: 'Функция в разработке',
-      description: 'История платежей будет доступна после создания таблиц.',
+      title: 'Успешно',
+      description: 'Платеж по долгу зарегистрирован.',
     });
   };
+
+  // Проверяем, есть ли реальные долги (не временные)
+  const hasRealDebts = debts.some(debt => !debt.is_temporary);
 
   return (
     <div className="space-y-6">
@@ -120,15 +133,17 @@ export function SimpleDebtsSection({ debts, currentUser, onDebtUpdate }: SimpleD
                 <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
                 {isRefreshing ? 'Обновление...' : 'Обновить'}
               </Button>
-              <Button
-                onClick={handleInitializeDebts}
-                disabled={isInitializing}
-                variant="outline"
-                size="sm"
-              >
-                <Database className="h-4 w-4 mr-2" />
-                {isInitializing ? 'Создание...' : 'Создать таблицы'}
-              </Button>
+              {!hasRealDebts && (
+                <Button
+                  onClick={handleInitializeDebts}
+                  disabled={isInitializing}
+                  variant="outline"
+                  size="sm"
+                >
+                  <Database className="h-4 w-4 mr-2" />
+                  {isInitializing ? 'Создание...' : 'Создать таблицы'}
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -162,8 +177,9 @@ export function SimpleDebtsSection({ debts, currentUser, onDebtUpdate }: SimpleD
                       Последнее обновление: {format(new Date(debt.updated_at), 'dd.MM.yyyy HH:mm', { locale: ru })}
                     </p>
                     {debt.is_temporary && (
-                      <p className="text-xs text-orange-600 mt-1">
-                        * Рассчитано на основе расходов. Создайте таблицы долгов для полной функциональности.
+                      <p className="text-xs text-orange-600 mt-1 flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        Рассчитано на основе расходов. Создайте таблицы долгов для полной функциональности.
                       </p>
                     )}
                   </div>
@@ -183,6 +199,7 @@ export function SimpleDebtsSection({ debts, currentUser, onDebtUpdate }: SimpleD
                       variant="outline"
                       size="sm"
                     >
+                      <History className="h-4 w-4 mr-2" />
                       История
                     </Button>
                   </div>
@@ -203,6 +220,24 @@ export function SimpleDebtsSection({ debts, currentUser, onDebtUpdate }: SimpleD
           </div>
         </CardContent>
       </Card>
+
+      {selectedDebt && (
+        <>
+          <PayDebtDialog
+            debt={selectedDebt}
+            currentUser={currentUser}
+            isOpen={showPayDialog}
+            onClose={() => setShowPayDialog(false)}
+            onSuccess={handlePaymentSuccess}
+          />
+          
+          <DebtHistoryDialog
+            debt={selectedDebt}
+            isOpen={showHistoryDialog}
+            onClose={() => setShowHistoryDialog(false)}
+          />
+        </>
+      )}
     </div>
   );
 } 

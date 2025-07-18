@@ -1,41 +1,14 @@
 'use client';
 
 import * as React from 'react';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Debt, User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { Debt, DebtPayment, User } from '@/lib/types';
-import { Check, Plus, X } from 'lucide-react';
-import Image from 'next/image';
-import { ScrollArea } from '../ui/scroll-area';
-
-const PayDebtFormSchema = z.object({
-  payment_amount: z.coerce.number().positive('Сумма должна быть положительной'),
-  comment: z.string().optional(),
-  receipt_photo: z.union([z.string().url(), z.literal(''), z.undefined()]).optional(),
-});
-
-type PayDebtFormData = z.infer<typeof PayDebtFormSchema>;
+import { Loader2, DollarSign } from 'lucide-react';
 
 interface PayDebtDialogProps {
   debt: Debt;
@@ -46,219 +19,156 @@ interface PayDebtDialogProps {
 }
 
 export function PayDebtDialog({ debt, currentUser, isOpen, onClose, onSuccess }: PayDebtDialogProps) {
+  const [paymentAmount, setPaymentAmount] = React.useState('');
+  const [comment, setComment] = React.useState('');
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
   const { toast } = useToast();
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  const form = useForm<PayDebtFormData>({
-    resolver: zodResolver(PayDebtFormSchema),
-    defaultValues: {
-      payment_amount: undefined,
-      comment: '',
-      receipt_photo: undefined,
-    },
-  });
-
-  const { watch, setValue } = form;
-  const watchedPhoto = watch('receipt_photo');
-
-  const handleClose = () => {
-    form.reset();
-    onClose();
-  };
-
-  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     
-    if (!file.type.startsWith('image/')) {
+    const amount = parseFloat(paymentAmount);
+    if (!amount || amount <= 0) {
       toast({
+        title: 'Ошибка',
+        description: 'Введите корректную сумму платежа.',
         variant: 'destructive',
-        title: 'Неверный тип файла',
-        description: `Файл "${file.name}" не является изображением.`,
       });
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const result = e.target?.result as string;
-      setValue('receipt_photo', result, { shouldValidate: true });
-    };
-    reader.readAsDataURL(file);
-
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+    if (amount > debt.current_amount) {
+      toast({
+        title: 'Ошибка',
+        description: 'Сумма платежа не может превышать текущий долг.',
+        variant: 'destructive',
+      });
+      return;
     }
-  };
 
-  const handleAddPhotoClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleRemovePhoto = () => {
-    setValue('receipt_photo', undefined, { shouldValidate: true });
-  };
-
-  const onSubmit = async (data: PayDebtFormData) => {
+    setIsSubmitting(true);
     try {
-      // Проверяем, что сумма погашения не превышает долг
-      if (data.payment_amount > debt.current_amount) {
-        toast({
-          variant: 'destructive',
-          title: 'Ошибка',
-          description: 'Сумма погашения не может превышать сумму долга.',
-        });
-        return;
-      }
-
-      const paymentData = {
-        debt_id: debt.id,
-        payment_amount: data.payment_amount,
-        remaining_debt: debt.current_amount - data.payment_amount,
-        receipt_photo: data.receipt_photo || undefined,
-        comment: data.comment || '',
-        processed_by: currentUser.name,
-      };
-
       const response = await fetch('/api/debts/payments', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(paymentData),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          debtId: debt.id,
+          paymentAmount: amount,
+          comment: comment.trim() || undefined,
+          processedBy: currentUser.username,
+        }),
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Ошибка при погашении долга');
+        throw new Error(error.message || 'Ошибка при создании платежа');
       }
 
       toast({
-        title: 'Долг погашен',
-        description: `Успешно погашено ${data.payment_amount.toLocaleString('ru-RU')} ₽`,
+        title: 'Успешно',
+        description: `Платеж на сумму ${amount.toLocaleString('ru-RU')} ₽ зарегистрирован.`,
       });
 
       onSuccess();
-    } catch (error) {
-      console.error('Error paying debt:', error);
+    } catch (error: any) {
+      console.error('Error creating payment:', error);
       toast({
-        variant: 'destructive',
         title: 'Ошибка',
-        description: error instanceof Error ? error.message : 'Не удалось погасить долг',
+        description: error.message || 'Не удалось создать платеж.',
+        variant: 'destructive',
       });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleClose = () => {
+    if (!isSubmitting) {
+      setPaymentAmount('');
+      setComment('');
+      onClose();
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Погашение долга</DialogTitle>
-          <DialogDescription>
-            Погашение долга кассы {debt.person_name} на сумму {debt.current_amount.toLocaleString('ru-RU')} ₽
-          </DialogDescription>
+          <DialogTitle className="flex items-center gap-2">
+            <DollarSign className="h-5 w-5" />
+            Погашение долга {debt.person_name}
+          </DialogTitle>
         </DialogHeader>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="current-debt">Текущий долг</Label>
+            <Input
+              id="current-debt"
+              value={`${debt.current_amount.toLocaleString('ru-RU')} ₽`}
+              disabled
+              className="font-semibold text-red-600"
+            />
+          </div>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <ScrollArea className="h-[60vh] pr-6">
-              <div className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="payment_amount"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Сумма погашения</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          placeholder="1000"
-                          {...field}
-                          max={debt.current_amount}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+          <div className="space-y-2">
+            <Label htmlFor="payment-amount">Сумма платежа *</Label>
+            <Input
+              id="payment-amount"
+              type="number"
+              step="0.01"
+              min="0.01"
+              max={debt.current_amount}
+              value={paymentAmount}
+              onChange={(e) => setPaymentAmount(e.target.value)}
+              placeholder="Введите сумму платежа"
+              required
+            />
+            <p className="text-xs text-muted-foreground">
+              Максимальная сумма: {debt.current_amount.toLocaleString('ru-RU')} ₽
+            </p>
+          </div>
 
-                <FormField
-                  control={form.control}
-                  name="comment"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Комментарий (необязательно)</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="Например, погашение за октябрь" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+          <div className="space-y-2">
+            <Label htmlFor="comment">Комментарий (необязательно)</Label>
+            <Textarea
+              id="comment"
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder="Дополнительная информация о платеже"
+              rows={3}
+            />
+          </div>
 
-                <FormField
-                  control={form.control}
-                  name="receipt_photo"
-                  render={() => (
-                    <FormItem>
-                      <FormLabel>Фото чека (необязательно)</FormLabel>
-                      <FormControl>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <input
-                            type="file"
-                            ref={fileInputRef}
-                            onChange={handlePhotoUpload}
-                            className="hidden"
-                            accept="image/*"
-                          />
-                          {watchedPhoto ? (
-                            <div className="relative group w-full h-48">
-                              <Image
-                                src={watchedPhoto}
-                                alt="Receipt photo"
-                                fill
-                                className="rounded-md object-contain"
-                              />
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                size="icon"
-                                className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                                onClick={handleRemovePhoto}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="h-28 w-full border-dashed"
-                              onClick={handleAddPhotoClick}
-                            >
-                              <Plus className="h-8 w-8 text-muted-foreground" />
-                            </Button>
-                          )}
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </ScrollArea>
-
-            <DialogFooter className="pt-4 border-t">
-              <Button type="button" variant="secondary" onClick={handleClose}>
-                Отмена
-              </Button>
-              <Button type="submit">
-                <Check className="mr-2 h-4 w-4" />
-                Погасить
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+          <div className="flex gap-2 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleClose}
+              disabled={isSubmitting}
+              className="flex-1"
+            >
+              Отмена
+            </Button>
+            <Button
+              type="submit"
+              disabled={isSubmitting || !paymentAmount}
+              className="flex-1"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Обработка...
+                </>
+              ) : (
+                <>
+                  <DollarSign className="h-4 w-4 mr-2" />
+                  Зарегистрировать платеж
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
   );

@@ -1,26 +1,14 @@
 'use client';
 
 import * as React from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Debt, DebtPayment } from '@/lib/types';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { History, Receipt } from 'lucide-react';
+import { History, DollarSign, Calendar, User, MessageSquare } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
 
 interface DebtHistoryDialogProps {
@@ -29,129 +17,148 @@ interface DebtHistoryDialogProps {
   onClose: () => void;
 }
 
-interface PaymentWithDebt extends DebtPayment {
-  debts: {
-    person_name: string;
-  };
-}
-
 export function DebtHistoryDialog({ debt, isOpen, onClose }: DebtHistoryDialogProps) {
-  const [payments, setPayments] = React.useState<PaymentWithDebt[]>([]);
-  const [loading, setLoading] = React.useState(false);
+  const [payments, setPayments] = React.useState<DebtPayment[]>([]);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const { toast } = useToast();
 
   React.useEffect(() => {
-    if (isOpen && debt.id) {
-      fetchPayments();
+    if (isOpen && debt.id && !debt.is_temporary) {
+      loadPaymentHistory();
     }
-  }, [isOpen, debt.id]);
+  }, [isOpen, debt.id, debt.is_temporary]);
 
-  const fetchPayments = async () => {
-    setLoading(true);
+  const loadPaymentHistory = async () => {
+    setIsLoading(true);
     try {
-      const response = await fetch(`/api/debts/payments?debt_id=${debt.id}`);
-      if (response.ok) {
-        const data = await response.json();
-        setPayments(data);
+      const response = await fetch(`/api/debts/payments?debtId=${debt.id}`);
+      
+      if (!response.ok) {
+        throw new Error('Не удалось загрузить историю платежей');
       }
-    } catch (error) {
-      console.error('Error fetching payments:', error);
+      
+      const data = await response.json();
+      setPayments(data.payments || []);
+    } catch (error: any) {
+      console.error('Error loading payment history:', error);
+      toast({
+        title: 'Ошибка',
+        description: error.message || 'Не удалось загрузить историю платежей.',
+        variant: 'destructive',
+      });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
+  const totalPaid = payments.reduce((sum, payment) => sum + payment.payment_amount, 0);
+  const remainingDebt = debt.current_amount - totalPaid;
+
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-4xl max-h-[80vh]">
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <History className="h-5 w-5" />
-            История погашений - {debt.person_name}
+            История платежей - {debt.person_name}
           </DialogTitle>
-          <DialogDescription>
-            История всех погашений долга кассы {debt.person_name}
-          </DialogDescription>
         </DialogHeader>
-
-        <div className="space-y-4">
-          {/* Текущий статус долга */}
-          <div className="p-4 bg-muted rounded-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold">Текущий долг</h3>
-                <p className="text-2xl font-bold text-red-600">
-                  {debt.current_amount.toLocaleString('ru-RU')} ₽
-                </p>
+        
+        <div className="flex-1 overflow-hidden flex flex-col">
+          {/* Сводка */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg mb-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-red-600">
+                {debt.current_amount.toLocaleString('ru-RU')} ₽
               </div>
-              <Badge variant={debt.current_amount > 0 ? 'destructive' : 'success'}>
-                {debt.current_amount > 0 ? 'Есть долг' : 'Нет долга'}
-              </Badge>
+              <div className="text-sm text-muted-foreground">Текущий долг</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">
+                {totalPaid.toLocaleString('ru-RU')} ₽
+              </div>
+              <div className="text-sm text-muted-foreground">Всего погашено</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">
+                {remainingDebt.toLocaleString('ru-RU')} ₽
+              </div>
+              <div className="text-sm text-muted-foreground">Остаток</div>
             </div>
           </div>
 
-          {/* История погашений */}
-          <div>
-            <h3 className="font-semibold mb-3">История погашений</h3>
-            {loading ? (
-              <div className="text-center py-8">Загрузка...</div>
+          {/* Список платежей */}
+          <div className="flex-1 overflow-y-auto">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <span className="ml-2">Загрузка истории...</span>
+              </div>
             ) : payments.length > 0 ? (
-              <div className="border rounded-lg">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Дата</TableHead>
-                      <TableHead>Сумма погашения</TableHead>
-                      <TableHead>Остаток после погашения</TableHead>
-                      <TableHead>Обработал</TableHead>
-                      <TableHead>Комментарий</TableHead>
-                      <TableHead>Чек</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {payments.map((payment) => (
-                      <TableRow key={payment.id}>
-                        <TableCell className="whitespace-nowrap">
-                          {payment.payment_date ? format(new Date(payment.payment_date), 'dd.MM.yyyy HH:mm', { locale: ru }) : '–'}
-                        </TableCell>
-                        <TableCell className="font-medium text-green-600">
+              <div className="space-y-3">
+                {payments.map((payment) => (
+                  <div key={payment.id} className="p-4 border rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="h-4 w-4 text-green-600" />
+                        <span className="font-semibold text-lg">
                           {payment.payment_amount.toLocaleString('ru-RU')} ₽
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {payment.remaining_debt.toLocaleString('ru-RU')} ₽
-                        </TableCell>
-                        <TableCell>{payment.processed_by}</TableCell>
-                        <TableCell className="max-w-[200px] truncate">
-                          {payment.comment || '–'}
-                        </TableCell>
-                        <TableCell>
-                          {payment.receipt_photo ? (
-                            <div className="relative group">
-                              <Image
-                                src={payment.receipt_photo}
-                                alt="Receipt"
-                                width={40}
-                                height={40}
-                                className="rounded cursor-pointer"
-                              />
-                              <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
-                                <Receipt className="h-4 w-4 text-white" />
-                              </div>
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">Нет</span>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                        </span>
+                      </div>
+                                             <Badge variant="outline" className="text-xs">
+                         {payment.payment_date ? format(new Date(payment.payment_date), 'dd.MM.yyyy HH:mm', { locale: ru }) : 'Н/Д'}
+                       </Badge>
+                     </div>
+                     
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-muted-foreground">
+                       <div className="flex items-center gap-1">
+                         <User className="h-3 w-3" />
+                         <span>Обработал: {payment.processed_by}</span>
+                       </div>
+                       <div className="flex items-center gap-1">
+                         <Calendar className="h-3 w-3" />
+                         <span>Дата: {payment.payment_date ? format(new Date(payment.payment_date), 'dd.MM.yyyy', { locale: ru }) : 'Н/Д'}</span>
+                       </div>
+                    </div>
+                    
+                    {payment.comment && (
+                      <div className="mt-2 flex items-start gap-1">
+                        <MessageSquare className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm">{payment.comment}</span>
+                      </div>
+                    )}
+                    
+                    {payment.receipt_photo && (
+                      <div className="mt-3">
+                        <Image
+                          src={payment.receipt_photo}
+                          alt="Фото чека"
+                          width={100}
+                          height={100}
+                          className="rounded-md object-cover cursor-pointer"
+                          onClick={() => window.open(payment.receipt_photo, '_blank')}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                История погашений пуста
+              <div className="text-center py-8">
+                <History className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">История платежей пуста</h3>
+                <p className="text-muted-foreground">
+                  По этому долгу пока не было зарегистрировано платежей.
+                </p>
               </div>
             )}
           </div>
+        </div>
+
+        <div className="flex justify-end pt-4 border-t">
+          <Button onClick={onClose} variant="outline">
+            Закрыть
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
