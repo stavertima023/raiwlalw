@@ -107,6 +107,7 @@ export function AddExpenseForm({ onSave, currentUser }: AddExpenseFormProps) {
 
   const onSubmit = (data: Omit<ExpenseFormData, 'id' | 'date'>) => {
     console.log('Form data before cleanup:', data);
+    console.log('Current user:', currentUser);
     
     // Clean up the data before sending
     const cleanData = {
@@ -118,6 +119,9 @@ export function AddExpenseForm({ onSave, currentUser }: AddExpenseFormProps) {
     };
     
     console.log('Form data after cleanup:', cleanData);
+    console.log('Responsible field in cleanData:', cleanData.responsible);
+    console.log('Responsible field type:', typeof cleanData.responsible);
+    
     onSave(cleanData);
     handleClose();
     toast({
@@ -203,7 +207,7 @@ export function AddExpenseForm({ onSave, currentUser }: AddExpenseFormProps) {
                         <FormControl>
                             <Input 
                                 {...field} 
-                                value={currentUser.name}
+                                value={currentUser.username}
                                 disabled
                                 className="bg-muted"
                             />

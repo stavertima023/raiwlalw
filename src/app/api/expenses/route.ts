@@ -99,6 +99,9 @@ export async function POST(request: Request) {
       date: new Date().toISOString(),
     };
     console.log('Final expense data for validation:', expenseData);
+    console.log('User object:', { id: user.id, username: user.username, name: user.name, role: user.role });
+    console.log('Responsible field value:', expenseData.responsible);
+    console.log('Responsible field type:', typeof expenseData.responsible);
     
     // Validate data with Zod schema
     const validatedExpense = ExpenseSchema.parse(expenseData);
