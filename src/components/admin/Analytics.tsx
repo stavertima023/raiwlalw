@@ -370,7 +370,7 @@ export function Analytics({ orders, users, expenses, payouts }: AnalyticsProps) 
               </TableRow>
               <TableRow>
                 <TableCell>
-                  <Badge variant="default">Готов</Badge>
+                  <Badge variant="outline" className="border-blue-500 text-blue-700">Готов</Badge>
                 </TableCell>
                 <TableCell>
                   {filteredOrders.filter(order => order.status === 'Готов').length}

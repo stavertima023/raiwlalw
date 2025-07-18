@@ -74,7 +74,7 @@ const statusConfig: Record<
   { label: string; color: 'secondary' | 'destructive' | 'outline' | 'default' | 'success' | 'warning' }
 > = {
   Добавлен: { label: 'Добавлен', color: 'default' },
-  Готов: { label: 'Готов', color: 'default' },
+  Готов: { label: 'Готов', color: 'outline' },
   Отправлен: { label: 'Отправлен', color: 'warning'},
   Исполнен: { label: 'Исполнен', color: 'success'},
   Отменен: { label: 'Отменен', color: 'destructive' },
@@ -83,8 +83,12 @@ const statusConfig: Record<
 
 const StatusBadge: React.FC<{ status: OrderStatus; useLargeLayout?: boolean }> = ({ status }) => {
   const { label, color } = statusConfig[status] || {};
+  const isReadyStatus = status === 'Готов';
   return (
-    <Badge variant={color} className="capitalize whitespace-nowrap">
+    <Badge 
+      variant={color} 
+      className={`capitalize whitespace-nowrap ${isReadyStatus ? 'border-blue-500 text-blue-700' : ''}`}
+    >
       {label}
     </Badge>
   );
