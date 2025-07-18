@@ -106,6 +106,7 @@ export const DebtSchema = z.object({
   current_amount: z.number(),
   created_at: z.union([z.date(), z.string().transform((str) => new Date(str))]),
   updated_at: z.union([z.date(), z.string().transform((str) => new Date(str))]),
+  is_temporary: z.boolean().optional(),
 });
 
 export const DebtPaymentSchema = z.object({

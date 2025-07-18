@@ -26,7 +26,7 @@ import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { AddExpenseForm } from './AddExpenseForm';
 import { ExpensesFilters } from './ExpensesFilters';
-import { DebtsSection } from './DebtsSection';
+import { SimpleDebtsSection } from './SimpleDebtsSection';
 
 interface ExpensesListProps {
   allExpenses: Expense[];
@@ -120,10 +120,10 @@ export const ExpensesList: React.FC<ExpensesListProps> = ({ allExpenses, allUser
       </div>
 
       {/* Секция долгов */}
-      <DebtsSection 
+      <SimpleDebtsSection 
         debts={debts} 
         currentUser={currentUser} 
-        onPaymentSuccess={onDebtUpdate}
+        onDebtUpdate={onDebtUpdate}
       />
 
       <ExpensesFilters

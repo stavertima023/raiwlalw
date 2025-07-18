@@ -4,25 +4,22 @@ import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Debt, DebtPayment, User } from '@/lib/types';
+import { Debt, User } from '@/lib/types';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { DollarSign, CreditCard, History } from 'lucide-react';
-import { PayDebtDialog } from './PayDebtDialog';
-import { DebtHistoryDialog } from './DebtHistoryDialog';
+import { DollarSign, CreditCard, RefreshCw, Database } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
-interface DebtsSectionProps {
+interface SimpleDebtsSectionProps {
   debts: Debt[];
   currentUser: Omit<User, 'password_hash'>;
-  onPaymentSuccess: () => void;
+  onDebtUpdate: () => void;
 }
 
-export function DebtsSection({ debts, currentUser, onPaymentSuccess }: DebtsSectionProps) {
-  const [selectedDebt, setSelectedDebt] = React.useState<Debt | null>(null);
-  const [showPayDialog, setShowPayDialog] = React.useState(false);
-  const [showHistoryDialog, setShowHistoryDialog] = React.useState(false);
+export function SimpleDebtsSection({ debts, currentUser, onDebtUpdate }: SimpleDebtsSectionProps) {
   const [isInitializing, setIsInitializing] = React.useState(false);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
+  const { toast } = useToast();
 
   const handleInitializeDebts = async () => {
     setIsInitializing(true);
@@ -35,9 +32,18 @@ export function DebtsSection({ debts, currentUser, onPaymentSuccess }: DebtsSect
         throw new Error('Failed to initialize debts');
       }
       
-      onPaymentSuccess(); // Обновляем данные
+      onDebtUpdate();
+      toast({
+        title: 'Успешно',
+        description: 'Таблицы долгов созданы и инициализированы.',
+      });
     } catch (error) {
       console.error('Error initializing debts:', error);
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось создать таблицы долгов.',
+        variant: 'destructive',
+      });
     } finally {
       setIsInitializing(false);
     }
@@ -46,27 +52,53 @@ export function DebtsSection({ debts, currentUser, onPaymentSuccess }: DebtsSect
   const handleRefreshDebts = async () => {
     setIsRefreshing(true);
     try {
-      onPaymentSuccess(); // Обновляем данные
+      onDebtUpdate();
+      toast({
+        title: 'Обновлено',
+        description: 'Данные долгов обновлены.',
+      });
     } catch (error) {
       console.error('Error refreshing debts:', error);
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось обновить данные долгов.',
+        variant: 'destructive',
+      });
     } finally {
       setIsRefreshing(false);
     }
   };
 
   const handlePayDebt = (debt: Debt) => {
-    setSelectedDebt(debt);
-    setShowPayDialog(true);
+    if (debt.is_temporary) {
+      toast({
+        title: 'Внимание',
+        description: 'Сначала создайте таблицы долгов для полной функциональности.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    toast({
+      title: 'Функция в разработке',
+      description: 'Функция погашения долгов будет доступна после создания таблиц.',
+    });
   };
 
   const handleViewHistory = (debt: Debt) => {
-    setSelectedDebt(debt);
-    setShowHistoryDialog(true);
-  };
-
-  const handlePaymentSuccess = () => {
-    setShowPayDialog(false);
-    onPaymentSuccess();
+    if (debt.is_temporary) {
+      toast({
+        title: 'Внимание',
+        description: 'История платежей будет доступна после создания таблиц долгов.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    toast({
+      title: 'Функция в разработке',
+      description: 'История платежей будет доступна после создания таблиц.',
+    });
   };
 
   return (
@@ -85,6 +117,7 @@ export function DebtsSection({ debts, currentUser, onPaymentSuccess }: DebtsSect
                 variant="outline"
                 size="sm"
               >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
                 {isRefreshing ? 'Обновление...' : 'Обновить'}
               </Button>
               <Button
@@ -93,7 +126,8 @@ export function DebtsSection({ debts, currentUser, onPaymentSuccess }: DebtsSect
                 variant="outline"
                 size="sm"
               >
-                {isInitializing ? 'Инициализация...' : 'Создать таблицы'}
+                <Database className="h-4 w-4 mr-2" />
+                {isInitializing ? 'Создание...' : 'Создать таблицы'}
               </Button>
             </div>
           </div>
@@ -137,7 +171,7 @@ export function DebtsSection({ debts, currentUser, onPaymentSuccess }: DebtsSect
                   <div className="flex gap-2">
                     <Button
                       onClick={() => handlePayDebt(debt)}
-                      disabled={debt.current_amount <= 0 || debt.is_temporary}
+                      disabled={debt.current_amount <= 0}
                       size="sm"
                       className="flex-1"
                     >
@@ -146,11 +180,9 @@ export function DebtsSection({ debts, currentUser, onPaymentSuccess }: DebtsSect
                     </Button>
                     <Button
                       onClick={() => handleViewHistory(debt)}
-                      disabled={debt.is_temporary}
                       variant="outline"
                       size="sm"
                     >
-                      <History className="h-4 w-4 mr-2" />
                       История
                     </Button>
                   </div>
@@ -171,24 +203,6 @@ export function DebtsSection({ debts, currentUser, onPaymentSuccess }: DebtsSect
           </div>
         </CardContent>
       </Card>
-
-      {selectedDebt && (
-        <>
-          <PayDebtDialog
-            debt={selectedDebt}
-            currentUser={currentUser}
-            isOpen={showPayDialog}
-            onClose={() => setShowPayDialog(false)}
-            onSuccess={handlePaymentSuccess}
-          />
-          
-          <DebtHistoryDialog
-            debt={selectedDebt}
-            isOpen={showHistoryDialog}
-            onClose={() => setShowHistoryDialog(false)}
-          />
-        </>
-      )}
     </div>
   );
 } 
