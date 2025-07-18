@@ -7,41 +7,41 @@ export async function GET() {
       return NextResponse.json({ error: 'Admin client not available' }, { status: 500 });
     }
 
-    // Проверяем структуру таблицы расходов
+    // Получаем все расходы
     const { data: expenses, error } = await supabaseAdmin
       .from('expenses')
       .select('*')
-      .limit(5);
+      .order('date', { ascending: false });
 
     if (error) {
-      return NextResponse.json({ 
-        error: 'Failed to fetch expenses', 
-        details: error 
-      }, { status: 500 });
+      console.error('Error fetching expenses:', error);
+      return NextResponse.json({ error: 'Failed to fetch expenses' }, { status: 500 });
     }
 
-    // Проверяем структуру таблицы пользователей
-    const { data: users, error: usersError } = await supabaseAdmin
-      .from('users')
-      .select('id, username, name, role')
-      .limit(5);
+    // Группируем по ответственному
+    const groupedExpenses = expenses?.reduce((acc, expense) => {
+      const responsible = expense.responsible;
+      if (!acc[responsible]) {
+        acc[responsible] = [];
+      }
+      acc[responsible].push(expense);
+      return acc;
+    }, {} as Record<string, any[]>) || {};
 
-    if (usersError) {
-      return NextResponse.json({ 
-        error: 'Failed to fetch users', 
-        details: usersError 
-      }, { status: 500 });
-    }
+    // Считаем суммы по ответственному
+    const totals = Object.entries(groupedExpenses).reduce((acc, [responsible, expenses]) => {
+      acc[responsible] = (expenses as any[]).reduce((sum: number, exp: any) => sum + exp.amount, 0);
+      return acc;
+    }, {} as Record<string, number>);
 
     return NextResponse.json({
-      message: 'Debug info',
       expenses: expenses || [],
-      users: users || [],
-      expenseCount: expenses?.length || 0,
-      userCount: users?.length || 0
+      grouped: groupedExpenses,
+      totals,
+      count: expenses?.length || 0
     });
   } catch (error) {
-    console.error('Debug API error:', error);
+    console.error('Error in debug expenses:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -35,7 +35,7 @@ export async function POST() {
     const { data: expenses, error: expensesError } = await supabaseAdmin
       .from('expenses')
       .select('responsible, amount')
-      .in('responsible', ['Администратор', 'Максим']);
+      .in('responsible', ['admin', 'admin_max']);
 
     if (expensesError) {
       console.error('Error fetching expenses:', expensesError);
@@ -45,7 +45,7 @@ export async function POST() {
     // Группируем расходы по ответственному
     const debtMap = new Map<string, number>();
     expenses.forEach(expense => {
-      const personName = expense.responsible === 'Администратор' ? 'Тимофей' : 'Максим';
+      const personName = expense.responsible === 'admin' ? 'Тимофей' : 'Максим';
       debtMap.set(personName, (debtMap.get(personName) || 0) + expense.amount);
     });
 

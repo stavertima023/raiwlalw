@@ -210,7 +210,7 @@ export function SimpleDebtsSection({ debts, currentUser, onDebtUpdate }: SimpleD
                 <CreditCard className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold mb-2">Долги не найдены</h3>
                 <p className="text-muted-foreground mb-4">
-                  Нет расходов от Администратора или Максима для расчета долгов.
+                  Нет расходов от admin (Администратор) или admin_max (Максим) для расчета долгов.
                 </p>
                 <Button onClick={handleRefreshDebts} variant="outline">
                   Обновить данные
