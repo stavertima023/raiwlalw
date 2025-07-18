@@ -23,24 +23,47 @@ import Image from 'next/image';
 
 // Упрощенная схема формы с лучшей обработкой данных
 const FormSchema = z.object({
-    orderNumber: z.string().min(1, 'Номер заказа обязателен').transform(val => val.trim()),
-    shipmentNumber: z.string().min(1, 'Номер отправления обязателен').transform(val => val.trim()),
-    productType: z.string().refine(val => val && ['фб', 'фч', 'хч', 'хб', 'хс', 'шч', 'лб', 'лч', 'другое'].includes(val), {
-      message: 'Выберите тип товара'
-    }),
-    size: z.string().refine(val => val && ['S', 'M', 'L', 'XL'].includes(val), {
-      message: 'Выберите размер'
-    }),
+    orderNumber: z.union([
+      z.string().min(1, 'Номер заказа обязателен'),
+      z.undefined()
+    ]).transform(val => (val || '').trim()),
+    shipmentNumber: z.union([
+      z.string().min(1, 'Номер отправления обязателен'),
+      z.undefined()
+    ]).transform(val => (val || '').trim()),
+    productType: z.union([
+      z.string().refine(val => val && ['фб', 'фч', 'хч', 'хб', 'хс', 'шч', 'лб', 'лч', 'другое'].includes(val), {
+        message: 'Выберите тип товара'
+      }),
+      z.undefined()
+    ]),
+    size: z.union([
+      z.string().refine(val => val && ['S', 'M', 'L', 'XL'].includes(val), {
+        message: 'Выберите размер'
+      }),
+      z.undefined()
+    ]),
     price: z.union([
       z.number().positive('Цена должна быть положительной'),
       z.string().transform(val => {
-        const num = parseFloat(val);
+        if (!val || val.trim() === '') throw new Error('Цена обязательна');
+        const num = parseFloat(val.replace(/[^\d.,]/g, '').replace(',', '.'));
         if (isNaN(num) || num <= 0) throw new Error('Цена должна быть положительной');
         return num;
-      })
-    ]),
-    comment: z.string().optional().default('').transform(val => val || ''),
-    photos: z.array(z.string()).max(3).optional().default([]),
+      }),
+      z.undefined()
+    ]).refine(val => val !== undefined && val > 0, {
+      message: 'Цена должна быть положительной'
+    }),
+    comment: z.union([
+      z.string(),
+      z.undefined()
+    ]).optional().default('').transform(val => val || ''),
+    photos: z.union([
+      z.array(z.string()).max(3),
+      z.array(z.any()).transform(arr => arr.filter(item => typeof item === 'string')).pipe(z.array(z.string()).max(3)),
+      z.undefined()
+    ]).optional().default([]),
 });
 
 type OrderFormValues = z.infer<typeof FormSchema>;

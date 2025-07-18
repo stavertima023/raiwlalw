@@ -70,20 +70,31 @@ export async function POST(request: Request) {
     // Очищаем и подготавливаем данные перед валидацией
     const cleanedData = {
       ...json,
-      // Очищаем строковые поля от пробелов
-      orderNumber: json.orderNumber?.trim() || '',
-      shipmentNumber: json.shipmentNumber?.trim() || '',
-      comment: json.comment?.trim() || '',
+      // Очищаем строковые поля от пробелов и null значений
+      orderNumber: json.orderNumber?.toString().trim() || '',
+      shipmentNumber: json.shipmentNumber?.toString().trim() || '',
+      comment: json.comment?.toString().trim() || '',
       
-      // Обрабатываем enum поля
+      // Обрабатываем enum поля - принимаем пустые строки и undefined
       productType: json.productType || undefined,
       size: json.size || undefined,
       
-      // Обрабатываем числовые поля
-      price: json.price ? (typeof json.price === 'string' ? parseFloat(json.price) : json.price) : undefined,
+      // Обрабатываем числовые поля - более толерантно к форматам
+      price: json.price !== undefined && json.price !== null ? 
+        (typeof json.price === 'string' ? 
+          parseFloat(json.price.replace(/[^\d.,]/g, '').replace(',', '.')) : 
+          Number(json.price)
+        ) : undefined,
+      cost: json.cost !== undefined && json.cost !== null ? 
+        (typeof json.cost === 'string' ? 
+          parseFloat(json.cost.replace(/[^\d.,]/g, '').replace(',', '.')) : 
+          Number(json.cost)
+        ) : undefined,
       
-      // Обрабатываем массив фотографий
-      photos: Array.isArray(json.photos) ? json.photos : [],
+      // Обрабатываем массив фотографий - фильтруем невалидные значения
+      photos: Array.isArray(json.photos) ? 
+        json.photos.filter((photo: any) => typeof photo === 'string' && photo.trim() !== '') : 
+        [],
       
       // Устанавливаем продавца и дату
       seller: user.username,
@@ -119,19 +130,23 @@ export async function POST(request: Request) {
         const field = err.path.join('.');
         const message = err.message;
         const received = err.received;
-        return `${field}: ${message} (получено: ${JSON.stringify(received)})`;
+        const code = err.code;
+        return `${field}: ${message} (код: ${code}, получено: ${JSON.stringify(received)})`;
       }).join(', ');
       
       console.error('Validation error details:', {
         errors: error.errors,
-        receivedData: json
+        receivedData: json,
+        userAgent: request.headers.get('user-agent'),
+        contentType: request.headers.get('content-type')
       });
       
       return NextResponse.json({ 
         message: 'Ошибка валидации данных', 
         error: errorDetails,
         errors: error.errors,
-        receivedData: json
+        receivedData: json,
+        userAgent: request.headers.get('user-agent')
       }, { status: 400 });
     }
     

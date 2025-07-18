@@ -28,37 +28,80 @@ export type Size = z.infer<typeof SizeEnum>;
 
 export const OrderSchema = z.object({
   id: z.string().optional(), 
-  orderDate: z.union([z.date(), z.string().transform((str) => new Date(str))]), 
-  orderNumber: z.string().min(1, 'Номер заказа обязателен').transform(val => val.trim()),
-  shipmentNumber: z.string().min(1, 'Номер отправления обязателен').transform(val => val.trim()),
-  status: z.union([OrderStatusEnum, z.literal(''), z.undefined()]).transform(val => val || 'Добавлен'),
-  productType: z.union([ProductTypeEnum, z.literal(''), z.undefined()]).refine(val => val && ProductTypeEnum.options.includes(val as any), {
+  orderDate: z.union([
+    z.date(), 
+    z.string().transform((str) => {
+      if (!str) return new Date();
+      try {
+        return new Date(str);
+      } catch {
+        return new Date();
+      }
+    }),
+    z.undefined().transform(() => new Date())
+  ]), 
+  orderNumber: z.union([
+    z.string().min(1, 'Номер заказа обязателен'),
+    z.undefined()
+  ]).transform(val => (val || '').trim()),
+  shipmentNumber: z.union([
+    z.string().min(1, 'Номер отправления обязателен'),
+    z.undefined()
+  ]).transform(val => (val || '').trim()),
+  status: z.union([
+    OrderStatusEnum, 
+    z.literal(''), 
+    z.undefined()
+  ]).transform(val => val || 'Добавлен'),
+  productType: z.union([
+    ProductTypeEnum, 
+    z.literal(''), 
+    z.undefined()
+  ]).refine(val => !val || ProductTypeEnum.options.includes(val as any), {
     message: 'Выберите тип товара'
-  }),
-  size: z.union([SizeEnum, z.literal(''), z.undefined()]).refine(val => val && SizeEnum.options.includes(val as any), {
+  }).transform(val => val || undefined),
+  size: z.union([
+    SizeEnum, 
+    z.literal(''), 
+    z.undefined()
+  ]).refine(val => !val || SizeEnum.options.includes(val as any), {
     message: 'Выберите размер'
-  }),
-  seller: z.string().min(1, 'Продавец обязателен').transform(val => val.trim()), 
+  }).transform(val => val || undefined),
+  seller: z.union([
+    z.string().min(1, 'Продавец обязателен'),
+    z.undefined()
+  ]).transform(val => (val || '').trim()), 
   price: z.union([
     z.coerce.number().positive('Цена должна быть положительной'),
     z.string().transform(val => {
-      const num = parseFloat(val);
+      if (!val || val.trim() === '') throw new Error('Цена обязательна');
+      const num = parseFloat(val.replace(/[^\d.,]/g, '').replace(',', '.'));
       if (isNaN(num) || num <= 0) throw new Error('Цена должна быть положительной');
       return num;
-    })
-  ]),
+    }),
+    z.undefined()
+  ]).refine(val => val !== undefined && val > 0, {
+    message: 'Цена должна быть положительной'
+  }),
   cost: z.union([
     z.coerce.number().positive('Себестоимость должна быть положительной'),
     z.string().transform(val => {
-      if (!val) return undefined;
-      const num = parseFloat(val);
+      if (!val || val.trim() === '') return undefined;
+      const num = parseFloat(val.replace(/[^\d.,]/g, '').replace(',', '.'));
       if (isNaN(num) || num <= 0) throw new Error('Себестоимость должна быть положительной');
       return num;
     }),
     z.undefined()
   ]).optional(),
-  photos: z.array(z.string()).max(3).optional().default([]),
-  comment: z.string().optional().default('').transform(val => val || ''),
+  photos: z.union([
+    z.array(z.string()).max(3),
+    z.array(z.any()).transform(arr => arr.filter(item => typeof item === 'string')).pipe(z.array(z.string()).max(3)),
+    z.undefined()
+  ]).optional().default([]),
+  comment: z.union([
+    z.string(),
+    z.undefined()
+  ]).optional().default('').transform(val => val || ''),
 });
 
 export type Order = z.infer<typeof OrderSchema>;
