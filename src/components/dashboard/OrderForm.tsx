@@ -21,14 +21,25 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { X, Plus, Upload } from 'lucide-react';
 import Image from 'next/image';
 
-// Updated form schema with shipmentNumber required and cost removed
+// Упрощенная схема формы с лучшей обработкой данных
 const FormSchema = z.object({
-    orderNumber: z.string().min(1, 'Номер заказа обязателен'),
-    shipmentNumber: z.string().min(1, 'Номер отправления обязателен'),
-    productType: ProductTypeEnum,
-    size: SizeEnum,
-    price: z.coerce.number().positive('Цена должна быть положительной'),
-    comment: z.string().optional().default(''),
+    orderNumber: z.string().min(1, 'Номер заказа обязателен').transform(val => val.trim()),
+    shipmentNumber: z.string().min(1, 'Номер отправления обязателен').transform(val => val.trim()),
+    productType: z.string().refine(val => val && ['фб', 'фч', 'хч', 'хб', 'хс', 'шч', 'лб', 'лч', 'другое'].includes(val), {
+      message: 'Выберите тип товара'
+    }),
+    size: z.string().refine(val => val && ['S', 'M', 'L', 'XL'].includes(val), {
+      message: 'Выберите размер'
+    }),
+    price: z.union([
+      z.number().positive('Цена должна быть положительной'),
+      z.string().transform(val => {
+        const num = parseFloat(val);
+        if (isNaN(num) || num <= 0) throw new Error('Цена должна быть положительной');
+        return num;
+      })
+    ]),
+    comment: z.string().optional().default('').transform(val => val || ''),
     photos: z.array(z.string()).max(3).optional().default([]),
 });
 
@@ -181,6 +192,8 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
   };
 
   const onSubmit = (data: OrderFormValues) => {
+    console.log('Form data before validation:', data);
+    
     // Дополнительная валидация перед отправкой
     if (!data.orderNumber?.trim()) {
       alert('Номер заказа обязателен');
@@ -192,12 +205,12 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
       return;
     }
     
-    if (!data.productType) {
+    if (!data.productType || !['фб', 'фч', 'хч', 'хб', 'хс', 'шч', 'лб', 'лч', 'другое'].includes(data.productType)) {
       alert('Выберите тип товара');
       return;
     }
     
-    if (!data.size) {
+    if (!data.size || !['S', 'M', 'L', 'XL'].includes(data.size)) {
       alert('Выберите размер');
       return;
     }
@@ -207,13 +220,18 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
       return;
     }
     
-    // Очищаем пробелы в строковых полях
+    // Очищаем и подготавливаем данные для отправки
     const cleanedData = {
-      ...data,
       orderNumber: data.orderNumber.trim(),
       shipmentNumber: data.shipmentNumber.trim(),
+      productType: data.productType,
+      size: data.size,
+      price: typeof data.price === 'string' ? parseFloat(data.price) : data.price,
       comment: data.comment?.trim() || '',
+      photos: Array.isArray(data.photos) ? data.photos : [],
     };
+    
+    console.log('Cleaned data for submission:', cleanedData);
     
     onSave(cleanedData);
   };

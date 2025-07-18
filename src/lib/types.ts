@@ -29,16 +29,36 @@ export type Size = z.infer<typeof SizeEnum>;
 export const OrderSchema = z.object({
   id: z.string().optional(), 
   orderDate: z.union([z.date(), z.string().transform((str) => new Date(str))]), 
-  orderNumber: z.string().min(1, 'Номер заказа обязателен'),
-  shipmentNumber: z.string().min(1, 'Номер отправления обязателен'),
-  status: OrderStatusEnum.default('Добавлен'),
-  productType: ProductTypeEnum,
-  size: SizeEnum,
-  seller: z.string().min(1, 'Продавец обязателен'), 
-  price: z.coerce.number().positive('Цена должна быть положительной'),
-  cost: z.coerce.number().positive('Себестоимость должна быть положительной').optional(),
+  orderNumber: z.string().min(1, 'Номер заказа обязателен').transform(val => val.trim()),
+  shipmentNumber: z.string().min(1, 'Номер отправления обязателен').transform(val => val.trim()),
+  status: z.union([OrderStatusEnum, z.literal(''), z.undefined()]).transform(val => val || 'Добавлен'),
+  productType: z.union([ProductTypeEnum, z.literal(''), z.undefined()]).refine(val => val && ProductTypeEnum.options.includes(val as any), {
+    message: 'Выберите тип товара'
+  }),
+  size: z.union([SizeEnum, z.literal(''), z.undefined()]).refine(val => val && SizeEnum.options.includes(val as any), {
+    message: 'Выберите размер'
+  }),
+  seller: z.string().min(1, 'Продавец обязателен').transform(val => val.trim()), 
+  price: z.union([
+    z.coerce.number().positive('Цена должна быть положительной'),
+    z.string().transform(val => {
+      const num = parseFloat(val);
+      if (isNaN(num) || num <= 0) throw new Error('Цена должна быть положительной');
+      return num;
+    })
+  ]),
+  cost: z.union([
+    z.coerce.number().positive('Себестоимость должна быть положительной'),
+    z.string().transform(val => {
+      if (!val) return undefined;
+      const num = parseFloat(val);
+      if (isNaN(num) || num <= 0) throw new Error('Себестоимость должна быть положительной');
+      return num;
+    }),
+    z.undefined()
+  ]).optional(),
   photos: z.array(z.string()).max(3).optional().default([]),
-  comment: z.string().optional().default(''),
+  comment: z.string().optional().default('').transform(val => val || ''),
 });
 
 export type Order = z.infer<typeof OrderSchema>;

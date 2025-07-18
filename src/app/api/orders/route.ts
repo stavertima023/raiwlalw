@@ -50,6 +50,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  let json: any;
+  
   try {
     // Проверяем доступность сервисов
     if (!supabaseAdmin) {
@@ -63,17 +65,33 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Пользователь не авторизован' }, { status: 401 });
     }
 
-    const json = await request.json();
+    json = await request.json();
     
-    // Автоматически устанавливаем продавца и дату заказа
-    const newOrderData = {
+    // Очищаем и подготавливаем данные перед валидацией
+    const cleanedData = {
       ...json,
+      // Очищаем строковые поля от пробелов
+      orderNumber: json.orderNumber?.trim() || '',
+      shipmentNumber: json.shipmentNumber?.trim() || '',
+      comment: json.comment?.trim() || '',
+      
+      // Обрабатываем enum поля
+      productType: json.productType || undefined,
+      size: json.size || undefined,
+      
+      // Обрабатываем числовые поля
+      price: json.price ? (typeof json.price === 'string' ? parseFloat(json.price) : json.price) : undefined,
+      
+      // Обрабатываем массив фотографий
+      photos: Array.isArray(json.photos) ? json.photos : [],
+      
+      // Устанавливаем продавца и дату
       seller: user.username,
       orderDate: new Date().toISOString(),
     };
     
     // Валидируем данные с помощью Zod
-    const validatedOrder = OrderSchema.omit({ id: true }).parse(newOrderData);
+    const validatedOrder = OrderSchema.omit({ id: true }).parse(cleanedData);
 
     // Вставляем заказ в базу данных
     const { data, error } = await supabaseAdmin
@@ -100,13 +118,20 @@ export async function POST(request: Request) {
       const errorDetails = error.errors.map((err: any) => {
         const field = err.path.join('.');
         const message = err.message;
-        return `${field}: ${message}`;
+        const received = err.received;
+        return `${field}: ${message} (получено: ${JSON.stringify(received)})`;
       }).join(', ');
+      
+      console.error('Validation error details:', {
+        errors: error.errors,
+        receivedData: json
+      });
       
       return NextResponse.json({ 
         message: 'Ошибка валидации данных', 
         error: errorDetails,
-        errors: error.errors
+        errors: error.errors,
+        receivedData: json
       }, { status: 400 });
     }
     
