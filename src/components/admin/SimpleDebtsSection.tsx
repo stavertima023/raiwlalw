@@ -21,6 +21,7 @@ interface SimpleDebtsSectionProps {
 export function SimpleDebtsSection({ debts, currentUser, onDebtUpdate }: SimpleDebtsSectionProps) {
   const [isInitializing, setIsInitializing] = React.useState(false);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
+  const [isRecalculating, setIsRecalculating] = React.useState(false);
   const [selectedDebt, setSelectedDebt] = React.useState<Debt | null>(null);
   const [showPayDialog, setShowPayDialog] = React.useState(false);
   const [showHistoryDialog, setShowHistoryDialog] = React.useState(false);
@@ -71,6 +72,35 @@ export function SimpleDebtsSection({ debts, currentUser, onDebtUpdate }: SimpleD
       });
     } finally {
       setIsRefreshing(false);
+    }
+  };
+
+  const handleRecalculateDebts = async () => {
+    setIsRecalculating(true);
+    try {
+      const response = await fetch('/api/debts/recalculate', {
+        method: 'POST',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to recalculate debts');
+      }
+      
+      const result = await response.json();
+      onDebtUpdate();
+      toast({
+        title: 'Успешно',
+        description: `Долги пересчитаны. Максим: ${result.calculation.Максим?.toLocaleString('ru-RU') || 0} ₽, Тимофей: ${result.calculation.Тимофей?.toLocaleString('ru-RU') || 0} ₽`,
+      });
+    } catch (error) {
+      console.error('Error recalculating debts:', error);
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось пересчитать долги.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsRecalculating(false);
     }
   };
 
@@ -132,6 +162,15 @@ export function SimpleDebtsSection({ debts, currentUser, onDebtUpdate }: SimpleD
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
                 {isRefreshing ? 'Обновление...' : 'Обновить'}
+              </Button>
+              <Button
+                onClick={handleRecalculateDebts}
+                disabled={isRecalculating}
+                variant="outline"
+                size="sm"
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isRecalculating ? 'animate-spin' : ''}`} />
+                {isRecalculating ? 'Пересчет...' : 'Пересчитать'}
               </Button>
               {!hasRealDebts && (
                 <Button
