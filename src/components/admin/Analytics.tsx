@@ -417,7 +417,7 @@ export function Analytics({ orders, users, expenses, payouts }: AnalyticsProps) 
               </TableRow>
               <TableRow>
                 <TableCell>
-                  <Badge variant="cancelled">Отменен</Badge>
+                  <Badge variant="destructive">Отменен</Badge>
                 </TableCell>
                 <TableCell>{orderStats.cancelled}</TableCell>
                 <TableCell>
