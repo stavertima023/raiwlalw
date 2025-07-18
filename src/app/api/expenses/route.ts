@@ -101,8 +101,10 @@ export async function POST(request: Request) {
     console.log('Final expense data for validation:', expenseData);
     
     // Validate data with Zod schema
-    const validatedExpense = ExpenseSchema.omit({ id: true }).parse(expenseData);
+    const validatedExpense = ExpenseSchema.parse(expenseData);
 
+    console.log('Attempting to insert expense with data:', validatedExpense);
+    
     const { data, error } = await supabaseAdmin
       .from('expenses')
       .insert(validatedExpense)
@@ -110,6 +112,7 @@ export async function POST(request: Request) {
       .single();
 
     if (error) {
+      console.error('Supabase insert error:', error);
       throw error;
     }
 

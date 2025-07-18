@@ -71,7 +71,7 @@ export const ExpenseCategoryEnum = z.enum([
 export type ExpenseCategory = z.infer<typeof ExpenseCategoryEnum>;
 
 export const ExpenseSchema = z.object({
-  id: z.string(),
+  id: z.string().optional(),
   date: z.union([z.date(), z.string().transform((str) => new Date(str))]),
   amount: z.coerce.number().positive('Сумма должна быть положительной'),
   category: ExpenseCategoryEnum,

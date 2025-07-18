@@ -21,6 +21,26 @@ export function DebtsSection({ debts, currentUser, onPaymentSuccess }: DebtsSect
   const [selectedDebt, setSelectedDebt] = React.useState<Debt | null>(null);
   const [showPayDialog, setShowPayDialog] = React.useState(false);
   const [showHistoryDialog, setShowHistoryDialog] = React.useState(false);
+  const [isInitializing, setIsInitializing] = React.useState(false);
+
+  const handleInitializeDebts = async () => {
+    setIsInitializing(true);
+    try {
+      const response = await fetch('/api/debts/init', {
+        method: 'POST',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to initialize debts');
+      }
+      
+      onPaymentSuccess(); // Обновляем данные
+    } catch (error) {
+      console.error('Error initializing debts:', error);
+    } finally {
+      setIsInitializing(false);
+    }
+  };
 
   const handlePayDebt = (debt: Debt) => {
     setSelectedDebt(debt);
@@ -41,10 +61,20 @@ export function DebtsSection({ debts, currentUser, onPaymentSuccess }: DebtsSect
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5" />
-            Долги кассы
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              Долги кассы
+            </CardTitle>
+            <Button
+              onClick={handleInitializeDebts}
+              disabled={isInitializing}
+              variant="outline"
+              size="sm"
+            >
+              {isInitializing ? 'Инициализация...' : 'Обновить долги'}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
