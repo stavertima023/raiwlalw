@@ -14,51 +14,76 @@ import { PayoutsList } from '@/components/admin/PayoutsList';
 import AIAnalytics from '@/components/admin/AIAnalytics';
 import { Analytics } from '@/components/admin/Analytics';
 
-const fetcher = (url: string) => fetch(url).then(res => {
-    if (!res.ok) {
-        const error = new Error('Произошла ошибка при загрузке данных');
-        return res.json().then(info => {
-            (error as any).info = info;
-            throw error;
-        });
-    }
-    return res.json();
-});
+// Оптимизированный fetcher с кэшированием
+const fetcher = async (url: string) => {
+  const res = await fetch(url, {
+    headers: {
+      'Cache-Control': 'max-age=30', // Кэшируем на 30 секунд
+    },
+  });
+  
+  if (!res.ok) {
+    const error = new Error('Произошла ошибка при загрузке данных');
+    const info = await res.json();
+    (error as any).info = info;
+    throw error;
+  }
+  
+  return res.json();
+};
+
+// Конфигурация SWR для оптимизации
+const swrConfig = {
+  revalidateOnFocus: false, // Не перезагружаем при фокусе
+  revalidateOnReconnect: true, // Перезагружаем при восстановлении соединения
+  dedupingInterval: 5000, // Дедупликация запросов в течение 5 секунд
+  errorRetryCount: 2, // Повторяем ошибки только 2 раза
+  errorRetryInterval: 1000, // Интервал между повторами
+};
 
 type DashboardRootProps = {
   initialUser: Omit<User, 'password_hash'> | undefined;
 }
 
 export default function DashboardRoot({ initialUser }: DashboardRootProps) {
-  // Defensive check to prevent client-side hydration errors
   if (!initialUser) {
-    return null; // or a loading spinner
+    return null;
   }
 
   const { toast } = useToast();
 
-  const { data: orders = [], error: ordersError } = useSWR<Order[]>('/api/orders', fetcher);
+  // Оптимизированные запросы с конфигурацией
+  const { data: orders = [], error: ordersError } = useSWR<Order[]>(
+    '/api/orders', 
+    fetcher, 
+    swrConfig
+  );
   
   const { data: expenses = [], error: expensesError } = useSWR<Expense[]>(
     initialUser.role === 'Администратор' ? '/api/expenses' : null, 
-    fetcher
+    fetcher,
+    swrConfig
   );
 
   const { data: payouts = [], error: payoutsError } = useSWR<Payout[]>(
     (initialUser.role === 'Администратор' || initialUser.role === 'Продавец') ? '/api/payouts' : null, 
-    fetcher
+    fetcher,
+    swrConfig
   );
 
   const { data: debts = [], error: debtsError } = useSWR<Debt[]>(
     initialUser.role === 'Администратор' ? '/api/debts' : null, 
-    fetcher
+    fetcher,
+    swrConfig
   );
 
   const { data: users = [], error: usersError } = useSWR<User[]>(
     initialUser.role === 'Администратор' ? '/api/users' : null, 
-    fetcher
+    fetcher,
+    swrConfig
   );
 
+  // Обработка ошибок
   React.useEffect(() => {
     if (ordersError) {
       toast({ title: 'Ошибка загрузки заказов', description: ordersError.message, variant: 'destructive' });
@@ -77,7 +102,19 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     }
   }, [ordersError, expensesError, payoutsError, debtsError, usersError, toast]);
 
+  // Оптимистичное добавление заказа
   const handleAddOrder = async (newOrderData: Omit<Order, 'id' | 'orderDate' | 'seller'>) => {
+    // Создаем временный заказ для оптимистичного обновления
+    const tempOrder: Order = {
+      id: `temp-${Date.now()}`,
+      orderDate: new Date(),
+      seller: initialUser.username,
+      ...newOrderData,
+    };
+
+    // Оптимистично обновляем UI
+    mutate('/api/orders', (currentOrders: Order[] = []) => [tempOrder, ...currentOrders], false);
+
     try {
       const response = await fetch('/api/orders', {
         method: 'POST',
@@ -88,25 +125,24 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       const responseData = await response.json();
       
       if (!response.ok) {
-        console.error('Order creation failed:', responseData);
+        // Откатываем оптимистичное обновление при ошибке
+        mutate('/api/orders');
         
-        // Build detailed error message
         let errorMessage = responseData.message || 'Произошла ошибка';
         
         if (responseData.errors) {
-          // Zod validation errors
           const errorDetails = responseData.errors.map((e: any) => 
             `${e.path.join('.')}: ${e.message}`
           ).join(', ');
           errorMessage += `: ${errorDetails}`;
         } else if (responseData.error) {
-          // Database or other errors
           errorMessage += `: ${responseData.error}`;
         }
         
         throw new Error(errorMessage);
       }
       
+      // Обновляем данные с сервера
       mutate('/api/orders');
       toast({ title: 'Заказ успешно добавлен' });
     } catch (error: any) {
@@ -118,51 +154,69 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     }
   };
   
+  // Оптимистичное обновление статуса заказа
   const handleUpdateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
+    // Оптимистично обновляем UI
+    mutate('/api/orders', (currentOrders: Order[] = []) => 
+      currentOrders.map(order => 
+        order.id === orderId ? { ...order, status: newStatus } : order
+      ), 
+      false
+    );
+
     try {
-        const response = await fetch(`/api/orders/${orderId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: newStatus }),
-        });
-        if (!response.ok) {
-          const err = await response.json();
-          throw new Error(err.message || 'Server error');
-        }
+      const response = await fetch(`/api/orders/${orderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      
+      if (!response.ok) {
+        const err = await response.json();
+        // Откатываем при ошибке
         mutate('/api/orders');
-        toast({ title: 'Статус заказа обновлен', description: `Заказ получил новый статус: "${newStatus}".` });
+        throw new Error(err.message || 'Server error');
+      }
+      
+      // Обновляем данные с сервера
+      mutate('/api/orders');
+      toast({ 
+        title: 'Статус заказа обновлен', 
+        description: `Заказ получил новый статус: "${newStatus}".` 
+      });
     } catch (error: any) {
-       toast({ title: 'Ошибка обновления статуса', description: error.message, variant: 'destructive' });
+      toast({ 
+        title: 'Ошибка обновления статуса', 
+        description: error.message, 
+        variant: 'destructive' 
+      });
     }
   };
   
+  // Оптимизированное добавление расхода
   const handleAddExpense = async (newExpenseData: Omit<Expense, 'id' | 'date'>) => {
     try {
-      console.log('Sending expense data to API:', newExpenseData);
-      
       const response = await fetch('/api/expenses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newExpenseData),
       });
       
-      console.log('API response status:', response.status);
-      
       if (!response.ok) {
         const err = await response.json();
-        console.error('API error response:', err);
         throw new Error(err.message || 'Server error');
       }
       
-      const result = await response.json();
-      console.log('API success response:', result);
-      
+      // Обновляем данные
       mutate('/api/expenses');
-      mutate('/api/debts'); // Обновляем долги после добавления расхода
+      mutate('/api/debts');
       toast({ title: 'Расход успешно добавлен' });
     } catch (error: any) {
-      console.error('Error in handleAddExpense:', error);
-      toast({ title: 'Ошибка добавления расхода', description: error.message, variant: 'destructive' });
+      toast({ 
+        title: 'Ошибка добавления расхода', 
+        description: error.message, 
+        variant: 'destructive' 
+      });
     }
   }
 
@@ -184,18 +238,22 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       mutate('/api/payouts');
       toast({ title: 'Статус вывода обновлен' });
     } catch (error: any) {
-      toast({ title: 'Ошибка обновления статуса', description: error.message, variant: 'destructive' });
+      toast({ 
+        title: 'Ошибка обновления статуса', 
+        description: error.message, 
+        variant: 'destructive' 
+      });
     }
   }
 
   const handleCancelOrder = (orderNumber: string) => {
-      const order = findOrder(orderNumber);
-      if (order?.id) handleUpdateOrderStatus(order.id, 'Отменен');
+    const order = findOrder(orderNumber);
+    if (order?.id) handleUpdateOrderStatus(order.id, 'Отменен');
   };
   
   const handleReturnOrder = (orderNumber: string) => {
-      const order = findOrder(orderNumber);
-      if (order?.id) handleUpdateOrderStatus(order.id, 'Возврат');
+    const order = findOrder(orderNumber);
+    if (order?.id) handleUpdateOrderStatus(order.id, 'Возврат');
   };
 
   const handlePayout = async (orderNumbers: string[]) => {
@@ -222,7 +280,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
         throw new Error(err.message || 'Ошибка создания выплаты');
       }
 
-      // Refresh both orders and payouts data
+      // Обновляем данные
       mutate('/api/orders');
       mutate('/api/payouts');
       
@@ -239,13 +297,14 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     }
   };
 
-  const findOrder = (orderNumber: string): Order | undefined => {
+  // Мемоизированные функции поиска
+  const findOrder = React.useCallback((orderNumber: string): Order | undefined => {
     return orders.find((order: Order) => order.orderNumber === orderNumber);
-  };
+  }, [orders]);
   
-  const findOrders = (orderNumbers: string[]): Order[] => {
+  const findOrders = React.useCallback((orderNumbers: string[]): Order[] => {
     return orders.filter((order: Order) => orderNumbers.includes(order.orderNumber));
-  }
+  }, [orders]);
 
   const PlaceholderComponent = ({ title, description }: { title: string, description: string }) => (
     <Card>

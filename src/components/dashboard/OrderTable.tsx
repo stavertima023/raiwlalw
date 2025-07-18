@@ -51,6 +51,7 @@ import type { Order, OrderStatus, User } from '@/lib/types';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 interface OrderTableProps {
   orders: Order[];
@@ -67,6 +68,7 @@ interface OrderTableProps {
   searchTerm?: string;
   onSearchChange?: (value: string) => void;
   showSearch?: boolean;
+  isLoading?: boolean;
 }
 
 const statusConfig: Record<
@@ -81,7 +83,8 @@ const statusConfig: Record<
   Возврат: { label: 'Возврат', color: 'outline' },
 };
 
-const StatusBadge: React.FC<{ status: OrderStatus; useLargeLayout?: boolean }> = ({ status }) => {
+// Мемоизированный компонент статуса
+const StatusBadge = React.memo<{ status: OrderStatus; useLargeLayout?: boolean }>(({ status }) => {
   const { label, color } = statusConfig[status] || {};
   const isReadyStatus = status === 'Готов';
   return (
@@ -92,18 +95,63 @@ const StatusBadge: React.FC<{ status: OrderStatus; useLargeLayout?: boolean }> =
       {label}
     </Badge>
   );
-};
+});
+StatusBadge.displayName = 'StatusBadge';
 
-export const OrderTable: React.FC<OrderTableProps> = ({ 
-  orders, 
-  currentUser, 
-  onUpdateStatus, 
-  useLargeLayout = false, 
-  searchTerm = '', 
-  onSearchChange, 
-  showSearch = false 
-}) => {
-  const getAvailableActions = (orderStatus: OrderStatus): OrderStatus[] => {
+// Мемоизированный компонент фотографий
+const OrderPhotos = React.memo<{ photos: string[]; size: number }>(({ photos, size }) => {
+  if (!photos || photos.length === 0) {
+    return (
+      <div className="flex gap-1">
+        {[1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="bg-muted rounded border-2 border-dashed border-muted-foreground/25 flex items-center justify-center"
+            style={{ width: size, height: size }}
+          >
+            <span className="text-xs text-muted-foreground">Фото {i}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex gap-1">
+      {photos.map((photo, index) => (
+        <div key={index} className="relative">
+          <Image
+            src={photo}
+            alt={`Фото ${index + 1}`}
+            width={size}
+            height={size}
+            className="rounded object-cover"
+            style={{ width: size, height: size }}
+          />
+        </div>
+      ))}
+      {photos.length < 3 && (
+        <div
+          className="bg-muted rounded border-2 border-dashed border-muted-foreground/25 flex items-center justify-center"
+          style={{ width: size, height: size }}
+        >
+          <span className="text-xs text-muted-foreground">Фото {photos.length + 1}</span>
+        </div>
+      )}
+    </div>
+  );
+});
+OrderPhotos.displayName = 'OrderPhotos';
+
+// Мемоизированная строка таблицы
+const OrderTableRow = React.memo<{
+  order: Order;
+  currentUser?: Omit<User, 'password_hash'>;
+  onUpdateStatus?: (orderId: string, newStatus: OrderStatus) => void;
+  useLargeLayout?: boolean;
+  photoSize: number;
+}>(({ order, currentUser, onUpdateStatus, useLargeLayout, photoSize }) => {
+  const getAvailableActions = React.useCallback((orderStatus: OrderStatus): OrderStatus[] => {
     switch (orderStatus) {
       case 'Добавлен':
         return ['Готов', 'Отменен'];
@@ -114,147 +162,149 @@ export const OrderTable: React.FC<OrderTableProps> = ({
       default:
         return [];
     }
-  };
-  
-  const photoSize = useLargeLayout ? 100 : 60;
+  }, []);
 
-  const renderPrinterActions = (order: Order) => {
+  const renderPrinterActions = React.useCallback((order: Order) => {
     const actions = getAvailableActions(order.status);
     if (!actions.length || !order.id || !onUpdateStatus) return null;
 
     if (order.status === 'Добавлен') {
-        return (
-            <div className="flex gap-2">
-                 <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button size="icon" variant="success">
-                      <Check className="h-4 w-4" />
-                      <span className="sr-only">Готов</span>
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Вы собираетесь изменить статус заказа #{order.orderNumber} на "Готов".
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Закрыть</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => onUpdateStatus(order.id!, 'Готов')}>
-                        Подтвердить
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-                 <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button size="icon" variant="destructive">
-                      <X className="h-4 w-4" />
-                      <span className="sr-only">Отменить</span>
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Вы собираетесь отменить заказ #{order.orderNumber}. Это действие нельзя будет отменить.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Закрыть</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => onUpdateStatus(order.id!, 'Отменен')}>
-                        Подтвердить отмену
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-            </div>
-        )
+      return (
+        <div className="flex gap-2">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button size="icon" variant="success">
+                <Check className="h-4 w-4" />
+                <span className="sr-only">Готов</span>
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Вы собираетесь изменить статус заказа #{order.orderNumber} на "Готов".
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Закрыть</AlertDialogCancel>
+                <AlertDialogAction onClick={() => onUpdateStatus(order.id!, 'Готов')}>
+                  Подтвердить
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button size="icon" variant="destructive">
+                <X className="h-4 w-4" />
+                <span className="sr-only">Отменить</span>
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Вы собираетесь отменить заказ #{order.orderNumber}. Это действие нельзя будет отменить.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Закрыть</AlertDialogCancel>
+                <AlertDialogAction onClick={() => onUpdateStatus(order.id!, 'Отменен')}>
+                  Подтвердить отмену
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      );
     }
 
     if (order.status === 'Готов') {
-        return (
-            <div className="flex gap-2">
-                 <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button size="icon" variant="success">
-                      <Send className="h-4 w-4" />
-                      <span className="sr-only">Отправлен</span>
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Вы собираетесь изменить статус заказа #{order.orderNumber} на "Отправлен".
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Закрыть</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => onUpdateStatus(order.id!, 'Отправлен')}>
-                        Подтвердить
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-                 <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button size="icon" variant="destructive">
-                      <X className="h-4 w-4" />
-                      <span className="sr-only">Отменить</span>
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Вы собираетесь отменить заказ #{order.orderNumber}. Это действие нельзя будет отменить.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Закрыть</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => onUpdateStatus(order.id!, 'Отменен')}>
-                        Подтвердить отмену
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-            </div>
-        )
+      return (
+        <div className="flex gap-2">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button size="icon" variant="success">
+                <Send className="h-4 w-4" />
+                <span className="sr-only">Отправлен</span>
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Вы собираетесь изменить статус заказа #{order.orderNumber} на "Отправлен".
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Закрыть</AlertDialogCancel>
+                <AlertDialogAction onClick={() => onUpdateStatus(order.id!, 'Отправлен')}>
+                  Подтвердить
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button size="icon" variant="destructive">
+                <X className="h-4 w-4" />
+                <span className="sr-only">Отменить</span>
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Вы собираетесь отменить заказ #{order.orderNumber}. Это действие нельзя будет отменить.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Закрыть</AlertDialogCancel>
+                <AlertDialogAction onClick={() => onUpdateStatus(order.id!, 'Отменен')}>
+                  Подтвердить отмену
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      );
     }
 
-    return (
-       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-            <Button aria-haspopup="true" size="icon" variant="ghost">
-            <MoreHorizontal className="h-4 w-4" />
-            <span className="sr-only">Toggle menu</span>
+    if (order.status === 'Отправлен') {
+      return (
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button size="icon" variant="outline">
+              <XCircle className="h-4 w-4" />
+              <span className="sr-only">Возврат</span>
             </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-            {actions.map((actionStatus) => (
-            <DropdownMenuItem
-                key={actionStatus}
-                onClick={() => onUpdateStatus(order.id!, actionStatus)}
-            >
-                Изменить на "{actionStatus}"
-            </DropdownMenuItem>
-            ))}
-        </DropdownMenuContent>
-        </DropdownMenu>
-    );
-  }
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Вы собираетесь оформить возврат для заказа #{order.orderNumber}.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Закрыть</AlertDialogCancel>
+              <AlertDialogAction onClick={() => onUpdateStatus(order.id!, 'Возврат')}>
+                Подтвердить возврат
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      );
+    }
 
-  const renderSellerActions = (order: Order) => {
-    // Sellers can only modify their own orders
+    return null;
+  }, [getAvailableActions, onUpdateStatus]);
+
+  const renderSellerActions = React.useCallback((order: Order) => {
     if (order.seller !== currentUser?.username || !order.id || !onUpdateStatus) {
       return null;
     }
 
-    // Based on business rules:
-    // - Can cancel orders with status "Добавлен" or "Готов"
-    // - Can return orders with status "Отправлен"
     if (order.status === 'Добавлен' || order.status === 'Готов') {
       return (
         <AlertDialog>
@@ -309,166 +359,130 @@ export const OrderTable: React.FC<OrderTableProps> = ({
       );
     }
 
-    // For other statuses, no actions available
     return null;
-  };
+  }, [currentUser?.username, onUpdateStatus]);
 
-  const renderActionsCell = (order: Order) => (
-    <TableCell className={cn(useLargeLayout && 'w-[120px]')}>
-      {currentUser?.role === 'Принтовщик' ? (
-        renderPrinterActions(order)
-      ) : currentUser?.role === 'Продавец' ? (
-        renderSellerActions(order)
-      ) : (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button aria-haspopup="true" size="icon" variant="ghost">
-              <MoreHorizontal className="h-4 w-4" />
-              <span className="sr-only">Toggle menu</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem>
-              <Edit className="mr-2 h-4 w-4" />
-              Редактировать
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
-    </TableCell>
-  );
+  const renderActionsCell = React.useCallback((order: Order) => {
+    if (currentUser?.role === 'Принтовщик') {
+      return renderPrinterActions(order);
+    } else if (currentUser?.role === 'Продавец') {
+      return renderSellerActions(order);
+    }
+    return null;
+  }, [currentUser?.role, renderPrinterActions, renderSellerActions]);
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-        <CardTitle>Список заказов</CardTitle>
-        <CardDescription>
-                {currentUser?.role === 'Продавец' ? 'Список всех ваших заказов.' : 'Заказы, требующие вашего внимания.'}
-        </CardDescription>
+    <TableRow key={order.id}>
+      <TableCell className="font-medium">{order.orderNumber}</TableCell>
+      <TableCell>{order.shipmentNumber}</TableCell>
+      <TableCell>
+        <StatusBadge status={order.status} useLargeLayout={useLargeLayout} />
+      </TableCell>
+      <TableCell>{order.productType}</TableCell>
+      <TableCell>{order.size}</TableCell>
+      <TableCell>{order.seller}</TableCell>
+      <TableCell className="text-right">{order.price.toLocaleString('ru-RU')} ₽</TableCell>
+      <TableCell>
+        <OrderPhotos photos={order.photos || []} size={photoSize} />
+      </TableCell>
+      <TableCell>{order.comment}</TableCell>
+      <TableCell>{format(new Date(order.orderDate), 'dd.MM.yyyy HH:mm', { locale: ru })}</TableCell>
+      <TableCell>{renderActionsCell(order)}</TableCell>
+    </TableRow>
+  );
+});
+OrderTableRow.displayName = 'OrderTableRow';
+
+export const OrderTable: React.FC<OrderTableProps> = React.memo(({ 
+  orders, 
+  currentUser, 
+  onUpdateStatus, 
+  useLargeLayout = false, 
+  searchTerm = '', 
+  onSearchChange, 
+  showSearch = false,
+  isLoading = false
+}) => {
+  const photoSize = useLargeLayout ? 100 : 60;
+
+  // Мемоизированная фильтрация заказов
+  const filteredOrders = React.useMemo(() => {
+    if (!searchTerm.trim()) return orders;
+    return orders.filter(order => 
+      order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.shipmentNumber.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [orders, searchTerm]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <LoadingSpinner size="lg" text="Загрузка заказов..." />
+      </div>
+    );
+  }
+
+  if (filteredOrders.length === 0) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-8">
+          <div className="text-center">
+            <h3 className="text-lg font-semibold mb-2">Заказы не найдены</h3>
+            <p className="text-muted-foreground">
+              {searchTerm ? 'Попробуйте изменить параметры поиска.' : 'Нет заказов для отображения.'}
+            </p>
           </div>
-          {showSearch && onSearchChange && (
-            <div className="w-full sm:w-auto sm:min-w-[300px]">
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Поиск по номеру заказа..."
-                  value={searchTerm}
-                  onChange={(e) => onSearchChange(e.target.value)}
-                  className="w-full px-3 py-2 border border-input bg-background text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 rounded-md"
-                />
-              </div>
-            </div>
-          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {showSearch && onSearchChange && (
+        <div className="flex items-center space-x-2">
+          <input
+            type="text"
+            placeholder="Поиск по номеру заказа или отправления..."
+            value={searchTerm}
+            onChange={(e) => onSearchChange(e.target.value)}
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          />
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="overflow-x-auto">
+      )}
+      
+      <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
-              {useLargeLayout && (
-                <TableHead className="w-[120px]">
-                  Действия
-                </TableHead>
-              )}
-              <TableHead className="min-w-[80px]">Дата</TableHead>
-              <TableHead className="min-w-[100px]">Номер заказа</TableHead>
-              <TableHead className="min-w-[110px]">Номер отправления</TableHead>
-              <TableHead className={cn('min-w-[80px]', useLargeLayout && 'whitespace-nowrap w-[90px]')}>Статус</TableHead>
-              <TableHead className={cn('min-w-[60px]', useLargeLayout && 'p-2 w-[10px]')}>Тип</TableHead>
-              <TableHead className={cn('min-w-[60px]', useLargeLayout && 'p-2 w-[10px]')}>Размер</TableHead>
-              <TableHead className={cn('min-w-[80px]', useLargeLayout && 'w-[60px]')}>Продавец</TableHead>
-              <TableHead className={cn('text-right min-w-[80px]', useLargeLayout && 'p-2 w-[60px]')}>Цена</TableHead>
-              <TableHead className={cn('min-w-[80px]', useLargeLayout && 'p-0 w-[100px]')}>Фото</TableHead>
-              <TableHead className="min-w-[150px]">Комментарий</TableHead>
-              {!useLargeLayout && (
-                <TableHead className="min-w-[80px]">
-                  <span className="sr-only">Действия</span>
-                </TableHead>
-              )}
+              <TableHead>Номер заказа</TableHead>
+              <TableHead>Номер отправления</TableHead>
+              <TableHead>Статус</TableHead>
+              <TableHead>Тип товара</TableHead>
+              <TableHead>Размер</TableHead>
+              <TableHead>Продавец</TableHead>
+              <TableHead className="text-right">Цена</TableHead>
+              <TableHead>Фото</TableHead>
+              <TableHead>Комментарий</TableHead>
+              <TableHead>Дата</TableHead>
+              <TableHead>Действия</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {orders.length > 0 ? (
-              orders.map((order) => (
-                <TableRow key={order.id}>
-                  {useLargeLayout && renderActionsCell(order)}
-                  <TableCell className="font-medium whitespace-nowrap">
-                    {format(order.orderDate, 'd MMM yyyy', { locale: ru })}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap">
-                    {order.orderNumber}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap">{order.shipmentNumber || '–'}</TableCell>
-                  <TableCell className={cn(useLargeLayout && 'whitespace-nowrap w-[90px]')}>
-                    <StatusBadge status={order.status} />
-                  </TableCell>
-                  <TableCell className={cn(useLargeLayout && 'p-2 w-[10px]')}>{order.productType}</TableCell>
-                  <TableCell className={cn(useLargeLayout && 'p-2 w-[10px]')}>{order.size}</TableCell>
-                  <TableCell className={cn("whitespace-nowrap", useLargeLayout && 'w-[60px]')}>{order.seller}</TableCell>
-                  <TableCell className={cn('text-right whitespace-nowrap', useLargeLayout && 'p-2 w-[60px]')}>
-                    {order.price.toLocaleString('ru-RU')} ₽
-                  </TableCell>
-                  <TableCell className={cn(useLargeLayout && 'p-0 w-[100px]')}>
-                    <div className="flex items-center gap-2">
-                      {order.photos && order.photos.length > 0 ? (
-                        order.photos.map((photo, index) => (
-                          <Dialog key={index}>
-                            <DialogTrigger asChild>
-                              <button>
-                                <Image
-                                  src={photo}
-                                  alt={`Фото ${index + 1}`}
-                                  width={photoSize}
-                                  height={photoSize}
-                                  className="rounded-md object-cover cursor-pointer"
-                                  data-ai-hint="product photo"
-                                />
-                              </button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-md p-2 sm:max-w-lg md:max-w-2xl">
-                              <DialogHeader>
-                                <DialogTitle>Фото заказа #{order.orderNumber}</DialogTitle>
-                              </DialogHeader>
-                              <div className="flex justify-center">
-                                <Image
-                                  src={photo}
-                                  alt={`Фото ${index + 1}`}
-                                  width={800}
-                                  height={800}
-                                  className="rounded-md object-contain max-h-[80vh]"
-                                  data-ai-hint="product photo"
-                                />
-                              </div>
-                            </DialogContent>
-                          </Dialog>
-                        ))
-                      ) : (
-                        <div className="rounded-md bg-muted flex items-center justify-center text-muted-foreground text-xs" style={{ height: photoSize, width: photoSize }}>
-                          Нет фото
-                        </div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="min-w-[150px] max-w-[300px] whitespace-pre-wrap break-words">
-                    {order.comment || '–'}
-                  </TableCell>
-                  {!useLargeLayout && renderActionsCell(order)}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={12} className="h-24 text-center">
-                  Нет заказов для отображения.
-                </TableCell>
-              </TableRow>
-            )}
+            {filteredOrders.map((order) => (
+              <OrderTableRow
+                key={order.id}
+                order={order}
+                currentUser={currentUser}
+                onUpdateStatus={onUpdateStatus}
+                useLargeLayout={useLargeLayout}
+                photoSize={photoSize}
+              />
+            ))}
           </TableBody>
         </Table>
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
-};
+});
+OrderTable.displayName = 'OrderTable';
