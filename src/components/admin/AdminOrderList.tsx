@@ -39,7 +39,7 @@ const statusConfig: Record<
   Добавлен: { label: 'Добавлен', color: 'default' },
   Готов: { label: 'Готов', color: 'default' },
   Отправлен: { label: 'Отправлен', color: 'default' },
-  Исполнен: { label: 'Исполнен', color: 'default' },
+  Исполнен: { label: 'Исполнен', color: 'secondary' },
   Отменен: { label: 'Отменен', color: 'destructive' },
   Возврат: { label: 'Возврат', color: 'outline' },
 };

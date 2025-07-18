@@ -402,7 +402,7 @@ export function Analytics({ orders, users, expenses, payouts }: AnalyticsProps) 
               </TableRow>
               <TableRow>
                 <TableCell>
-                  <Badge variant="default">Исполнен</Badge>
+                  <Badge variant="secondary">Исполнен</Badge>
                 </TableCell>
                 <TableCell>{orderStats.completed}</TableCell>
                 <TableCell>

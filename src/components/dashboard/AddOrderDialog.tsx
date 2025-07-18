@@ -18,14 +18,14 @@ type AddOrderDialogProps = {
   onAddOrder: (order: Omit<Order, 'id' | 'orderDate' | 'seller'>) => void;
   buttonSize?: 'default' | 'sm' | 'lg' | 'icon';
   buttonClassName?: string;
-  buttonVariant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
+  buttonVariant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link' | 'success';
 };
 
 export function AddOrderDialog({ 
   onAddOrder, 
   buttonSize = 'default',
   buttonClassName = '',
-  buttonVariant = 'default'
+  buttonVariant = 'success'
 }: AddOrderDialogProps) {
   const [isOpen, setIsOpen] = React.useState(false);
 
