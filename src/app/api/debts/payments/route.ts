@@ -34,10 +34,20 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = DebtPaymentSchema.parse(body);
 
+    // Convert field names for database compatibility
+    const paymentData = {
+      debt_id: validatedData.debtId,
+      amount: validatedData.amount,
+      person_name: validatedData.personName,
+      comment: validatedData.comment,
+      receipt_photo: validatedData.receiptPhoto,
+      created_at: new Date().toISOString()
+    };
+
     // Start a transaction
     const { data: payment, error: paymentError } = await supabaseAdmin
       .from('debt_payments')
-      .insert([validatedData])
+      .insert([paymentData])
       .select()
       .single();
 

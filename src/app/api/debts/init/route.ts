@@ -24,8 +24,8 @@ export async function POST() {
     if (!existingNames.includes('Тимофей')) {
       debtsToCreate.push({
         person_name: 'Тимофей',
-        base_amount: 179957,
-        current_amount: 179957,
+        base_amount: 0,
+        current_amount: 0,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       });
@@ -34,8 +34,8 @@ export async function POST() {
     if (!existingNames.includes('Максим')) {
       debtsToCreate.push({
         person_name: 'Максим',
-        base_amount: 50641,
-        current_amount: 50641,
+        base_amount: 0,
+        current_amount: 0,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       });

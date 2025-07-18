@@ -20,8 +20,8 @@ interface DebtsSectionProps {
 export function DebtsSection({ debts, expenses, users, onPayDebt }: DebtsSectionProps) {
   // Ensure we have debts for Тимофей и Максим
   const defaultDebts = [
-    { personName: 'Тимофей', baseAmount: 179957 },
-    { personName: 'Максим', baseAmount: 50641 }
+    { personName: 'Тимофей', baseAmount: 0 },
+    { personName: 'Максим', baseAmount: 0 }
   ];
 
   const allDebts = React.useMemo(() => {
@@ -77,8 +77,7 @@ export function DebtsSection({ debts, expenses, users, onPayDebt }: DebtsSection
                         </Badge>
                       </div>
                       <div className="text-sm text-muted-foreground space-y-1">
-                        <div>Базовая сумма: {(baseAmount || 0).toLocaleString('ru-RU')} ₽</div>
-                        <div>Расходы: +{(totalExpenses || 0).toLocaleString('ru-RU')} ₽</div>
+                        <div>Расходы: {(totalExpenses || 0).toLocaleString('ru-RU')} ₽</div>
                         {totalPayments > 0 && (
                           <div>Погашено: -{(totalPayments || 0).toLocaleString('ru-RU')} ₽</div>
                         )}
