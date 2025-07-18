@@ -61,9 +61,14 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
   
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    if (!files) return;
+    if (!files || files.length === 0) {
+      console.log('No files selected or selection cancelled');
+      return;
+    }
 
-    const currentPhotos = photos;
+    console.log(`Selected ${files.length} files:`, Array.from(files).map(f => ({ name: f.name, size: f.size, type: f.type })));
+
+    const currentPhotos = form.getValues('photos') || [];
     const totalSlots = 3 - currentPhotos.length;
 
     if (files.length > totalSlots) {
@@ -77,14 +82,18 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
 
     const filesToProcess = Array.from(files).slice(0, totalSlots);
 
-
-    
     // Validate all files first
     for (const file of filesToProcess) {
-        if (!file.type.startsWith('image/')) {
+      if (!file.type.startsWith('image/')) {
         alert(`Файл "${file.name}" не является изображением`);
-            return;
-        }
+        return;
+      }
+      
+      // Проверяем размер файла (максимум 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        alert(`Файл "${file.name}" слишком большой (максимум 10MB)`);
+        return;
+      }
     }
 
     setIsUploading(true);
@@ -93,34 +102,76 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
       // Process all files and collect results
       const loadPromises = filesToProcess.map(file => {
         return new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
+          const reader = new FileReader();
+          
+          reader.onload = (e) => {
             const result = e.target?.result as string;
-            resolve(result);
-        };
-          reader.onerror = () => reject(new Error(`Ошибка чтения файла ${file.name}`));
-        reader.readAsDataURL(file);
-    });
+            if (result) {
+              console.log(`Successfully loaded file: ${file.name}`);
+              resolve(result);
+            } else {
+              reject(new Error(`Failed to load file: ${file.name}`));
+            }
+          };
+          
+          reader.onerror = () => {
+            console.error(`Error reading file: ${file.name}`, reader.error);
+            const errorMessage = reader.error?.name === 'QuotaExceededError' 
+              ? `Файл "${file.name}" слишком большой для обработки. Попробуйте уменьшить размер изображения.`
+              : `Ошибка чтения файла ${file.name}`;
+            reject(new Error(errorMessage));
+          };
+          
+          reader.onabort = () => {
+            console.error(`File reading aborted: ${file.name}`);
+            reject(new Error(`Чтение файла прервано: ${file.name}`));
+          };
+          
+          // Используем readAsDataURL для лучшей совместимости с Android
+          reader.readAsDataURL(file);
+        });
       });
 
       // Wait for all files to load and update state once
       const results = await Promise.all(loadPromises);
+      console.log(`Successfully processed ${results.length} files`);
       
       // Update form value directly
       const currentPhotos = form.getValues('photos') || [];
       const newPhotos = [...currentPhotos, ...results];
       form.setValue('photos', newPhotos);
+      
+      console.log(`Total photos now: ${newPhotos.length}`);
     } catch (error) {
       console.error('Ошибка загрузки фото:', error);
-      alert('Произошла ошибка при загрузке фотографий');
+      const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+      alert(`Произошла ошибка при загрузке фотографий: ${errorMessage}`);
     } finally {
       setIsUploading(false);
     }
 
-    // Reset file input
+    // Reset file input - важно для Android
     if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+      fileInputRef.current.value = '';
     }
+  };
+
+  // Обработчик для отмены выбора файлов
+  const handleFileInputClick = () => {
+    if (fileInputRef.current) {
+      // Сбрасываем значение перед кликом для Android
+      fileInputRef.current.value = '';
+      fileInputRef.current.click();
+    }
+  };
+
+  // Обработчик для случая, когда пользователь возвращается из галереи
+  const handleFileInputFocus = () => {
+    console.log('File input focused');
+  };
+
+  const handleFileInputBlur = () => {
+    console.log('File input blurred');
   };
 
   const handleRemovePhoto = (index: number) => {
@@ -276,9 +327,14 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
                                         type="file" 
                                         ref={fileInputRef} 
                                         onChange={handlePhotoUpload}
+                                        onFocus={handleFileInputFocus}
+                                        onBlur={handleFileInputBlur}
                                         className="hidden" 
                                         accept="image/*"
                                         multiple
+                                        capture="environment"
+                                        onTouchStart={() => console.log('Touch start on file input')}
+                                        onTouchEnd={() => console.log('Touch end on file input')}
                                      />
                   
                   <div className="flex flex-wrap gap-2">
@@ -308,8 +364,20 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
                                             type="button"
                                             variant="outline"
                         className="h-20 w-20 border-dashed flex flex-col items-center justify-center"
-                        onClick={() => fileInputRef.current?.click()}
+                        onClick={handleFileInputClick}
                         disabled={isUploading}
+                        onTouchStart={(e) => {
+                          // Предотвращаем двойное срабатывание на Android
+                          e.preventDefault();
+                          console.log('Touch start on upload button');
+                        }}
+                        onTouchEnd={(e) => {
+                          console.log('Touch end on upload button');
+                          // Небольшая задержка для Android
+                          setTimeout(() => {
+                            handleFileInputClick();
+                          }, 100);
+                        }}
                       >
                         {isUploading ? (
                           <>
