@@ -178,10 +178,10 @@ export const AdminOrderList: React.FC<AdminOrderListProps> = ({ allOrders, allUs
                     <TableCell>{order.size}</TableCell>
                     <TableCell className="whitespace-nowrap">{sellerMap[order.seller] || order.seller}</TableCell>
                     <TableCell className="text-right whitespace-nowrap">
-                      {order.price.toLocaleString('ru-RU')} ₽
+                      {(order.price || 0).toLocaleString('ru-RU')} ₽
                     </TableCell>
                      <TableCell className="text-right whitespace-nowrap">
-                      {order.cost ? `${order.cost.toLocaleString('ru-RU')} ₽` : '–'}
+                                              {order.cost ? `${(order.cost || 0).toLocaleString('ru-RU')} ₽` : '–'}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">

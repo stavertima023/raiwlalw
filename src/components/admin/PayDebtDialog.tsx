@@ -134,7 +134,7 @@ export function PayDebtDialog({ children, debt, currentAmount, onPayDebt }: PayD
         <DialogHeader>
           <DialogTitle>Погашение долга</DialogTitle>
           <DialogDescription>
-            Погашение долга кассы {debt.personName}. Текущий долг: {currentAmount.toLocaleString('ru-RU')} ₽
+            Погашение долга кассы {debt.personName}. Текущий долг: {(currentAmount || 0).toLocaleString('ru-RU')} ₽
           </DialogDescription>
         </DialogHeader>
 

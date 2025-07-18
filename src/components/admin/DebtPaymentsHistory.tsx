@@ -63,9 +63,9 @@ export function DebtPaymentsHistory({ payments }: DebtPaymentsHistoryProps) {
                   <TableCell>
                     <Badge variant="outline">{payment.personName}</Badge>
                   </TableCell>
-                  <TableCell className="font-semibold whitespace-nowrap">
-                    {payment.amount.toLocaleString('ru-RU')} ₽
-                  </TableCell>
+                                      <TableCell className="font-semibold whitespace-nowrap">
+                      {(payment.amount || 0).toLocaleString('ru-RU')} ₽
+                    </TableCell>
                   <TableCell className="min-w-[200px] max-w-[400px] whitespace-pre-wrap break-words">
                     {payment.comment || '–'}
                   </TableCell>

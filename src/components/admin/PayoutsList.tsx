@@ -153,7 +153,7 @@ export const PayoutsList: React.FC<PayoutsListProps> = ({
                       {sellerMap[payout.seller] || payout.seller}
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      {payout.amount.toLocaleString('ru-RU')} ₽
+                      {(payout.amount || 0).toLocaleString('ru-RU')} ₽
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col">

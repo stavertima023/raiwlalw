@@ -260,7 +260,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       
       toast({ 
         title: 'Выплата создана', 
-        description: `Создана выплата на сумму ${totalAmount.toLocaleString('ru-RU')} ₽ по ${selectedOrders.length} заказ(ам). Заказы отмечены как "Исполнен".` 
+        description: `Создана выплата на сумму ${(totalAmount || 0).toLocaleString('ru-RU')} ₽ по ${selectedOrders.length} заказ(ам). Заказы отмечены как "Исполнен".` 
       });
     } catch (error: any) {
       toast({ 

@@ -165,7 +165,7 @@ export const ExpensesList: React.FC<ExpensesListProps> = ({ allExpenses, allUser
                       {format(expense.date, 'd MMM yyyy, HH:mm', { locale: ru })}
                     </TableCell>
                     <TableCell className="font-semibold whitespace-nowrap">
-                      {expense.amount.toLocaleString('ru-RU', { style: 'currency', currency: 'RUB' })}
+                      {(expense.amount || 0).toLocaleString('ru-RU', { style: 'currency', currency: 'RUB' })}
                     </TableCell>
                     <TableCell>{expense.category}</TableCell>
                     <TableCell>

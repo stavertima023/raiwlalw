@@ -62,8 +62,8 @@ export default function AIAnalytics({ orders, expenses }: AIAnalyticsProps) {
         kpiCards: [
           { title: 'Заказов', value: data.dataPoints.ordersCount.toString(), description: 'Всего заказов' },
           { title: 'Расходов', value: data.dataPoints.expensesCount.toString(), description: 'Всего расходов' },
-          { title: 'Доходы', value: `${data.dataPoints.totalRevenue?.toLocaleString('ru-RU')} ₽`, description: 'Общий доход' },
-          { title: 'Расходы', value: `${data.dataPoints.totalExpenses?.toLocaleString('ru-RU')} ₽`, description: 'Общие расходы' },
+          { title: 'Доходы', value: `${(data.dataPoints.totalRevenue || 0).toLocaleString('ru-RU')} ₽`, description: 'Общий доход' },
+          { title: 'Расходы', value: `${(data.dataPoints.totalExpenses || 0).toLocaleString('ru-RU')} ₽`, description: 'Общие расходы' },
         ],
         chartData: [],
         chartType: 'bar',

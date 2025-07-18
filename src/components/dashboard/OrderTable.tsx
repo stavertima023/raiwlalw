@@ -409,7 +409,7 @@ export const OrderTable: React.FC<OrderTableProps> = ({
                   <TableCell className={cn(useLargeLayout && 'p-2 w-[10px]')}>{order.size}</TableCell>
                   <TableCell className={cn("whitespace-nowrap", useLargeLayout && 'w-[60px]')}>{order.seller}</TableCell>
                   <TableCell className={cn('text-right whitespace-nowrap', useLargeLayout && 'p-2 w-[60px]')}>
-                    {order.price.toLocaleString('ru-RU')} ₽
+                    {(order.price || 0).toLocaleString('ru-RU')} ₽
                   </TableCell>
                   <TableCell className={cn(useLargeLayout && 'p-0 w-[100px]')}>
                     <div className="flex items-center gap-2">

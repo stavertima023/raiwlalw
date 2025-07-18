@@ -63,12 +63,12 @@ export function DebtsSection({ debts, expenses, users, onPayDebt }: DebtsSection
                       <div className="flex items-center gap-2 mb-2">
                         <h4 className="font-semibold">Долг кассы {debt.personName}:</h4>
                         <Badge variant={currentAmount > 0 ? "destructive" : "default"}>
-                          {currentAmount.toLocaleString('ru-RU')} ₽
+                          {(currentAmount || 0).toLocaleString('ru-RU')} ₽
                         </Badge>
                       </div>
                       <div className="text-sm text-muted-foreground space-y-1">
-                        <div>Базовая сумма: {debt.baseAmount.toLocaleString('ru-RU')} ₽</div>
-                        <div>Расходы: +{expensesAmount.toLocaleString('ru-RU')} ₽</div>
+                        <div>Базовая сумма: {(debt.baseAmount || 0).toLocaleString('ru-RU')} ₽</div>
+                        <div>Расходы: +{(expensesAmount || 0).toLocaleString('ru-RU')} ₽</div>
                       </div>
                     </div>
                     {currentAmount > 0 && (
@@ -92,7 +92,7 @@ export function DebtsSection({ debts, expenses, users, onPayDebt }: DebtsSection
               <div className="flex items-center justify-between">
                 <span className="font-semibold">Общий долг:</span>
                 <Badge variant="destructive" className="text-lg">
-                  {totalDebt.toLocaleString('ru-RU')} ₽
+                  {(totalDebt || 0).toLocaleString('ru-RU')} ₽
                 </Badge>
               </div>
             </div>
