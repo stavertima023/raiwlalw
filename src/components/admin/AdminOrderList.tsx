@@ -50,7 +50,7 @@ const StatusBadge: React.FC<{ status: OrderStatus }> = ({ status }) => {
   return (
     <Badge 
       variant={color} 
-      className={`capitalize whitespace-nowrap ${isReadyStatus ? 'border-blue-500 text-blue-700' : ''}`}
+      className={`capitalize whitespace-nowrap ${isReadyStatus ? 'border-blue-500 text-white bg-blue-500' : ''}`}
     >
       {label}
     </Badge>
