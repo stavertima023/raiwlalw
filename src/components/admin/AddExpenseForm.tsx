@@ -55,7 +55,7 @@ export function AddExpenseForm({ onSave, currentUser }: AddExpenseFormProps) {
     defaultValues: {
       amount: undefined,
       category: undefined,
-      responsible: currentUser.id,
+      responsible: currentUser.username,
       comment: '',
       receiptPhoto: undefined,
     },

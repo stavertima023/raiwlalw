@@ -95,7 +95,7 @@ export async function POST(request: Request) {
     // Add responsible user and current date
     const expenseData = {
       ...cleanData,
-      responsible: user.id, // Use user ID instead of username
+      responsible: user.username, // Use username to match database schema
       date: new Date().toISOString(),
     };
     console.log('Final expense data for validation:', expenseData);

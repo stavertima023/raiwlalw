@@ -1,15 +1,12 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { getIronSession } from 'iron-session/edge';
-import { sessionOptions, type SessionData } from '@/lib/session';
  
 export async function middleware(request: NextRequest) {
-  const response = NextResponse.next();
-  const session = await getIronSession<SessionData>(request, response, sessionOptions);
-
-  const { user, isLoggedIn } = session;
-
   const { pathname } = request.nextUrl
+
+  // Check for session cookie to determine if user is logged in
+  const sessionCookie = request.cookies.get('webapp-tg-session');
+  const isLoggedIn = !!sessionCookie;
 
   // Если пользователь залогинен и пытается зайти на страницу логина, редиректим на главную
   if (isLoggedIn && pathname.startsWith('/login')) {
@@ -21,7 +18,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
  
-  return response;
+  return NextResponse.next();
 }
  
 export const config = {

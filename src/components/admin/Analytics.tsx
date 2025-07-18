@@ -95,8 +95,7 @@ export function Analytics({ orders, users, expenses, payouts }: AnalyticsProps) 
     // Filter by responsible user (seller)
     if (selectedSeller !== 'all') {
       filtered = filtered.filter(expense => {
-        const responsibleUser = users.find(user => user.id === expense.responsible);
-        return responsibleUser && responsibleUser.username === selectedSeller;
+        return expense.responsible === selectedSeller;
       });
     }
 
@@ -510,7 +509,7 @@ export function Analytics({ orders, users, expenses, payouts }: AnalyticsProps) 
             </TableHeader>
             <TableBody>
               {filteredExpenses.slice(0, 10).map((expense) => {
-                const responsibleUser = users.find(user => user.id === expense.responsible);
+                const responsibleUser = users.find(user => user.username === expense.responsible);
                 return (
                   <TableRow key={expense.id}>
                     <TableCell>

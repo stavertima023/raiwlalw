@@ -165,7 +165,7 @@ export const ExpensesList: React.FC<ExpensesListProps> = ({ allExpenses, allUser
                     </TableCell>
                     <TableCell>{expense.category}</TableCell>
                     <TableCell>
-                      {allUsers.find(user => user.id === expense.responsible)?.name || expense.responsible}
+                      {allUsers.find(user => user.username === expense.responsible)?.name || expense.responsible}
                     </TableCell>
                     <TableCell className="min-w-[200px] max-w-[400px] whitespace-pre-wrap break-words">
                         {expense.comment || '–'}
