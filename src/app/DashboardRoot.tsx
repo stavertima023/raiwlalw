@@ -131,9 +131,22 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
         let errorMessage = responseData.message || 'Произошла ошибка';
         
         if (responseData.errors) {
-          const errorDetails = responseData.errors.map((e: any) => 
-            `${e.path.join('.')}: ${e.message}`
-          ).join(', ');
+          const errorDetails = responseData.errors.map((e: any) => {
+            const field = e.path.join('.');
+            const message = e.message;
+            // Переводим названия полей на русский
+            const fieldNames: { [key: string]: string } = {
+              'orderNumber': 'Номер заказа',
+              'shipmentNumber': 'Номер отправления',
+              'productType': 'Тип товара',
+              'size': 'Размер',
+              'price': 'Цена',
+              'comment': 'Комментарий',
+              'photos': 'Фотографии'
+            };
+            const fieldName = fieldNames[field] || field;
+            return `${fieldName}: ${message}`;
+          }).join(', ');
           errorMessage += `: ${errorDetails}`;
         } else if (responseData.error) {
           errorMessage += `: ${responseData.error}`;

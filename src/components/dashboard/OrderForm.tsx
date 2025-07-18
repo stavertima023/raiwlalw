@@ -22,16 +22,14 @@ import { X, Plus, Upload } from 'lucide-react';
 import Image from 'next/image';
 
 // Updated form schema with shipmentNumber required and cost removed
-const FormSchema = OrderSchema.pick({
-    orderNumber: true,
-    shipmentNumber: true,
-    productType: true,
-    size: true,
-    price: true,
-    comment: true,
-    photos: true
-}).extend({
+const FormSchema = z.object({
+    orderNumber: z.string().min(1, 'Номер заказа обязателен'),
     shipmentNumber: z.string().min(1, 'Номер отправления обязателен'),
+    productType: ProductTypeEnum,
+    size: SizeEnum,
+    price: z.coerce.number().positive('Цена должна быть положительной'),
+    comment: z.string().optional().default(''),
+    photos: z.array(z.string()).max(3).optional().default([]),
 });
 
 type OrderFormValues = z.infer<typeof FormSchema>;
@@ -52,11 +50,11 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
       shipmentNumber: initialData?.shipmentNumber || '',
       productType: initialData?.productType || undefined,
       size: initialData?.size || undefined,
-      price: initialData?.price,
+      price: initialData?.price || undefined,
       comment: initialData?.comment || '',
       photos: initialData?.photos || [],
     },
-      });
+  });
 
   // Watch photos value from form
   const photos = form.watch('photos') || [];
@@ -132,7 +130,41 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
   };
 
   const onSubmit = (data: OrderFormValues) => {
-    onSave(data);
+    // Дополнительная валидация перед отправкой
+    if (!data.orderNumber?.trim()) {
+      alert('Номер заказа обязателен');
+      return;
+    }
+    
+    if (!data.shipmentNumber?.trim()) {
+      alert('Номер отправления обязателен');
+      return;
+    }
+    
+    if (!data.productType) {
+      alert('Выберите тип товара');
+      return;
+    }
+    
+    if (!data.size) {
+      alert('Выберите размер');
+      return;
+    }
+    
+    if (!data.price || data.price <= 0) {
+      alert('Цена должна быть положительной');
+      return;
+    }
+    
+    // Очищаем пробелы в строковых полях
+    const cleanedData = {
+      ...data,
+      orderNumber: data.orderNumber.trim(),
+      shipmentNumber: data.shipmentNumber.trim(),
+      comment: data.comment?.trim() || '',
+    };
+    
+    onSave(cleanedData);
   };
 
   return (

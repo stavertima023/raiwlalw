@@ -97,8 +97,15 @@ export async function POST(request: Request) {
   } catch (error: any) {
     // Обрабатываем ошибки валидации Zod
     if (error.name === 'ZodError') {
+      const errorDetails = error.errors.map((err: any) => {
+        const field = err.path.join('.');
+        const message = err.message;
+        return `${field}: ${message}`;
+      }).join(', ');
+      
       return NextResponse.json({ 
         message: 'Ошибка валидации данных', 
+        error: errorDetails,
         errors: error.errors
       }, { status: 400 });
     }
