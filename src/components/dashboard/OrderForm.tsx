@@ -53,8 +53,6 @@ type OrderFormProps = {
 export function OrderForm({ onSave, initialData }: OrderFormProps) {
   const [isUploading, setIsUploading] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const cameraInputRef = React.useRef<HTMLInputElement>(null);
-  const galleryInputRef = React.useRef<HTMLInputElement>(null);
 
   const form = useForm<OrderFormValues>({
     resolver: zodResolver(FormSchema),
@@ -76,10 +74,19 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
     const files = event.target.files;
     if (!files || files.length === 0) {
       console.log('No files selected or selection cancelled');
+      // Сбрасываем input даже при отмене выбора
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
       return;
     }
 
-    console.log(`Selected ${files.length} files:`, Array.from(files).map(f => ({ name: f.name, size: f.size, type: f.type })));
+    console.log(`Selected ${files.length} files:`, Array.from(files).map(f => ({ 
+      name: f.name, 
+      size: f.size, 
+      type: f.type,
+      lastModified: f.lastModified 
+    })));
 
     const currentPhotos = form.getValues('photos') || [];
     const totalSlots = 3 - currentPhotos.length;
@@ -90,6 +97,10 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
       } else {
         alert(`Можно загрузить еще ${totalSlots} фото (выбрано ${files.length})`);
       }
+      // Сбрасываем input при ошибке
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
       return;
     }
 
@@ -99,12 +110,20 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
     for (const file of filesToProcess) {
       if (!file.type.startsWith('image/')) {
         alert(`Файл "${file.name}" не является изображением`);
+        // Сбрасываем input при ошибке
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
         return;
       }
       
       // Проверяем размер файла (максимум 10MB)
       if (file.size > 10 * 1024 * 1024) {
         alert(`Файл "${file.name}" слишком большой (максимум 10MB)`);
+        // Сбрасываем input при ошибке
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
         return;
       }
     }
@@ -120,7 +139,7 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
           reader.onload = (e) => {
             const result = e.target?.result as string;
             if (result) {
-              console.log(`Successfully loaded file: ${file.name}`);
+              console.log(`Successfully loaded file: ${file.name} (${file.size} bytes)`);
               resolve(result);
             } else {
               reject(new Error(`Failed to load file: ${file.name}`));
@@ -140,7 +159,7 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
             reject(new Error(`Чтение файла прервано: ${file.name}`));
           };
           
-          // Используем readAsDataURL для лучшей совместимости с Android
+          // Используем readAsDataURL для лучшей совместимости с Android и iPhone
           reader.readAsDataURL(file);
         });
       });
@@ -163,34 +182,18 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
       setIsUploading(false);
     }
 
-    // Reset file input - важно для Android
+    // Reset file input - важно для Android и iPhone
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
-  // Обработчик для отмены выбора файлов
+  // Обработчик для выбора файлов из галереи
   const handleFileInputClick = () => {
     if (fileInputRef.current) {
-      // Сбрасываем значение перед кликом для Android
+      // Сбрасываем значение перед кликом для Android и iPhone
       fileInputRef.current.value = '';
       fileInputRef.current.click();
-    }
-  };
-
-  // Обработчик для камеры
-  const handleCameraClick = () => {
-    if (cameraInputRef.current) {
-      cameraInputRef.current.value = '';
-      cameraInputRef.current.click();
-    }
-  };
-
-  // Обработчик для галереи
-  const handleGalleryClick = () => {
-    if (galleryInputRef.current) {
-      galleryInputRef.current.value = '';
-      galleryInputRef.current.click();
     }
   };
 
@@ -355,31 +358,11 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
             <FormItem>
                             <FormLabel>Фотографии (до 3)</FormLabel>
               <p className="text-sm text-muted-foreground">
-                Выберите источник: камера для нового снимка или галерея для существующих фото
+                Выберите фотографии из галереи (можно выбрать несколько одновременно)
               </p>
                             <FormControl>
                 <div className="space-y-4">
                                     {/* Input для камеры */}
-                                    <input 
-                                        type="file" 
-                                        ref={cameraInputRef} 
-                                        onChange={handlePhotoUpload}
-                                        className="hidden" 
-                                        accept="image/*"
-                                        capture="environment"
-                                     />
-                                    
-                                    {/* Input для галереи */}
-                                    <input 
-                                        type="file" 
-                                        ref={galleryInputRef} 
-                                        onChange={handlePhotoUpload}
-                                        className="hidden" 
-                                        accept="image/*"
-                                        multiple
-                                     />
-                                    
-                                    {/* Универсальный input для обратной совместимости */}
                                     <input 
                                         type="file" 
                                         ref={fileInputRef} 
@@ -416,69 +399,35 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
                                     ))}
                     
                     {photos.length < 3 && (
-                      <div className="flex flex-col gap-2">
-                        {/* Кнопка для камеры */}
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="h-16 w-20 border-dashed flex flex-col items-center justify-center"
-                          onClick={handleCameraClick}
-                          disabled={isUploading}
-                          onTouchStart={(e) => {
-                            e.preventDefault();
-                            console.log('Touch start on camera button');
-                          }}
-                          onTouchEnd={(e) => {
-                            console.log('Touch end on camera button');
-                            setTimeout(() => {
-                              handleCameraClick();
-                            }, 100);
-                          }}
-                        >
-                          {isUploading ? (
-                            <>
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900 mb-1"></div>
-                              <span className="text-xs">Загрузка...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Camera className="h-4 w-4 mb-1" />
-                              <span className="text-xs">Камера</span>
-                            </>
-                          )}
-                        </Button>
-                        
-                        {/* Кнопка для галереи */}
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="h-16 w-20 border-dashed flex flex-col items-center justify-center"
-                          onClick={handleGalleryClick}
-                          disabled={isUploading}
-                          onTouchStart={(e) => {
-                            e.preventDefault();
-                            console.log('Touch start on gallery button');
-                          }}
-                          onTouchEnd={(e) => {
-                            console.log('Touch end on gallery button');
-                            setTimeout(() => {
-                              handleGalleryClick();
-                            }, 100);
-                          }}
-                        >
-                          {isUploading ? (
-                            <>
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900 mb-1"></div>
-                              <span className="text-xs">Загрузка...</span>
-                            </>
-                          ) : (
-                            <>
-                              <ImageIcon className="h-4 w-4 mb-1" />
-                              <span className="text-xs">Галерея</span>
-                            </>
-                          )}
-                        </Button>
-                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-20 w-20 border-dashed flex flex-col items-center justify-center"
+                        onClick={handleFileInputClick}
+                        disabled={isUploading}
+                        onTouchStart={(e) => {
+                          e.preventDefault();
+                          console.log('Touch start on file input');
+                        }}
+                        onTouchEnd={(e) => {
+                          console.log('Touch end on file input');
+                          setTimeout(() => {
+                            handleFileInputClick();
+                          }, 100);
+                        }}
+                      >
+                        {isUploading ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900 mb-1"></div>
+                            <span className="text-xs">Загрузка...</span>
+                          </>
+                        ) : (
+                          <>
+                            <ImageIcon className="h-4 w-4 mb-1" />
+                            <span className="text-xs">Фото</span>
+                          </>
+                        )}
+                      </Button>
                     )}
                                 </div>
                 </div>
