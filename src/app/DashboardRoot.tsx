@@ -64,6 +64,28 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     fetcher
   );
 
+  // Initialize debts if they don't exist (for administrators)
+  React.useEffect(() => {
+    if (initialUser.role === 'Администратор' && debts && debts.length === 0) {
+      const initializeDebts = async () => {
+        try {
+          const response = await fetch('/api/debts/init', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+          });
+          
+          if (response.ok) {
+            mutate('/api/debts');
+          }
+        } catch (error) {
+          console.error('Failed to initialize debts:', error);
+        }
+      };
+      
+      initializeDebts();
+    }
+  }, [initialUser.role, debts, mutate]);
+
   React.useEffect(() => {
     if (ordersError) {
       toast({ title: 'Ошибка загрузки заказов', description: ordersError.message, variant: 'destructive' });

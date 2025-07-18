@@ -18,34 +18,42 @@ interface DebtsSectionProps {
 }
 
 export function DebtsSection({ debts, expenses, users, onPayDebt }: DebtsSectionProps) {
-  // Calculate total expenses for each responsible person
-  const calculateTotalExpenses = (responsibleName: string) => {
-    return expenses
-      .filter(expense => {
-        const responsibleUser = users.find(user => user.id === expense.responsible);
-        return responsibleUser?.name === responsibleName;
-      })
-      .reduce((sum, expense) => sum + expense.amount, 0);
-  };
+  // Ensure we have debts for Тимофей и Максим
+  const defaultDebts = [
+    { personName: 'Тимофей', baseAmount: 179957 },
+    { personName: 'Максим', baseAmount: 50641 }
+  ];
 
-  // Calculate current debt amounts
-  const getCurrentDebtAmount = (debt: Debt) => {
-    const expensesAmount = calculateTotalExpenses(debt.personName);
-    return debt.baseAmount + expensesAmount;
-  };
+  const allDebts = React.useMemo(() => {
+    const existingDebts = debts || [];
+    const existingNames = existingDebts.map(d => d.personName);
+    
+    const missingDebts = defaultDebts
+      .filter(defaultDebt => !existingNames.includes(defaultDebt.personName))
+      .map(defaultDebt => ({
+        id: `temp-${defaultDebt.personName}`,
+        personName: defaultDebt.personName,
+        baseAmount: defaultDebt.baseAmount,
+        currentAmount: defaultDebt.baseAmount,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }));
 
-  const totalDebt = debts.reduce((sum, debt) => sum + getCurrentDebtAmount(debt), 0);
+    return [...existingDebts, ...missingDebts];
+  }, [debts]);
+
+  const totalDebt = allDebts.reduce((sum, debt) => sum + (debt.currentAmount || 0), 0);
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <DollarSign className="h-5 w-5" />
-          Долги
+          Долги кассы
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {debts.length === 0 ? (
+        {allDebts.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <AlertTriangle className="h-12 w-12 mx-auto mb-4 opacity-50" />
             <p>Долгов нет</p>
@@ -53,9 +61,11 @@ export function DebtsSection({ debts, expenses, users, onPayDebt }: DebtsSection
         ) : (
           <>
             <div className="grid gap-4">
-              {debts.map((debt) => {
-                const currentAmount = getCurrentDebtAmount(debt);
-                const expensesAmount = calculateTotalExpenses(debt.personName);
+              {allDebts.map((debt) => {
+                const currentAmount = debt.currentAmount || 0;
+                const baseAmount = debt.baseAmount || 0;
+                const totalExpenses = (debt as any).total_expenses || 0;
+                const totalPayments = (debt as any).total_payments || 0;
                 
                 return (
                   <div key={debt.id} className="flex items-center justify-between p-4 border rounded-lg">
@@ -67,8 +77,11 @@ export function DebtsSection({ debts, expenses, users, onPayDebt }: DebtsSection
                         </Badge>
                       </div>
                       <div className="text-sm text-muted-foreground space-y-1">
-                        <div>Базовая сумма: {(debt.baseAmount || 0).toLocaleString('ru-RU')} ₽</div>
-                        <div>Расходы: +{(expensesAmount || 0).toLocaleString('ru-RU')} ₽</div>
+                        <div>Базовая сумма: {(baseAmount || 0).toLocaleString('ru-RU')} ₽</div>
+                        <div>Расходы: +{(totalExpenses || 0).toLocaleString('ru-RU')} ₽</div>
+                        {totalPayments > 0 && (
+                          <div>Погашено: -{(totalPayments || 0).toLocaleString('ru-RU')} ₽</div>
+                        )}
                       </div>
                     </div>
                     {currentAmount > 0 && (
