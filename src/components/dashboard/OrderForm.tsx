@@ -18,7 +18,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { OrderSchema, ProductTypeEnum, SizeEnum } from '@/lib/types';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { X, Plus, Upload } from 'lucide-react';
+import { X, Plus, Upload, Camera, Image as ImageIcon } from 'lucide-react';
 import Image from 'next/image';
 
 // Упрощенная схема формы с лучшей обработкой данных
@@ -53,6 +53,8 @@ type OrderFormProps = {
 export function OrderForm({ onSave, initialData }: OrderFormProps) {
   const [isUploading, setIsUploading] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const cameraInputRef = React.useRef<HTMLInputElement>(null);
+  const galleryInputRef = React.useRef<HTMLInputElement>(null);
 
   const form = useForm<OrderFormValues>({
     resolver: zodResolver(FormSchema),
@@ -173,6 +175,22 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
       // Сбрасываем значение перед кликом для Android
       fileInputRef.current.value = '';
       fileInputRef.current.click();
+    }
+  };
+
+  // Обработчик для камеры
+  const handleCameraClick = () => {
+    if (cameraInputRef.current) {
+      cameraInputRef.current.value = '';
+      cameraInputRef.current.click();
+    }
+  };
+
+  // Обработчик для галереи
+  const handleGalleryClick = () => {
+    if (galleryInputRef.current) {
+      galleryInputRef.current.value = '';
+      galleryInputRef.current.click();
     }
   };
 
@@ -337,10 +355,31 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
             <FormItem>
                             <FormLabel>Фотографии (до 3)</FormLabel>
               <p className="text-sm text-muted-foreground">
-                Можно выбрать несколько фото одновременно
+                Выберите источник: камера для нового снимка или галерея для существующих фото
               </p>
                             <FormControl>
                 <div className="space-y-4">
+                                    {/* Input для камеры */}
+                                    <input 
+                                        type="file" 
+                                        ref={cameraInputRef} 
+                                        onChange={handlePhotoUpload}
+                                        className="hidden" 
+                                        accept="image/*"
+                                        capture="environment"
+                                     />
+                                    
+                                    {/* Input для галереи */}
+                                    <input 
+                                        type="file" 
+                                        ref={galleryInputRef} 
+                                        onChange={handlePhotoUpload}
+                                        className="hidden" 
+                                        accept="image/*"
+                                        multiple
+                                     />
+                                    
+                                    {/* Универсальный input для обратной совместимости */}
                                     <input 
                                         type="file" 
                                         ref={fileInputRef} 
@@ -350,7 +389,6 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
                                         className="hidden" 
                                         accept="image/*"
                                         multiple
-                                        capture="environment"
                                         onTouchStart={() => console.log('Touch start on file input')}
                                         onTouchEnd={() => console.log('Touch end on file input')}
                                      />
@@ -378,38 +416,70 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
                                     ))}
                     
                     {photos.length < 3 && (
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                        className="h-20 w-20 border-dashed flex flex-col items-center justify-center"
-                        onClick={handleFileInputClick}
-                        disabled={isUploading}
-                        onTouchStart={(e) => {
-                          // Предотвращаем двойное срабатывание на Android
-                          e.preventDefault();
-                          console.log('Touch start on upload button');
-                        }}
-                        onTouchEnd={(e) => {
-                          console.log('Touch end on upload button');
-                          // Небольшая задержка для Android
-                          setTimeout(() => {
-                            handleFileInputClick();
-                          }, 100);
-                        }}
-                      >
-                        {isUploading ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900 mb-1"></div>
-                            <span className="text-xs">Загрузка...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Plus className="h-4 w-4 mb-1" />
-                            <span className="text-xs">Фото</span>
-                          </>
-                        )}
-                                        </Button>
-                                    )}
+                      <div className="flex flex-col gap-2">
+                        {/* Кнопка для камеры */}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-16 w-20 border-dashed flex flex-col items-center justify-center"
+                          onClick={handleCameraClick}
+                          disabled={isUploading}
+                          onTouchStart={(e) => {
+                            e.preventDefault();
+                            console.log('Touch start on camera button');
+                          }}
+                          onTouchEnd={(e) => {
+                            console.log('Touch end on camera button');
+                            setTimeout(() => {
+                              handleCameraClick();
+                            }, 100);
+                          }}
+                        >
+                          {isUploading ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900 mb-1"></div>
+                              <span className="text-xs">Загрузка...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Camera className="h-4 w-4 mb-1" />
+                              <span className="text-xs">Камера</span>
+                            </>
+                          )}
+                        </Button>
+                        
+                        {/* Кнопка для галереи */}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-16 w-20 border-dashed flex flex-col items-center justify-center"
+                          onClick={handleGalleryClick}
+                          disabled={isUploading}
+                          onTouchStart={(e) => {
+                            e.preventDefault();
+                            console.log('Touch start on gallery button');
+                          }}
+                          onTouchEnd={(e) => {
+                            console.log('Touch end on gallery button');
+                            setTimeout(() => {
+                              handleGalleryClick();
+                            }, 100);
+                          }}
+                        >
+                          {isUploading ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900 mb-1"></div>
+                              <span className="text-xs">Загрузка...</span>
+                            </>
+                          ) : (
+                            <>
+                              <ImageIcon className="h-4 w-4 mb-1" />
+                              <span className="text-xs">Галерея</span>
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    )}
                                 </div>
                 </div>
               </FormControl>
