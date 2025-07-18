@@ -21,22 +21,20 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ArrowUpDown } from 'lucide-react';
-import type { Expense, User, ExpenseCategory, Debt, DebtPayment } from '@/lib/types';
+import type { Expense, User, ExpenseCategory, Debt } from '@/lib/types';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { AddExpenseForm } from './AddExpenseForm';
 import { ExpensesFilters } from './ExpensesFilters';
 import { DebtsSection } from './DebtsSection';
-import { DebtPaymentsHistory } from './DebtPaymentsHistory';
 
 interface ExpensesListProps {
   allExpenses: Expense[];
   allUsers: User[];
-  debts: Debt[];
-  debtPayments: DebtPayment[];
   onAddExpense: (expense: Omit<Expense, 'id' | 'date'>) => void;
-  onPayDebt: (debtId: string, amount: number, personName: string, comment?: string, receiptPhoto?: string) => void;
   currentUser: Omit<User, 'password_hash'>;
+  debts: Debt[];
+  onDebtUpdate: () => void;
 }
 
 interface ExpenseSortDescriptor {
@@ -44,7 +42,7 @@ interface ExpenseSortDescriptor {
   direction: 'asc' | 'desc';
 }
 
-export const ExpensesList: React.FC<ExpensesListProps> = ({ allExpenses, allUsers, debts, debtPayments, onAddExpense, onPayDebt, currentUser }) => {
+export const ExpensesList: React.FC<ExpensesListProps> = ({ allExpenses, allUsers, onAddExpense, currentUser, debts, onDebtUpdate }) => {
   const [filters, setFilters] = React.useState({
     category: 'all' as ExpenseCategory | 'all',
     dateFrom: '',
@@ -121,14 +119,12 @@ export const ExpensesList: React.FC<ExpensesListProps> = ({ allExpenses, allUser
         <AddExpenseForm onSave={onAddExpense} currentUser={currentUser} />
       </div>
 
+      {/* Секция долгов */}
       <DebtsSection 
-        debts={debts}
-        expenses={allExpenses}
-        users={allUsers}
-        onPayDebt={onPayDebt}
+        debts={debts} 
+        currentUser={currentUser} 
+        onPaymentSuccess={onDebtUpdate}
       />
-
-      <DebtPaymentsHistory payments={debtPayments} />
 
       <ExpensesFilters
         onFilterChange={React.useCallback((newFilters) => setFilters({
@@ -165,7 +161,7 @@ export const ExpensesList: React.FC<ExpensesListProps> = ({ allExpenses, allUser
                       {format(expense.date, 'd MMM yyyy, HH:mm', { locale: ru })}
                     </TableCell>
                     <TableCell className="font-semibold whitespace-nowrap">
-                      {(expense.amount || 0).toLocaleString('ru-RU', { style: 'currency', currency: 'RUB' })}
+                      {expense.amount.toLocaleString('ru-RU', { style: 'currency', currency: 'RUB' })}
                     </TableCell>
                     <TableCell>{expense.category}</TableCell>
                     <TableCell>

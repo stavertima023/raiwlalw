@@ -139,7 +139,7 @@ export function PayoutDialog({
                     <div className="space-y-2">
                         <h4 className="flex items-center font-medium text-green-600"><CheckCircle className="mr-2 h-4 w-4" />Готовы к выплате ({processedOrders.valid.length}):</h4>
                         <ul className="list-disc list-inside text-sm space-y-1">
-                            {processedOrders.valid.map(o => <li key={o.id}>#{o.orderNumber} ({(o.price || 0).toLocaleString('ru-RU')} ₽)</li>)}
+                            {processedOrders.valid.map(o => <li key={o.id}>#{o.orderNumber} ({o.price.toLocaleString('ru-RU')} ₽)</li>)}
                         </ul>
                     </div>
                 )}
@@ -168,7 +168,7 @@ export function PayoutDialog({
                     <Terminal className="h-4 w-4" />
                     <AlertTitle>Итоговая сумма к выплате</AlertTitle>
                     <AlertDescription className="mt-2 text-lg font-bold">
-                        {(totalAmount || 0).toLocaleString('ru-RU')} ₽
+                        {totalAmount.toLocaleString('ru-RU')} ₽
                     </AlertDescription>
                 </Alert>
              )}

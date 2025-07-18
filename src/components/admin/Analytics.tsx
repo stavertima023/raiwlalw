@@ -520,7 +520,7 @@ export function Analytics({ orders, users, expenses, payouts }: AnalyticsProps) 
                       <Badge variant="outline">{expense.category}</Badge>
                     </TableCell>
                     <TableCell className="font-medium">
-                      {(expense.amount || 0).toLocaleString('ru-RU')} ₽
+                      {expense.amount.toLocaleString('ru-RU')} ₽
                     </TableCell>
                     <TableCell>{responsibleUser?.name || expense.responsible}</TableCell>
                     <TableCell className="max-w-[200px] truncate">
@@ -558,7 +558,7 @@ export function Analytics({ orders, users, expenses, payouts }: AnalyticsProps) 
                   </TableCell>
                   <TableCell>{getSellerName(payout.seller)}</TableCell>
                   <TableCell className="font-medium">
-                    {(payout.amount || 0).toLocaleString('ru-RU')} ₽
+                    {payout.amount.toLocaleString('ru-RU')} ₽
                   </TableCell>
                   <TableCell>{payout.orderCount}</TableCell>
                   <TableCell>

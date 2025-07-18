@@ -4,113 +4,113 @@ import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Debt, Expense, User } from '@/lib/types';
+import { Debt, DebtPayment, User } from '@/lib/types';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { DollarSign, TrendingDown, AlertTriangle } from 'lucide-react';
+import { DollarSign, CreditCard, History } from 'lucide-react';
 import { PayDebtDialog } from './PayDebtDialog';
+import { DebtHistoryDialog } from './DebtHistoryDialog';
 
 interface DebtsSectionProps {
   debts: Debt[];
-  expenses: Expense[];
-  users: User[];
-  onPayDebt: (debtId: string, amount: number, personName: string, comment?: string, receiptPhoto?: string) => void;
+  currentUser: Omit<User, 'password_hash'>;
+  onPaymentSuccess: () => void;
 }
 
-export function DebtsSection({ debts, expenses, users, onPayDebt }: DebtsSectionProps) {
-  // Ensure we have debts for Тимофей и Максим
-  const defaultDebts = [
-    { personName: 'Тимофей', baseAmount: 0 },
-    { personName: 'Максим', baseAmount: 0 }
-  ];
+export function DebtsSection({ debts, currentUser, onPaymentSuccess }: DebtsSectionProps) {
+  const [selectedDebt, setSelectedDebt] = React.useState<Debt | null>(null);
+  const [showPayDialog, setShowPayDialog] = React.useState(false);
+  const [showHistoryDialog, setShowHistoryDialog] = React.useState(false);
 
-  const allDebts = React.useMemo(() => {
-    const existingDebts = debts || [];
-    const existingNames = existingDebts.map(d => d.personName);
-    
-    const missingDebts = defaultDebts
-      .filter(defaultDebt => !existingNames.includes(defaultDebt.personName))
-      .map(defaultDebt => ({
-        id: `temp-${defaultDebt.personName}`,
-        personName: defaultDebt.personName,
-        baseAmount: defaultDebt.baseAmount,
-        currentAmount: defaultDebt.baseAmount,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }));
+  const handlePayDebt = (debt: Debt) => {
+    setSelectedDebt(debt);
+    setShowPayDialog(true);
+  };
 
-    return [...existingDebts, ...missingDebts];
-  }, [debts]);
+  const handleViewHistory = (debt: Debt) => {
+    setSelectedDebt(debt);
+    setShowHistoryDialog(true);
+  };
 
-  const totalDebt = allDebts.reduce((sum, debt) => sum + (debt.currentAmount || 0), 0);
+  const handlePaymentSuccess = () => {
+    setShowPayDialog(false);
+    onPaymentSuccess();
+  };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <DollarSign className="h-5 w-5" />
-          Долги кассы
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {allDebts.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <AlertTriangle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Долгов нет</p>
-          </div>
-        ) : (
-          <>
-            <div className="grid gap-4">
-              {allDebts.map((debt) => {
-                const currentAmount = debt.currentAmount || 0;
-                const baseAmount = debt.baseAmount || 0;
-                const totalExpenses = (debt as any).total_expenses || 0;
-                const totalPayments = (debt as any).total_payments || 0;
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CreditCard className="h-5 w-5" />
+            Долги кассы
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {debts.map((debt) => (
+              <Card key={debt.id} className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-lg">Долг кассы {debt.person_name}</h3>
+                  <Badge 
+                    variant={debt.current_amount > 0 ? 'destructive' : 'success'}
+                    className="text-sm"
+                  >
+                    {debt.current_amount > 0 ? 'Есть долг' : 'Нет долга'}
+                  </Badge>
+                </div>
                 
-                return (
-                  <div key={debt.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h4 className="font-semibold">Долг кассы {debt.personName}:</h4>
-                        <Badge variant={currentAmount > 0 ? "destructive" : "default"}>
-                          {(currentAmount || 0).toLocaleString('ru-RU')} ₽
-                        </Badge>
-                      </div>
-                      <div className="text-sm text-muted-foreground space-y-1">
-                        <div>Расходы: {(totalExpenses || 0).toLocaleString('ru-RU')} ₽</div>
-                        {totalPayments > 0 && (
-                          <div>Погашено: -{(totalPayments || 0).toLocaleString('ru-RU')} ₽</div>
-                        )}
-                      </div>
-                    </div>
-                    {currentAmount > 0 && (
-                      <PayDebtDialog
-                        debt={debt}
-                        currentAmount={currentAmount}
-                        onPayDebt={onPayDebt}
-                      >
-                        <Button variant="outline" size="sm">
-                          <TrendingDown className="h-4 w-4 mr-2" />
-                          Погасить долг
-                        </Button>
-                      </PayDebtDialog>
-                    )}
+                <div className="mb-4">
+                  <div className="text-2xl font-bold text-red-600">
+                    {debt.current_amount.toLocaleString('ru-RU')} ₽
                   </div>
-                );
-              })}
-            </div>
-            
-            <div className="pt-4 border-t">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold">Общий долг:</span>
-                <Badge variant="destructive" className="text-lg">
-                  {(totalDebt || 0).toLocaleString('ru-RU')} ₽
-                </Badge>
-              </div>
-            </div>
-          </>
-        )}
-      </CardContent>
-    </Card>
+                  <p className="text-sm text-muted-foreground">
+                    Последнее обновление: {format(new Date(debt.updated_at), 'dd.MM.yyyy HH:mm', { locale: ru })}
+                  </p>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => handlePayDebt(debt)}
+                    disabled={debt.current_amount <= 0}
+                    size="sm"
+                    className="flex-1"
+                  >
+                    <DollarSign className="h-4 w-4 mr-2" />
+                    Погасить долг
+                  </Button>
+                  <Button
+                    onClick={() => handleViewHistory(debt)}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <History className="h-4 w-4 mr-2" />
+                    История
+                  </Button>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {selectedDebt && (
+        <>
+          <PayDebtDialog
+            debt={selectedDebt}
+            currentUser={currentUser}
+            isOpen={showPayDialog}
+            onClose={() => setShowPayDialog(false)}
+            onSuccess={handlePaymentSuccess}
+          />
+          
+          <DebtHistoryDialog
+            debt={selectedDebt}
+            isOpen={showHistoryDialog}
+            onClose={() => setShowHistoryDialog(false)}
+          />
+        </>
+      )}
+    </div>
   );
 } 

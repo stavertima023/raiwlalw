@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import useSWR, { mutate } from 'swr';
-import { Order, OrderStatus, User, Expense, Payout, PayoutStatus, Debt, DebtPayment } from '@/lib/types';
+import { Order, OrderStatus, User, Expense, Payout, PayoutStatus, Debt } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Dashboard } from '@/components/dashboard/Dashboard';
@@ -49,42 +49,15 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     fetcher
   );
 
-  const { data: users = [], error: usersError } = useSWR<User[]>(
-    initialUser.role === 'Администратор' ? '/api/users' : null, 
-    fetcher
-  );
-
   const { data: debts = [], error: debtsError } = useSWR<Debt[]>(
     initialUser.role === 'Администратор' ? '/api/debts' : null, 
     fetcher
   );
 
-  const { data: debtPayments = [], error: debtPaymentsError } = useSWR<DebtPayment[]>(
-    initialUser.role === 'Администратор' ? '/api/debts/payments' : null, 
+  const { data: users = [], error: usersError } = useSWR<User[]>(
+    initialUser.role === 'Администратор' ? '/api/users' : null, 
     fetcher
   );
-
-  // Initialize debts if they don't exist (for administrators)
-  React.useEffect(() => {
-    if (initialUser.role === 'Администратор' && debts && debts.length === 0) {
-      const initializeDebts = async () => {
-        try {
-          const response = await fetch('/api/debts/init', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-          });
-          
-          if (response.ok) {
-            mutate('/api/debts');
-          }
-        } catch (error) {
-          console.error('Failed to initialize debts:', error);
-        }
-      };
-      
-      initializeDebts();
-    }
-  }, [initialUser.role, debts, mutate]);
 
   React.useEffect(() => {
     if (ordersError) {
@@ -96,16 +69,13 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     if (payoutsError) {
       toast({ title: 'Ошибка загрузки выводов', description: payoutsError.message, variant: 'destructive' });
     }
-    if (usersError) {
-      toast({ title: 'Ошибка загрузки пользователей', description: usersError.message, variant: 'destructive' });
-    }
     if (debtsError) {
       toast({ title: 'Ошибка загрузки долгов', description: debtsError.message, variant: 'destructive' });
     }
-    if (debtPaymentsError) {
-      toast({ title: 'Ошибка загрузки истории погашений', description: debtPaymentsError.message, variant: 'destructive' });
+    if (usersError) {
+      toast({ title: 'Ошибка загрузки пользователей', description: usersError.message, variant: 'destructive' });
     }
-  }, [ordersError, expensesError, payoutsError, usersError, debtsError, debtPaymentsError, toast]);
+  }, [ordersError, expensesError, payoutsError, debtsError, usersError, toast]);
 
   const handleAddOrder = async (newOrderData: Omit<Order, 'id' | 'orderDate' | 'seller'>) => {
     try {
@@ -188,40 +158,16 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       console.log('API success response:', result);
       
       mutate('/api/expenses');
+      mutate('/api/debts'); // Обновляем долги после добавления расхода
       toast({ title: 'Расход успешно добавлен' });
     } catch (error: any) {
       console.error('Error in handleAddExpense:', error);
       toast({ title: 'Ошибка добавления расхода', description: error.message, variant: 'destructive' });
     }
-  };
+  }
 
-  const handlePayDebt = async (debtId: string, amount: number, personName: string, comment?: string, receiptPhoto?: string) => {
-    try {
-      const paymentData = {
-        debtId,
-        amount,
-        personName,
-        comment,
-        receiptPhoto,
-      };
-
-      const response = await fetch('/api/debts/payments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(paymentData),
-      });
-
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.message || 'Server error');
-      }
-
-      mutate('/api/debts');
-      mutate('/api/debts/payments');
-      toast({ title: 'Долг успешно погашен' });
-    } catch (error: any) {
-      toast({ title: 'Ошибка погашения долга', description: error.message, variant: 'destructive' });
-    }
+  const handleDebtUpdate = () => {
+    mutate('/api/debts');
   };
 
   const handleUpdatePayoutStatus = async (payoutId: string, newStatus: PayoutStatus) => {
@@ -282,7 +228,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       
       toast({ 
         title: 'Выплата создана', 
-        description: `Создана выплата на сумму ${(totalAmount || 0).toLocaleString('ru-RU')} ₽ по ${selectedOrders.length} заказ(ам). Заказы отмечены как "Исполнен".` 
+        description: `Создана выплата на сумму ${totalAmount.toLocaleString('ru-RU')} ₽ по ${selectedOrders.length} заказ(ам). Заказы отмечены как "Исполнен".` 
       });
     } catch (error: any) {
       toast({ 
@@ -346,11 +292,10 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
               return <ExpensesList 
                         allExpenses={expenses} 
                         allUsers={users} 
-                        debts={debts}
-                        debtPayments={debtPayments}
                         onAddExpense={handleAddExpense}
-                        onPayDebt={handlePayDebt}
                         currentUser={initialUser}
+                        debts={debts}
+                        onDebtUpdate={handleDebtUpdate}
                       />;
             case 'admin-payouts':
               return <PayoutsList 

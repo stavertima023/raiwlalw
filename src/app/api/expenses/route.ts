@@ -113,51 +113,6 @@ export async function POST(request: Request) {
       throw error;
     }
 
-    // Update debt based on the responsible user
-    try {
-      // Get the user name to determine which debt to update
-      const { data: userData, error: userError } = await supabaseAdmin
-        .from('users')
-        .select('name')
-        .eq('id', user.id)
-        .single();
-
-      if (!userError && userData) {
-        let debtPersonName = null;
-        
-        if (userData.name === 'Администратор') {
-          debtPersonName = 'Тимофей';
-        } else if (userData.name === 'Максим') {
-          debtPersonName = 'Максим';
-        }
-
-        if (debtPersonName) {
-          // Get current debt amount
-          const { data: debtData, error: debtError } = await supabaseAdmin
-            .from('debts')
-            .select('current_amount')
-            .eq('person_name', debtPersonName)
-            .single();
-
-          if (!debtError && debtData) {
-            // Update debt amount
-            const newAmount = (debtData.current_amount || 0) + validatedExpense.amount;
-            
-            await supabaseAdmin
-              .from('debts')
-              .update({ 
-                current_amount: newAmount, 
-                updated_at: new Date().toISOString() 
-              })
-              .eq('person_name', debtPersonName);
-          }
-        }
-      }
-    } catch (debtUpdateError) {
-      console.error('Error updating debt:', debtUpdateError);
-      // Don't fail the expense creation if debt update fails
-    }
-
     return NextResponse.json(data, { status: 201 });
   } catch (error: any) {
     if (error.name === 'ZodError') {

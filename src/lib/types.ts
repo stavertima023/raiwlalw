@@ -99,24 +99,24 @@ export const PayoutSchema = z.object({
 
 export type Payout = z.infer<typeof PayoutSchema>;
 
-// Debt system types
+// Типы для системы долгов
 export const DebtSchema = z.object({
-  id: z.string().optional(),
-  personName: z.string().min(1, 'Имя обязателено'),
-  baseAmount: z.coerce.number().positive('Базовая сумма должна быть положительной'),
-  currentAmount: z.coerce.number().min(0, 'Текущая сумма не может быть отрицательной'),
-  createdAt: z.union([z.date(), z.string().transform((str) => new Date(str))]).optional(),
-  updatedAt: z.union([z.date(), z.string().transform((str) => new Date(str))]).optional(),
+  id: z.string(),
+  person_name: z.string(),
+  current_amount: z.number(),
+  created_at: z.union([z.date(), z.string().transform((str) => new Date(str))]),
+  updated_at: z.union([z.date(), z.string().transform((str) => new Date(str))]),
 });
 
 export const DebtPaymentSchema = z.object({
   id: z.string().optional(),
-  debtId: z.string().min(1, 'ID долга обязателен'),
-  amount: z.coerce.number().positive('Сумма погашения должна быть положительной'),
-  personName: z.string().min(1, 'Имя обязателено'),
+  debt_id: z.string(),
+  payment_amount: z.coerce.number().positive('Сумма должна быть положительной'),
+  remaining_debt: z.coerce.number().min(0, 'Остаток не может быть отрицательным'),
+  payment_date: z.union([z.date(), z.string().transform((str) => new Date(str))]).optional(),
+  receipt_photo: z.union([z.string().url(), z.literal(''), z.undefined()]).optional(),
   comment: z.string().optional(),
-  receiptPhoto: z.union([z.string().url(), z.literal(''), z.undefined()]).optional(),
-  createdAt: z.union([z.date(), z.string().transform((str) => new Date(str))]).optional(),
+  processed_by: z.string().min(1, 'Ответственный обязателен'),
 });
 
 export type Debt = z.infer<typeof DebtSchema>;

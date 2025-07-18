@@ -112,7 +112,7 @@ export function CancelOrderDialog({
                         <li><strong>Номер:</strong> {foundOrder.orderNumber}</li>
                         <li><strong>Продавец:</strong> {foundOrder.seller}</li>
                         <li><strong>Тип:</strong> {foundOrder.productType}</li>
-                        <li><strong>Цена:</strong> {(foundOrder.price || 0).toLocaleString('ru-RU')} ₽</li>
+                        <li><strong>Цена:</strong> {foundOrder.price.toLocaleString('ru-RU')} ₽</li>
                     </ul>
                 </AlertDescription>
             </Alert>
