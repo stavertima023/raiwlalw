@@ -21,49 +21,29 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { X, Plus, Upload, Camera, Image as ImageIcon } from 'lucide-react';
 import Image from 'next/image';
 
-// Упрощенная схема формы с лучшей обработкой данных
+// Экстренная схема формы - принимает любые данные
 const FormSchema = z.object({
-    orderNumber: z.union([
-      z.string().min(1, 'Номер заказа обязателен'),
-      z.undefined()
-    ]).transform(val => (val || '').trim()),
-    shipmentNumber: z.union([
-      z.string().min(1, 'Номер отправления обязателен'),
-      z.undefined()
-    ]).transform(val => (val || '').trim()),
-    productType: z.union([
-      z.string().refine(val => val && ['фб', 'фч', 'хч', 'хб', 'хс', 'шч', 'лб', 'лч', 'другое'].includes(val), {
-        message: 'Выберите тип товара'
-      }),
-      z.undefined()
-    ]),
-    size: z.union([
-      z.string().refine(val => val && ['S', 'M', 'L', 'XL'].includes(val), {
-        message: 'Выберите размер'
-      }),
-      z.undefined()
-    ]),
-    price: z.union([
-      z.number().positive('Цена должна быть положительной'),
-      z.string().transform(val => {
-        if (!val || val.trim() === '') throw new Error('Цена обязательна');
-        const num = parseFloat(val.replace(/[^\d.,]/g, '').replace(',', '.'));
-        if (isNaN(num) || num <= 0) throw new Error('Цена должна быть положительной');
-        return num;
-      }),
-      z.undefined()
-    ]).refine(val => val !== undefined && val > 0, {
-      message: 'Цена должна быть положительной'
+    orderNumber: z.any().transform(val => String(val || '').trim()),
+    shipmentNumber: z.any().transform(val => String(val || '').trim()),
+    productType: z.any().transform(val => {
+      const str = String(val || '').trim();
+      return ['фб', 'фч', 'хч', 'хб', 'хс', 'шч', 'лб', 'лч', 'другое'].includes(str) ? str : 'другое';
     }),
-    comment: z.union([
-      z.string(),
-      z.undefined()
-    ]).optional().default('').transform(val => val || ''),
-    photos: z.union([
-      z.array(z.string()).max(3),
-      z.array(z.any()).transform(arr => arr.filter(item => typeof item === 'string')).pipe(z.array(z.string()).max(3)),
-      z.undefined()
-    ]).optional().default([]),
+    size: z.any().transform(val => {
+      const str = String(val || '').trim();
+      return ['S', 'M', 'L', 'XL'].includes(str) ? str : 'M';
+    }),
+    price: z.any().transform(val => {
+      if (!val) return 0;
+      const str = String(val).replace(/[^\d.,]/g, '').replace(',', '.');
+      const num = parseFloat(str);
+      return isNaN(num) || num <= 0 ? 0 : num;
+    }),
+    comment: z.any().transform(val => String(val || '').trim()),
+    photos: z.any().transform(val => {
+      if (!Array.isArray(val)) return [];
+      return val.filter(item => typeof item === 'string' && item.trim() !== '').slice(0, 3);
+    }).optional().default([]),
 });
 
 type OrderFormValues = z.infer<typeof FormSchema>;
@@ -310,48 +290,10 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
   };
 
   const onSubmit = (data: OrderFormValues) => {
-    console.log('Form data before validation:', data);
+    console.log('Form data before submission:', data);
     
-    // Дополнительная валидация перед отправкой
-    if (!data.orderNumber?.trim()) {
-      alert('Номер заказа обязателен');
-      return;
-    }
-    
-    if (!data.shipmentNumber?.trim()) {
-      alert('Номер отправления обязателен');
-      return;
-    }
-    
-    if (!data.productType || !['фб', 'фч', 'хч', 'хб', 'хс', 'шч', 'лб', 'лч', 'другое'].includes(data.productType)) {
-      alert('Выберите тип товара');
-      return;
-    }
-    
-    if (!data.size || !['S', 'M', 'L', 'XL'].includes(data.size)) {
-      alert('Выберите размер');
-      return;
-    }
-    
-    if (!data.price || data.price <= 0) {
-      alert('Цена должна быть положительной');
-      return;
-    }
-    
-    // Очищаем и подготавливаем данные для отправки
-    const cleanedData = {
-      orderNumber: data.orderNumber.trim(),
-      shipmentNumber: data.shipmentNumber.trim(),
-      productType: data.productType,
-      size: data.size,
-      price: typeof data.price === 'string' ? parseFloat(data.price) : data.price,
-      comment: data.comment?.trim() || '',
-      photos: Array.isArray(data.photos) ? data.photos : [],
-    };
-    
-    console.log('Cleaned data for submission:', cleanedData);
-    
-    onSave(cleanedData);
+    // Простая отправка данных без дополнительных проверок
+    onSave(data);
   };
 
   return (

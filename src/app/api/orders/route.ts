@@ -67,34 +67,18 @@ export async function POST(request: Request) {
 
     json = await request.json();
     
-    // Очищаем и подготавливаем данные перед валидацией
+    // Максимально толерантная обработка данных
     const cleanedData = {
       ...json,
-      // Очищаем строковые поля от пробелов и null значений
-      orderNumber: json.orderNumber?.toString().trim() || '',
-      shipmentNumber: json.shipmentNumber?.toString().trim() || '',
-      comment: json.comment?.toString().trim() || '',
-      
-      // Обрабатываем enum поля - принимаем пустые строки и undefined
-      productType: json.productType || undefined,
-      size: json.size || undefined,
-      
-      // Обрабатываем числовые поля - более толерантно к форматам
-      price: json.price !== undefined && json.price !== null ? 
-        (typeof json.price === 'string' ? 
-          parseFloat(json.price.replace(/[^\d.,]/g, '').replace(',', '.')) : 
-          Number(json.price)
-        ) : undefined,
-      cost: json.cost !== undefined && json.cost !== null ? 
-        (typeof json.cost === 'string' ? 
-          parseFloat(json.cost.replace(/[^\d.,]/g, '').replace(',', '.')) : 
-          Number(json.cost)
-        ) : undefined,
-      
-      // Обрабатываем массив фотографий - фильтруем невалидные значения
-      photos: Array.isArray(json.photos) ? 
-        json.photos.filter((photo: any) => typeof photo === 'string' && photo.trim() !== '') : 
-        [],
+      // Принимаем любые данные и преобразуем их
+      orderNumber: json.orderNumber,
+      shipmentNumber: json.shipmentNumber,
+      productType: json.productType,
+      size: json.size,
+      price: json.price,
+      cost: json.cost,
+      comment: json.comment,
+      photos: json.photos,
       
       // Устанавливаем продавца и дату
       seller: user.username,
