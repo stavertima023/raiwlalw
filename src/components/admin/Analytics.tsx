@@ -387,7 +387,7 @@ export function Analytics({ orders, users, expenses, payouts }: AnalyticsProps) 
               </TableRow>
               <TableRow>
                 <TableCell>
-                  <Badge variant="secondary">Отправлен</Badge>
+                  <Badge variant="warning">Отправлен</Badge>
                 </TableCell>
                 <TableCell>{orderStats.shipped}</TableCell>
                 <TableCell>
@@ -402,7 +402,7 @@ export function Analytics({ orders, users, expenses, payouts }: AnalyticsProps) 
               </TableRow>
               <TableRow>
                 <TableCell>
-                  <Badge variant="secondary">Исполнен</Badge>
+                  <Badge variant="success">Исполнен</Badge>
                 </TableCell>
                 <TableCell>{orderStats.completed}</TableCell>
                 <TableCell>
@@ -417,7 +417,7 @@ export function Analytics({ orders, users, expenses, payouts }: AnalyticsProps) 
               </TableRow>
               <TableRow>
                 <TableCell>
-                  <Badge variant="destructive">Отменен</Badge>
+                  <Badge variant="cancelled">Отменен</Badge>
                 </TableCell>
                 <TableCell>{orderStats.cancelled}</TableCell>
                 <TableCell>

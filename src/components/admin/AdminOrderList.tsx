@@ -34,13 +34,13 @@ interface AdminOrderListProps {
 
 const statusConfig: Record<
   OrderStatus,
-  { label: string; color: 'secondary' | 'destructive' | 'outline' | 'default' }
+  { label: string; color: 'secondary' | 'destructive' | 'outline' | 'default' | 'success' | 'warning' | 'cancelled' }
 > = {
   Добавлен: { label: 'Добавлен', color: 'default' },
   Готов: { label: 'Готов', color: 'default' },
-  Отправлен: { label: 'Отправлен', color: 'default' },
-  Исполнен: { label: 'Исполнен', color: 'secondary' },
-  Отменен: { label: 'Отменен', color: 'destructive' },
+  Отправлен: { label: 'Отправлен', color: 'warning' },
+  Исполнен: { label: 'Исполнен', color: 'success' },
+  Отменен: { label: 'Отменен', color: 'cancelled' },
   Возврат: { label: 'Возврат', color: 'outline' },
 };
 
