@@ -34,7 +34,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { ExpenseSchema, ExpenseCategoryEnum, User, Expense } from '@/lib/types';
-import { Check, PlusCircle, Plus, X } from 'lucide-react';
+import { Check, PlusCircle, Plus, X, ZoomIn } from 'lucide-react';
 import Image from 'next/image';
 import { ScrollArea } from '../ui/scroll-area';
 
@@ -248,13 +248,36 @@ export function AddExpenseForm({ onSave, currentUser }: AddExpenseFormProps) {
                                      />
                                     {watchedPhoto ? (
                                         <div className="relative group w-full h-48">
-                                            <Image
-                                                src={watchedPhoto}
-                                                alt="Receipt photo"
-                                                fill
-                                                className="rounded-md object-contain"
-                                                data-ai-hint="receipt photo"
-                                            />
+                                            <Dialog>
+                                                <DialogTrigger asChild>
+                                                    <button className="w-full h-full rounded-md overflow-hidden hover:opacity-80 transition-opacity">
+                                                        <Image
+                                                            src={watchedPhoto}
+                                                            alt="Receipt photo"
+                                                            fill
+                                                            className="rounded-md object-contain"
+                                                            data-ai-hint="receipt photo"
+                                                        />
+                                                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all flex items-center justify-center">
+                                                            <ZoomIn className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                        </div>
+                                                    </button>
+                                                </DialogTrigger>
+                                                <DialogContent className="max-w-[90vw] max-h-[90vh] p-2 sm:max-w-2xl md:max-w-4xl">
+                                                    <DialogHeader>
+                                                        <DialogTitle>Фото чека</DialogTitle>
+                                                    </DialogHeader>
+                                                    <div className="flex justify-center items-center">
+                                                        <Image
+                                                            src={watchedPhoto}
+                                                            alt="Receipt photo"
+                                                            width={800}
+                                                            height={800}
+                                                            className="rounded-md object-contain max-w-full max-h-[70vh]"
+                                                        />
+                                                    </div>
+                                                </DialogContent>
+                                            </Dialog>
                                             <Button
                                                 type="button"
                                                 variant="destructive"

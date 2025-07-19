@@ -18,9 +18,16 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { OrderSchema, ProductTypeEnum, SizeEnum } from '@/lib/types';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { X, Plus, Upload } from 'lucide-react';
+import { X, Plus, Upload, ZoomIn } from 'lucide-react';
 import Image from 'next/image';
 import { safeImageToDataURL, cleanImageArray } from '@/lib/imageUtils';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
 // Updated form schema with shipmentNumber required and cost removed
 const FormSchema = z.object({
@@ -316,29 +323,52 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
                   <div className="flex flex-wrap gap-2">
                     {photos.map((photo, index) => (
                       <div key={index} className="relative group w-20 h-20">
-                                            <Image
-                                                src={photo}
-                          alt={`Фото ${index + 1}`}
-                          width={80}
-                          height={80}
-                          className="rounded-md object-cover w-full h-full border"
-                                            />
-                                            <Button
-                                                type="button"
-                                                variant="destructive"
-                                                size="icon"
-                                                className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                                                onClick={() => handleRemovePhoto(index)}
-                                            >
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <button className="w-full h-full rounded-md overflow-hidden border hover:opacity-80 transition-opacity">
+                              <Image
+                                src={photo}
+                                alt={`Фото ${index + 1}`}
+                                width={80}
+                                height={80}
+                                className="rounded-md object-cover w-full h-full"
+                              />
+                              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all flex items-center justify-center">
+                                <ZoomIn className="h-4 w-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                              </div>
+                            </button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-[90vw] max-h-[90vh] p-2 sm:max-w-2xl md:max-w-4xl">
+                            <DialogHeader>
+                              <DialogTitle>Фото {index + 1}</DialogTitle>
+                            </DialogHeader>
+                            <div className="flex justify-center items-center">
+                              <Image
+                                src={photo}
+                                alt={`Фото ${index + 1}`}
+                                width={800}
+                                height={800}
+                                className="rounded-md object-contain max-w-full max-h-[70vh]"
+                              />
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => handleRemovePhoto(index)}
+                        >
                           <X className="h-3 w-3" />
-                                            </Button>
-                                        </div>
-                                    ))}
+                        </Button>
+                      </div>
+                    ))}
                     
                     {photos.length < 3 && (
-                                        <Button
-                                            type="button"
-                                            variant="outline"
+                      <Button
+                        type="button"
+                        variant="outline"
                         className="h-20 w-20 border-dashed flex flex-col items-center justify-center"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isUploading}
@@ -354,9 +384,9 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
                             <span className="text-xs">Фото</span>
                           </>
                         )}
-                                        </Button>
-                                    )}
-                                </div>
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </FormControl>
               <FormMessage />
