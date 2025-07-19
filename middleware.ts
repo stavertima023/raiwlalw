@@ -1,26 +1,39 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
- 
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { getSession } from '@/lib/session';
+
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl
-
-  // Check for session cookie to determine if user is logged in
-  const sessionCookie = request.cookies.get('webapp-tg-session');
-  const isLoggedIn = !!sessionCookie;
-
-  // Если пользователь залогинен и пытается зайти на страницу логина, редиректим на главную
-  if (isLoggedIn && pathname.startsWith('/login')) {
-     return NextResponse.redirect(new URL('/', request.url))
+  // Увеличиваем лимиты для API routes
+  if (request.nextUrl.pathname.startsWith('/api/')) {
+    const response = NextResponse.next();
+    
+    // Увеличиваем лимиты для больших запросов
+    response.headers.set('X-Request-Body-Size-Limit', '10mb');
+    response.headers.set('X-Response-Size-Limit', '10mb');
+    
+    return response;
   }
 
-  // Если пользователь не залогинен и пытается зайти на любую страницу, кроме логина, редиректим на логин
-  if (!isLoggedIn && !pathname.startsWith('/login')) {
-    return NextResponse.redirect(new URL('/login', request.url))
+  // Проверяем аутентификацию для защищенных маршрутов
+  const session = await getSession();
+  
+  // Если пользователь не авторизован и пытается получить доступ к защищенным маршрутам
+  if (!session.isLoggedIn && request.nextUrl.pathname !== '/login') {
+    return NextResponse.redirect(new URL('/login', request.url));
   }
- 
+
   return NextResponse.next();
 }
- 
+
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|.*\\.png$).*)'],
-} 
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     */
+    '/((?!_next/static|_next/image|favicon.ico|public).*)',
+  ],
+}; 

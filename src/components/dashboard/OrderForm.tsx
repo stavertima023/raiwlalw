@@ -69,85 +69,71 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
   
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    if (!files) return;
-
-    const currentPhotos = photos;
-    const totalSlots = 3 - currentPhotos.length;
-
-    if (files.length > totalSlots) {
-      if (totalSlots === 0) {
-        alert('Достигнут лимит фотографий (максимум 3)');
-      } else {
-        alert(`Можно загрузить еще ${totalSlots} фото (выбрано ${files.length})`);
-      }
-      return;
-    }
-
-    const filesToProcess = Array.from(files).slice(0, totalSlots);
+    if (!files || files.length === 0) return;
 
     setIsUploading(true);
-
+    
     try {
-      // Обрабатываем файлы с помощью безопасной утилиты
-      const processingPromises = filesToProcess.map(async (file) => {
-        const result = await safeImageToDataURL(file);
-        if (!result.success) {
-          throw new Error(result.error || 'Ошибка обработки изображения');
-        }
-        return result.dataUrl!;
-      });
+      const filesToProcess = Array.from(files);
+      console.log(`Обрабатываем ${filesToProcess.length} файлов...`);
 
-      // Ждем обработки всех файлов
-      const results = await Promise.all(processingPromises);
+      // Обрабатываем файлы по одному для лучшей надежности
+      const results: string[] = [];
       
-      // Очищаем результаты от невалидных данных
-      const cleanedResults = cleanImageArray(results);
-      
-      if (cleanedResults.length !== results.length) {
-        console.warn('Некоторые изображения были отфильтрованы как невалидные');
-        // Показываем предупреждение пользователю
-        const invalidCount = results.length - cleanedResults.length;
-        if (invalidCount > 0) {
-          alert(`Внимание: ${invalidCount} из ${results.length} изображений не удалось обработать и были пропущены.`);
+      for (const file of filesToProcess) {
+        try {
+          console.log(`Обрабатываем файл: ${file.name} (${file.size} байт)`);
+          
+          const result = await safeImageToDataURL(file);
+          
+          if (result.success && result.dataUrl) {
+            results.push(result.dataUrl);
+            console.log(`Файл ${file.name} успешно обработан`);
+          } else {
+            console.warn(`Не удалось обработать файл ${file.name}:`, result.error);
+            alert(`Не удалось обработать файл "${file.name}": ${result.error}`);
+          }
+        } catch (fileError) {
+          console.error(`Ошибка обработки файла ${file.name}:`, fileError);
+          alert(`Ошибка обработки файла "${file.name}": ${fileError instanceof Error ? fileError.message : 'Неизвестная ошибка'}`);
         }
       }
-      
-      // Обновляем форму только с валидными изображениями
-      const currentPhotos = form.getValues('photos') || [];
-      const newPhotos = [...currentPhotos, ...cleanedResults];
-      form.setValue('photos', newPhotos);
-      
+
+      if (results.length > 0) {
+        // Очищаем и валидируем результаты
+        const cleanedResults = cleanImageArray(results);
+        const currentPhotos = form.getValues('photos') || [];
+        const newPhotos = [...currentPhotos, ...cleanedResults];
+        
+        // Проверяем общий размер фотографий
+        const totalSize = cleanedResults.reduce((total, photo) => {
+          const base64Data = photo.split(',')[1];
+          if (base64Data) {
+            return total + Math.ceil((base64Data.length * 3) / 4);
+          }
+          return total;
+        }, 0);
+        
+        const totalSizeInMB = totalSize / (1024 * 1024);
+        console.log(`Общий размер фотографий: ${totalSizeInMB.toFixed(2)}MB`);
+        
+        if (totalSizeInMB > 8) {
+          alert(`Внимание: Общий размер фотографий (${totalSizeInMB.toFixed(2)}MB) близок к лимиту. Некоторые фотографии могут быть автоматически сжаты.`);
+        }
+        
+        form.setValue('photos', newPhotos);
+        
+        if (cleanedResults.length < results.length) {
+          alert(`Успешно загружено ${cleanedResults.length} из ${results.length} изображений. Некоторые изображения были отфильтрованы как невалидные.`);
+        } else {
+          alert(`Успешно загружено ${cleanedResults.length} изображений!`);
+        }
+      } else {
+        alert('Не удалось загрузить ни одного изображения. Попробуйте выбрать другие файлы или уменьшить их размер.');
+      }
     } catch (error) {
       console.error('Ошибка загрузки фото:', error);
-      
-      // Fallback: пытаемся обработать файлы по одному
-      try {
-        const fallbackResults: string[] = [];
-        
-        for (const file of filesToProcess) {
-          try {
-            const result = await safeImageToDataURL(file);
-            if (result.success && result.dataUrl) {
-              fallbackResults.push(result.dataUrl);
-            }
-          } catch (fileError) {
-            console.warn(`Не удалось обработать файл ${file.name}:`, fileError);
-          }
-        }
-        
-        if (fallbackResults.length > 0) {
-          const cleanedResults = cleanImageArray(fallbackResults);
-          const currentPhotos = form.getValues('photos') || [];
-          const newPhotos = [...currentPhotos, ...cleanedResults];
-          form.setValue('photos', newPhotos);
-          
-          alert(`Удалось загрузить ${cleanedResults.length} из ${filesToProcess.length} изображений.`);
-        } else {
-          alert('Не удалось загрузить ни одного изображения. Попробуйте выбрать другие файлы или уменьшить их размер.');
-        }
-      } catch (fallbackError) {
-        alert(`Произошла ошибка при загрузке фотографий: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}. Попробуйте выбрать изображения меньшего размера.`);
-      }
+      alert(`Произошла ошибка при загрузке фотографий: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`);
     } finally {
       setIsUploading(false);
     }

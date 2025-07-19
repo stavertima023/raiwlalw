@@ -4,6 +4,10 @@ import { supabaseAdmin } from '@/lib/supabaseClient';
 import { OrderSchema } from '@/lib/types';
 import { cleanImageArray } from '@/lib/imageUtils';
 
+// Увеличиваем лимиты для этого API
+export const maxDuration = 60; // 60 секунд
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     // Check supabaseAdmin availability
@@ -66,43 +70,39 @@ export async function POST(request: Request) {
 
     // Проверяем размер запроса
     const contentLength = request.headers.get('content-length');
-    if (contentLength && parseInt(contentLength) > 10 * 1024 * 1024) { // 10MB
-      return NextResponse.json({ 
-        message: 'Размер данных слишком большой (максимум 10MB). Попробуйте уменьшить размер фотографий.', 
-        error: 'Request too large'
-      }, { status: 413 });
+    if (contentLength) {
+      const sizeInMB = parseInt(contentLength) / (1024 * 1024);
+      if (sizeInMB > 10) { // 10MB лимит
+        return NextResponse.json({ 
+          message: 'Размер запроса слишком большой (максимум 10MB)', 
+          error: `Размер: ${sizeInMB.toFixed(2)}MB`
+        }, { status: 413 });
+      }
     }
 
     const json = await request.json();
     
-    // Проверяем размер фотографий
+    // Очищаем и валидируем фотографии перед обработкой
     if (json.photos && Array.isArray(json.photos)) {
+      // Проверяем размер каждой фотографии
       const totalPhotoSize = json.photos.reduce((total: number, photo: string) => {
-        if (photo && photo.startsWith('data:image/')) {
+        if (photo && typeof photo === 'string') {
           const base64Data = photo.split(',')[1];
-          return total + (base64Data ? (base64Data.length * 0.75) / 1024 : 0); // Размер в KB
+          if (base64Data) {
+            return total + Math.ceil((base64Data.length * 3) / 4);
+          }
         }
         return total;
       }, 0);
 
-      if (totalPhotoSize > 2048) { // Больше 2MB в сумме
+      const totalSizeInMB = totalPhotoSize / (1024 * 1024);
+      if (totalSizeInMB > 8) { // 8MB лимит для всех фотографий
         return NextResponse.json({ 
-          message: 'Общий размер фотографий слишком большой (максимум 2MB). Попробуйте уменьшить размер изображений.', 
-          error: 'Photos too large'
+          message: 'Общий размер фотографий слишком большой (максимум 8MB)', 
+          error: `Размер: ${totalSizeInMB.toFixed(2)}MB`
         }, { status: 413 });
       }
 
-      // Дополнительная проверка на количество фотографий
-      if (json.photos.length > 3) {
-        return NextResponse.json({ 
-          message: 'Слишком много фотографий (максимум 3)', 
-          error: 'Too many photos'
-        }, { status: 400 });
-      }
-    }
-    
-    // Очищаем и валидируем фотографии перед обработкой
-    if (json.photos && Array.isArray(json.photos)) {
       json.photos = cleanImageArray(json.photos);
       
       // Если все фотографии были отфильтрованы, устанавливаем пустой массив
@@ -125,36 +125,14 @@ export async function POST(request: Request) {
     // Валидируем данные с помощью Zod
     const validatedOrder = OrderSchema.omit({ id: true }).parse(newOrderData);
 
-    // Вставляем заказ в базу данных с таймаутом
-    const insertPromise = supabaseAdmin
+    // Вставляем заказ в базу данных
+    const { data, error } = await supabaseAdmin
       .from('orders')
       .insert(validatedOrder)
       .select()
       .single();
 
-    // Устанавливаем таймаут 30 секунд для операции вставки
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Таймаут операции вставки')), 30000);
-    });
-
-    const { data, error } = await Promise.race([insertPromise, timeoutPromise]) as any;
-
     if (error) {
-      // Специальная обработка ошибок Railway
-      if (error.message && error.message.includes('response size limit')) {
-        return NextResponse.json({ 
-          message: 'Данные слишком большие для обработки. Попробуйте уменьшить размер фотографий.', 
-          error: 'Railway response size limit exceeded'
-        }, { status: 413 });
-      }
-      
-      if (error.message && error.message.includes('client request body is buffered')) {
-        return NextResponse.json({ 
-          message: 'Запрос слишком большой. Попробуйте уменьшить размер данных.', 
-          error: 'Request body too large for Railway'
-        }, { status: 413 });
-      }
-      
       throw error;
     }
 

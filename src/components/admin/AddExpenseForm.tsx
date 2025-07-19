@@ -85,12 +85,47 @@ export function AddExpenseForm({ onSave, currentUser }: AddExpenseFormProps) {
         return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const result = e.target?.result as string;
-        setValue('receiptPhoto', result, { shouldValidate: true });
+    // Проверяем размер файла
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+        toast({
+            variant: 'destructive',
+            title: 'Файл слишком большой',
+            description: `Файл "${file.name}" превышает лимит 5MB. Попробуйте уменьшить размер изображения.`,
+        });
+        return;
+    }
+
+    // Используем улучшенную утилиту для обработки изображения
+    const processImage = async () => {
+        try {
+            const { safeImageToDataURL } = await import('@/lib/imageUtils');
+            const result = await safeImageToDataURL(file);
+            
+            if (result.success && result.dataUrl) {
+                setValue('receiptPhoto', result.dataUrl, { shouldValidate: true });
+                toast({
+                    title: 'Фото загружено',
+                    description: 'Фотография чека успешно обработана и добавлена.',
+                });
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Ошибка обработки',
+                    description: result.error || 'Не удалось обработать изображение.',
+                });
+            }
+        } catch (error) {
+            console.error('Ошибка обработки изображения:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Ошибка загрузки',
+                description: 'Произошла ошибка при обработке изображения. Попробуйте другой файл.',
+            });
+        }
     };
-    reader.readAsDataURL(file);
+
+    processImage();
 
     if(fileInputRef.current) {
         fileInputRef.current.value = '';

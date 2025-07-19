@@ -10,9 +10,9 @@ export interface ImageProcessingResult {
 }
 
 /**
- * Сжимает изображение до приемлемого размера
+ * Сжимает изображение до указанного качества и размера
  */
-export const compressImage = (file: File, maxWidth: number = 1200, maxHeight: number = 1200, quality: number = 0.7): Promise<File> => {
+export const compressImage = (file: File, maxWidth: number = 1200, quality: number = 0.7): Promise<File> => {
   return new Promise((resolve, reject) => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -23,10 +23,9 @@ export const compressImage = (file: File, maxWidth: number = 1200, maxHeight: nu
         // Вычисляем новые размеры с сохранением пропорций
         let { width, height } = img;
         
-        if (width > maxWidth || height > maxHeight) {
-          const ratio = Math.min(maxWidth / width, maxHeight / height);
-          width *= ratio;
-          height *= ratio;
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
         }
 
         // Устанавливаем размеры canvas
@@ -36,10 +35,10 @@ export const compressImage = (file: File, maxWidth: number = 1200, maxHeight: nu
         // Рисуем изображение с новыми размерами
         ctx?.drawImage(img, 0, 0, width, height);
 
-        // Конвертируем в blob с заданным качеством
+        // Конвертируем в blob с указанным качеством
         canvas.toBlob((blob) => {
           if (blob) {
-            // Создаем новый файл с сжатыми данными
+            // Создаем новый файл со сжатыми данными
             const compressedFile = new File([blob], file.name, {
               type: file.type,
               lastModified: Date.now()
@@ -55,7 +54,7 @@ export const compressImage = (file: File, maxWidth: number = 1200, maxHeight: nu
     };
 
     img.onerror = () => {
-      reject(new Error('Ошибка загрузки изображения'));
+      reject(new Error('Не удалось загрузить изображение для сжатия'));
     };
 
     // Загружаем изображение
@@ -64,47 +63,9 @@ export const compressImage = (file: File, maxWidth: number = 1200, maxHeight: nu
       img.src = e.target?.result as string;
     };
     reader.onerror = () => {
-      reject(new Error('Ошибка чтения файла'));
+      reject(new Error('Ошибка чтения файла для сжатия'));
     };
     reader.readAsDataURL(file);
-  });
-};
-
-/**
- * Проверяет размер base64 данных и сжимает при необходимости
- */
-export const validateAndCompressBase64 = async (dataUrl: string, maxSizeKB: number = 500): Promise<string> => {
-  // Вычисляем размер в KB
-  const base64Data = dataUrl.split(',')[1];
-  const sizeInKB = (base64Data.length * 0.75) / 1024; // Примерный размер base64
-
-  if (sizeInKB <= maxSizeKB) {
-    return dataUrl;
-  }
-
-  // Если размер превышает лимит, сжимаем изображение
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-
-      // Вычисляем новые размеры
-      let { width, height } = img;
-      const ratio = Math.sqrt(maxSizeKB / sizeInKB);
-      width *= ratio;
-      height *= ratio;
-
-      canvas.width = width;
-      canvas.height = height;
-      ctx?.drawImage(img, 0, 0, width, height);
-
-      // Конвертируем обратно в base64 с меньшим качеством
-      const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.6);
-      resolve(compressedDataUrl);
-    };
-    img.onerror = () => reject(new Error('Ошибка сжатия изображения'));
-    img.src = dataUrl;
   });
 };
 
@@ -113,40 +74,40 @@ export const validateAndCompressBase64 = async (dataUrl: string, maxSizeKB: numb
  * Специально для iOS устройств
  */
 export const safeImageToDataURL = async (file: File): Promise<ImageProcessingResult> => {
-  return new Promise(async (resolve) => {
-    try {
-      // Проверяем тип файла
-      if (!file.type.startsWith('image/')) {
-        resolve({
-          success: false,
-          error: `Файл "${file.name}" не является изображением`
-        });
-        return;
-      }
+  try {
+    // Проверяем тип файла
+    if (!file.type.startsWith('image/')) {
+      return {
+        success: false,
+        error: `Файл "${file.name}" не является изображением`
+      };
+    }
 
-      // Проверяем размер файла (максимум 5MB)
-      const maxSize = 5 * 1024 * 1024; // 5MB
-      if (file.size > maxSize) {
-        resolve({
-          success: false,
-          error: `Файл "${file.name}" слишком большой (максимум 5MB)`
-        });
-        return;
-      }
+    // Проверяем размер файла (максимум 5MB до сжатия)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      return {
+        success: false,
+        error: `Файл "${file.name}" слишком большой (максимум 5MB)`
+      };
+    }
 
-      // Сжимаем изображение перед обработкой
-      let processedFile = file;
-      if (file.size > 1024 * 1024) { // Если больше 1MB
-        try {
-          processedFile = await compressImage(file, 1200, 1200, 0.7);
-        } catch (error) {
-          console.warn('Не удалось сжать изображение, используем оригинал:', error);
-        }
+    // Сжимаем изображение если оно больше 1MB
+    let processedFile = file;
+    if (file.size > 1024 * 1024) { // 1MB
+      try {
+        processedFile = await compressImage(file, 1200, 0.7);
+        console.log(`Изображение сжато: ${file.size} -> ${processedFile.size} байт`);
+      } catch (compressError) {
+        console.warn('Не удалось сжать изображение, используем оригинал:', compressError);
+        processedFile = file;
       }
+    }
 
+    return new Promise((resolve) => {
       const reader = new FileReader();
       
-      reader.onload = async (e) => {
+      reader.onload = (e) => {
         try {
           const result = e.target?.result as string;
           
@@ -199,17 +160,21 @@ export const safeImageToDataURL = async (file: File): Promise<ImageProcessingRes
             return;
           }
 
-          // Проверяем размер и сжимаем при необходимости
-          let finalResult = result;
-          try {
-            finalResult = await validateAndCompressBase64(result, 500); // Максимум 500KB
-          } catch (error) {
-            console.warn('Не удалось сжать base64 данные:', error);
+          // Проверяем размер base64 данных (максимум 3MB)
+          const base64Size = Math.ceil((base64Data.length * 3) / 4);
+          const maxBase64Size = 3 * 1024 * 1024; // 3MB
+          
+          if (base64Size > maxBase64Size) {
+            resolve({
+              success: false,
+              error: `Размер изображения слишком большой (${Math.round(base64Size / 1024 / 1024)}MB). Попробуйте уменьшить качество.`
+            });
+            return;
           }
 
           resolve({
             success: true,
-            dataUrl: finalResult
+            dataUrl: result
           });
         } catch (error) {
           resolve({
@@ -248,13 +213,13 @@ export const safeImageToDataURL = async (file: File): Promise<ImageProcessingRes
 
       // Читаем файл как data URL
       reader.readAsDataURL(processedFile);
-    } catch (error) {
-      resolve({
-        success: false,
-        error: 'Ошибка обработки файла'
-      });
-    }
-  });
+    });
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Неизвестная ошибка'
+    };
+  }
 };
 
 /**
@@ -286,17 +251,17 @@ export const validateImageDataUrls = (dataUrls: string[]): { valid: string[]; in
         continue;
       }
 
-      // Проверяем, что base64 данные валидны
-      try {
-        atob(base64Data);
-      } catch {
+      // Проверяем размер base64 данных
+      const base64SizeKB = (base64Data.length * 0.75) / 1024;
+      if (base64SizeKB > 1000) { // 1MB
         invalid.push(dataUrl);
         continue;
       }
 
-      // Проверяем размер (максимум 1MB в base64)
-      const sizeInKB = (base64Data.length * 0.75) / 1024;
-      if (sizeInKB > 1024) { // Больше 1MB
+      // Проверяем, что base64 данные валидны
+      try {
+        atob(base64Data);
+      } catch {
         invalid.push(dataUrl);
         continue;
       }

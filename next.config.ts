@@ -31,16 +31,31 @@ const nextConfig: NextConfig = {
   experimental: {
     serverComponentsExternalPackages: ['@supabase/supabase-js'],
   },
-  // Настройки для обработки больших данных
+  // Конфигурация для увеличения лимитов
   webpack: (config, { isServer }) => {
     if (isServer) {
-      // Увеличиваем лимит для серверных компонентов
-      config.optimization.splitChunks = {
-        ...config.optimization.splitChunks,
-        maxSize: 244000,
-      };
+      // Увеличиваем лимиты для серверных компонентов
+      config.externals = config.externals || [];
+      config.externals.push({
+        'utf-8-validate': 'commonjs utf-8-validate',
+        'bufferutil': 'commonjs bufferutil',
+      });
     }
     return config;
+  },
+  // Увеличиваем лимиты для API routes
+  async headers() {
+    return [
+      {
+        source: '/api/:path*',
+        headers: [
+          {
+            key: 'Content-Type',
+            value: 'application/json',
+          },
+        ],
+      },
+    ];
   },
 };
 
