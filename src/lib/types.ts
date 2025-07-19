@@ -26,43 +26,58 @@ export type ProductType = z.infer<typeof ProductTypeEnum>;
 export const SizeEnum = z.enum(['S', 'M', 'L', 'XL']);
 export type Size = z.infer<typeof SizeEnum>;
 
-// Экстренная схема валидации - принимает любые данные
-export const EmergencyOrderSchema = z.object({
-  id: z.any().optional(), 
-  orderDate: z.any().transform(() => new Date()), 
-  orderNumber: z.any().transform(val => String(val || '').trim()),
-  shipmentNumber: z.any().transform(val => String(val || '').trim()),
-  status: z.any().transform(() => 'Добавлен'),
-  productType: z.any().transform(val => {
-    const str = String(val || '').trim();
-    return ['фб', 'фч', 'хч', 'хб', 'хс', 'шч', 'лб', 'лч', 'другое'].includes(str) ? str : 'другое';
-  }),
-  size: z.any().transform(val => {
-    const str = String(val || '').trim();
-    return ['S', 'M', 'L', 'XL'].includes(str) ? str : 'M';
-  }),
-  seller: z.any().transform(val => String(val || '').trim()), 
-  price: z.any().transform(val => {
-    if (!val) return 0;
-    const str = String(val).replace(/[^\d.,]/g, '').replace(',', '.');
-    const num = parseFloat(str);
-    return isNaN(num) || num <= 0 ? 0 : num;
-  }),
-  cost: z.any().transform(val => {
-    if (!val) return undefined;
-    const str = String(val).replace(/[^\d.,]/g, '').replace(',', '.');
-    const num = parseFloat(str);
-    return isNaN(num) || num <= 0 ? undefined : num;
-  }).optional(),
-  photos: z.any().transform(val => {
-    if (!Array.isArray(val)) return [];
-    return val.filter(item => typeof item === 'string' && item.trim() !== '').slice(0, 3);
-  }).optional().default([]),
-  comment: z.any().transform(val => String(val || '').trim()),
+export const OrderSchema = z.object({
+  id: z.string().optional(), 
+  orderDate: z.union([z.date(), z.string().transform((str) => new Date(str))]), 
+  orderNumber: z.string().min(1, 'Номер заказа обязателен'),
+  shipmentNumber: z.string().min(1, 'Номер отправления обязателен'),
+  status: OrderStatusEnum.default('Добавлен'),
+  productType: ProductTypeEnum,
+  size: SizeEnum,
+  seller: z.string().min(1, 'Продавец обязателен'), 
+  price: z.coerce.number().positive('Цена должна быть положительной'),
+  cost: z.coerce.number().positive('Себестоимость должна быть положительной').optional(),
+  photos: z.array(
+    z.string()
+      .min(1, 'Фото не может быть пустым')
+      .refine((val) => {
+        try {
+          // Проверяем, что это валидный base64 data URL
+          if (!val || typeof val !== 'string') {
+            return false;
+          }
+          
+          if (!val.startsWith('data:image/')) {
+            return false;
+          }
+          
+          // Проверяем, что после data:image/ есть валидный MIME тип
+          const mimeMatch = val.match(/^data:image\/([a-zA-Z]+);base64,/);
+          if (!mimeMatch) {
+            return false;
+          }
+          
+          // Проверяем, что base64 данные не пустые
+          const base64Data = val.split(',')[1];
+          if (!base64Data || base64Data.length === 0) {
+            return false;
+          }
+          
+          // Проверяем, что base64 данные валидны
+          try {
+            atob(base64Data);
+          } catch {
+            return false;
+          }
+          
+          return true;
+        } catch {
+          return false;
+        }
+      }, 'Неверный формат изображения')
+  ).max(3, 'Максимум 3 фотографии').optional().default([]),
+  comment: z.string().optional().default(''),
 });
-
-// Используем экстренную схему вместо обычной
-export const OrderSchema = EmergencyOrderSchema;
 
 export type Order = z.infer<typeof OrderSchema>;
 

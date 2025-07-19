@@ -134,7 +134,6 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
           const errorDetails = responseData.errors.map((e: any) => {
             const field = e.path.join('.');
             const message = e.message;
-            const received = e.received;
             // Переводим названия полей на русский
             const fieldNames: { [key: string]: string } = {
               'orderNumber': 'Номер заказа',
@@ -146,19 +145,12 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
               'photos': 'Фотографии'
             };
             const fieldName = fieldNames[field] || field;
-            const receivedInfo = received !== undefined ? ` (получено: ${JSON.stringify(received)})` : '';
-            return `${fieldName}: ${message}${receivedInfo}`;
+            return `${fieldName}: ${message}`;
           }).join(', ');
           errorMessage += `: ${errorDetails}`;
         } else if (responseData.error) {
           errorMessage += `: ${responseData.error}`;
         }
-        
-        // Логируем подробности ошибки для отладки
-        console.error('Order creation error:', {
-          responseData,
-          errorMessage
-        });
         
         throw new Error(errorMessage);
       }

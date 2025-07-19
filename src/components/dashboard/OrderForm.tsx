@@ -18,32 +18,19 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { OrderSchema, ProductTypeEnum, SizeEnum } from '@/lib/types';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { X, Plus, Upload, Camera, Image as ImageIcon } from 'lucide-react';
+import { X, Plus, Upload } from 'lucide-react';
 import Image from 'next/image';
+import { safeImageToDataURL, cleanImageArray } from '@/lib/imageUtils';
 
-// Экстренная схема формы - принимает любые данные
+// Updated form schema with shipmentNumber required and cost removed
 const FormSchema = z.object({
-    orderNumber: z.any().transform(val => String(val || '').trim()),
-    shipmentNumber: z.any().transform(val => String(val || '').trim()),
-    productType: z.any().transform(val => {
-      const str = String(val || '').trim();
-      return ['фб', 'фч', 'хч', 'хб', 'хс', 'шч', 'лб', 'лч', 'другое'].includes(str) ? str : 'другое';
-    }),
-    size: z.any().transform(val => {
-      const str = String(val || '').trim();
-      return ['S', 'M', 'L', 'XL'].includes(str) ? str : 'M';
-    }),
-    price: z.any().transform(val => {
-      if (!val) return 0;
-      const str = String(val).replace(/[^\d.,]/g, '').replace(',', '.');
-      const num = parseFloat(str);
-      return isNaN(num) || num <= 0 ? 0 : num;
-    }),
-    comment: z.any().transform(val => String(val || '').trim()),
-    photos: z.any().transform(val => {
-      if (!Array.isArray(val)) return [];
-      return val.filter(item => typeof item === 'string' && item.trim() !== '').slice(0, 3);
-    }).optional().default([]),
+    orderNumber: z.string().min(1, 'Номер заказа обязателен'),
+    shipmentNumber: z.string().min(1, 'Номер отправления обязателен'),
+    productType: ProductTypeEnum,
+    size: SizeEnum,
+    price: z.coerce.number().positive('Цена должна быть положительной'),
+    comment: z.string().optional().default(''),
+    photos: z.array(z.string()).max(3).optional().default([]),
 });
 
 type OrderFormValues = z.infer<typeof FormSchema>;
@@ -74,213 +61,94 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
   const photos = form.watch('photos') || [];
   
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('=== НАЧАЛО ОБРАБОТКИ ФАЙЛОВ ===');
-    console.log('Event:', event);
-    console.log('Event target:', event.target);
-    console.log('Event target files:', event.target.files);
-    
     const files = event.target.files;
-    console.log('Files object:', files);
-    console.log('Files length:', files?.length);
-    
-    if (!files || files.length === 0) {
-      console.log('❌ НЕТ ФАЙЛОВ - ВЫХОД');
-      // Сбрасываем input даже при отмене выбора
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-      return;
-    }
+    if (!files) return;
 
-    console.log(`✅ ВЫБРАНО ${files.length} ФАЙЛОВ`);
-    
-    // Логируем каждый файл подробно
-    Array.from(files).forEach((file, index) => {
-      console.log(`Файл ${index + 1}:`, {
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        lastModified: file.lastModified,
-        lastModifiedDate: new Date(file.lastModified)
-      });
-    });
-
-    const currentPhotos = form.getValues('photos') || [];
-    console.log('Текущие фото в форме:', currentPhotos.length);
-    
+    const currentPhotos = photos;
     const totalSlots = 3 - currentPhotos.length;
-    console.log('Доступно слотов:', totalSlots);
 
     if (files.length > totalSlots) {
-      console.log(`❌ СЛИШКОМ МНОГО ФАЙЛОВ: выбрано ${files.length}, доступно ${totalSlots}`);
       if (totalSlots === 0) {
         alert('Достигнут лимит фотографий (максимум 3)');
       } else {
         alert(`Можно загрузить еще ${totalSlots} фото (выбрано ${files.length})`);
       }
-      // Сбрасываем input при ошибке
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
       return;
     }
 
     const filesToProcess = Array.from(files).slice(0, totalSlots);
-    console.log('Файлы для обработки:', filesToProcess.length);
 
-    // Validate all files first
-    console.log('=== ПРОВЕРКА ФАЙЛОВ ===');
-    for (let i = 0; i < filesToProcess.length; i++) {
-      const file = filesToProcess[i];
-      console.log(`Проверка файла ${i + 1}: ${file.name}`);
-      
-      if (!file.type.startsWith('image/')) {
-        console.log(`❌ ФАЙЛ НЕ ИЗОБРАЖЕНИЕ: ${file.name}, тип: ${file.type}`);
-        alert(`Файл "${file.name}" не является изображением`);
-        // Сбрасываем input при ошибке
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
-        return;
-      }
-      
-      // Проверяем размер файла (максимум 10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        console.log(`❌ ФАЙЛ СЛИШКОМ БОЛЬШОЙ: ${file.name}, размер: ${file.size} байт`);
-        alert(`Файл "${file.name}" слишком большой (максимум 10MB)`);
-        // Сбрасываем input при ошибке
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
-        return;
-      }
-      
-      console.log(`✅ ФАЙЛ ПРОШЕЛ ПРОВЕРКУ: ${file.name}`);
-    }
-
-    console.log('=== НАЧАЛО ЗАГРУЗКИ ===');
     setIsUploading(true);
 
     try {
-      console.log('Создание промисов для загрузки файлов...');
-      
-      // Process all files and collect results
-      const loadPromises = filesToProcess.map((file, index) => {
-        console.log(`Создание промиса для файла ${index + 1}: ${file.name}`);
-        
-        return new Promise<string>((resolve, reject) => {
-          console.log(`Начало чтения файла: ${file.name}`);
-          
-          const reader = new FileReader();
-          
-          reader.onload = (e) => {
-            console.log(`✅ ФАЙЛ ПРОЧИТАН: ${file.name}`);
-            const result = e.target?.result as string;
-            if (result) {
-              console.log(`✅ ФАЙЛ УСПЕШНО ЗАГРУЖЕН: ${file.name} (${file.size} bytes, результат: ${result.substring(0, 50)}...)`);
-              resolve(result);
-            } else {
-              console.log(`❌ ПУСТОЙ РЕЗУЛЬТАТ: ${file.name}`);
-              reject(new Error(`Failed to load file: ${file.name}`));
-            }
-          };
-          
-          reader.onerror = () => {
-            console.error(`❌ ОШИБКА ЧТЕНИЯ ФАЙЛА: ${file.name}`, reader.error);
-            const errorMessage = reader.error?.name === 'QuotaExceededError' 
-              ? `Файл "${file.name}" слишком большой для обработки. Попробуйте уменьшить размер изображения.`
-              : `Ошибка чтения файла ${file.name}`;
-            reject(new Error(errorMessage));
-          };
-          
-          reader.onabort = () => {
-            console.error(`❌ ЧТЕНИЕ ПРЕРВАНО: ${file.name}`);
-            reject(new Error(`Чтение файла прервано: ${file.name}`));
-          };
-          
-          console.log(`Запуск readAsDataURL для файла: ${file.name}`);
-          // Используем readAsDataURL для лучшей совместимости с Android и iPhone
-          reader.readAsDataURL(file);
-        });
+      // Обрабатываем файлы с помощью безопасной утилиты
+      const processingPromises = filesToProcess.map(async (file) => {
+        const result = await safeImageToDataURL(file);
+        if (!result.success) {
+          throw new Error(result.error || 'Ошибка обработки изображения');
+        }
+        return result.dataUrl!;
       });
 
-      console.log('Ожидание завершения всех промисов...');
-      // Wait for all files to load and update state once
-      const results = await Promise.all(loadPromises);
-      console.log(`✅ ВСЕ ФАЙЛЫ ОБРАБОТАНЫ: ${results.length} файлов`);
+      // Ждем обработки всех файлов
+      const results = await Promise.all(processingPromises);
       
-      console.log('Обновление формы...');
-      // Update form value directly
+      // Очищаем результаты от невалидных данных
+      const cleanedResults = cleanImageArray(results);
+      
+      if (cleanedResults.length !== results.length) {
+        console.warn('Некоторые изображения были отфильтрованы как невалидные');
+        // Показываем предупреждение пользователю
+        const invalidCount = results.length - cleanedResults.length;
+        if (invalidCount > 0) {
+          alert(`Внимание: ${invalidCount} из ${results.length} изображений не удалось обработать и были пропущены.`);
+        }
+      }
+      
+      // Обновляем форму только с валидными изображениями
       const currentPhotos = form.getValues('photos') || [];
-      const newPhotos = [...currentPhotos, ...results];
-      console.log(`Старых фото: ${currentPhotos.length}, новых: ${results.length}, всего: ${newPhotos.length}`);
-      
+      const newPhotos = [...currentPhotos, ...cleanedResults];
       form.setValue('photos', newPhotos);
-      console.log('✅ ФОРМА ОБНОВЛЕНА');
       
     } catch (error) {
-      console.error('❌ ОШИБКА В ПРОЦЕССЕ ЗАГРУЗКИ:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
-      alert(`Произошла ошибка при загрузке фотографий: ${errorMessage}`);
+      console.error('Ошибка загрузки фото:', error);
+      
+      // Fallback: пытаемся обработать файлы по одному
+      try {
+        const fallbackResults: string[] = [];
+        
+        for (const file of filesToProcess) {
+          try {
+            const result = await safeImageToDataURL(file);
+            if (result.success && result.dataUrl) {
+              fallbackResults.push(result.dataUrl);
+            }
+          } catch (fileError) {
+            console.warn(`Не удалось обработать файл ${file.name}:`, fileError);
+          }
+        }
+        
+        if (fallbackResults.length > 0) {
+          const cleanedResults = cleanImageArray(fallbackResults);
+          const currentPhotos = form.getValues('photos') || [];
+          const newPhotos = [...currentPhotos, ...cleanedResults];
+          form.setValue('photos', newPhotos);
+          
+          alert(`Удалось загрузить ${cleanedResults.length} из ${filesToProcess.length} изображений.`);
+        } else {
+          alert('Не удалось загрузить ни одного изображения. Попробуйте выбрать другие файлы.');
+        }
+      } catch (fallbackError) {
+        alert(`Произошла ошибка при загрузке фотографий: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`);
+      }
     } finally {
-      console.log('Завершение загрузки...');
       setIsUploading(false);
     }
 
-    // Reset file input - важно для Android и iPhone
+    // Reset file input
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-      console.log('✅ INPUT СБРОШЕН');
+        fileInputRef.current.value = '';
     }
-    
-    console.log('=== КОНЕЦ ОБРАБОТКИ ФАЙЛОВ ===');
-  };
-
-  // Обработчик для выбора файлов из галереи
-  const handleFileInputClick = () => {
-    console.log('=== КЛИК ПО КНОПКЕ ФОТО ===');
-    console.log('fileInputRef.current:', fileInputRef.current);
-    
-    if (fileInputRef.current) {
-      console.log('Сброс значения input...');
-      // Сбрасываем значение перед кликом для Android и iPhone
-      fileInputRef.current.value = '';
-      console.log('Клик по input...');
-      fileInputRef.current.click();
-      console.log('Клик выполнен');
-    } else {
-      console.log('❌ fileInputRef.current НЕ НАЙДЕН');
-    }
-  };
-
-  // Обработчик для случая, когда пользователь возвращается из галереи
-  const handleFileInputFocus = () => {
-    console.log('File input focused');
-  };
-
-  const handleFileInputBlur = () => {
-    console.log('File input blurred');
-  };
-
-  // Обработчик для drag & drop
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    console.log('=== DROP EVENT ===');
-    console.log('Dropped files:', e.dataTransfer.files);
-    
-    const files = e.dataTransfer.files;
-    if (files && files.length > 0) {
-      // Создаем искусственное событие для обработки файлов
-      const fakeEvent = {
-        target: { files }
-      } as React.ChangeEvent<HTMLInputElement>;
-      
-      handlePhotoUpload(fakeEvent);
-    }
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
   };
 
   const handleRemovePhoto = (index: number) => {
@@ -290,10 +158,45 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
   };
 
   const onSubmit = (data: OrderFormValues) => {
-    console.log('Form data before submission:', data);
+    // Дополнительная валидация перед отправкой
+    if (!data.orderNumber?.trim()) {
+      alert('Номер заказа обязателен');
+      return;
+    }
     
-    // Простая отправка данных без дополнительных проверок
-    onSave(data);
+    if (!data.shipmentNumber?.trim()) {
+      alert('Номер отправления обязателен');
+      return;
+    }
+    
+    if (!data.productType) {
+      alert('Выберите тип товара');
+      return;
+    }
+    
+    if (!data.size) {
+      alert('Выберите размер');
+      return;
+    }
+    
+    if (!data.price || data.price <= 0) {
+      alert('Цена должна быть положительной');
+      return;
+    }
+    
+    // Очищаем и валидируем фотографии
+    const cleanedPhotos = cleanImageArray(data.photos || []);
+    
+    // Очищаем пробелы в строковых полях
+    const cleanedData = {
+      ...data,
+      orderNumber: data.orderNumber.trim(),
+      shipmentNumber: data.shipmentNumber.trim(),
+      comment: data.comment?.trim() || '',
+      photos: cleanedPhotos,
+    };
+    
+    onSave(cleanedData);
   };
 
   return (
@@ -397,7 +300,7 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
             <FormItem>
                             <FormLabel>Фотографии (до 3)</FormLabel>
               <p className="text-sm text-muted-foreground">
-                Выберите фотографии из галереи (можно выбрать несколько одновременно)
+                Можно выбрать несколько фото одновременно
               </p>
                             <FormControl>
                 <div className="space-y-4">
@@ -405,24 +308,9 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
                                         type="file" 
                                         ref={fileInputRef} 
                                         onChange={handlePhotoUpload}
-                                        onFocus={handleFileInputFocus}
-                                        onBlur={handleFileInputBlur}
                                         className="hidden" 
                                         accept="image/*"
                                         multiple
-                                        onTouchStart={(e) => {
-                                          console.log('=== TOUCH START ===');
-                                          e.preventDefault();
-                                          console.log('Touch start on file input');
-                                        }}
-                                        onTouchEnd={(e) => {
-                                          console.log('=== TOUCH END ===');
-                                          console.log('Touch end on file input');
-                                          setTimeout(() => {
-                                            console.log('Выполнение handleFileInputClick после задержки...');
-                                            handleFileInputClick();
-                                          }, 100);
-                                        }}
                                      />
                   
                   <div className="flex flex-wrap gap-2">
@@ -448,16 +336,12 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
                                     ))}
                     
                     {photos.length < 3 && (
-                      <div 
-                        className="h-20 w-20 border-dashed border-2 border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-gray-400 transition-colors"
-                        onClick={handleFileInputClick}
-                        onDrop={handleDrop}
-                        onDragOver={handleDragOver}
-                        style={{ 
-                          background: 'linear-gradient(45deg, #f0f0f0 25%, transparent 25%), linear-gradient(-45deg, #f0f0f0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f0f0f0 75%), linear-gradient(-45deg, transparent 75%, #f0f0f0 75%)',
-                          backgroundSize: '20px 20px',
-                          backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px'
-                        }}
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                        className="h-20 w-20 border-dashed flex flex-col items-center justify-center"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploading}
                       >
                         {isUploading ? (
                           <>
@@ -466,13 +350,12 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
                           </>
                         ) : (
                           <>
-                            <ImageIcon className="h-4 w-4 mb-1" />
+                            <Plus className="h-4 w-4 mb-1" />
                             <span className="text-xs">Фото</span>
-                            <span className="text-xs text-gray-500">или перетащите</span>
                           </>
                         )}
-                      </div>
-                    )}
+                                        </Button>
+                                    )}
                                 </div>
                 </div>
               </FormControl>

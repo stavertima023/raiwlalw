@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { supabaseAdmin } from '@/lib/supabaseClient';
 import { OrderSchema } from '@/lib/types';
+import { cleanImageArray } from '@/lib/imageUtils';
 
 export async function GET() {
   try {
@@ -50,8 +51,6 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  let json: any;
-  
   try {
     // Проверяем доступность сервисов
     if (!supabaseAdmin) {
@@ -65,28 +64,31 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Пользователь не авторизован' }, { status: 401 });
     }
 
-    json = await request.json();
+    const json = await request.json();
     
-    // Максимально толерантная обработка данных
-    const cleanedData = {
-      ...json,
-      // Принимаем любые данные и преобразуем их
-      orderNumber: json.orderNumber,
-      shipmentNumber: json.shipmentNumber,
-      productType: json.productType,
-      size: json.size,
-      price: json.price,
-      cost: json.cost,
-      comment: json.comment,
-      photos: json.photos,
+    // Очищаем и валидируем фотографии перед обработкой
+    if (json.photos && Array.isArray(json.photos)) {
+      json.photos = cleanImageArray(json.photos);
       
-      // Устанавливаем продавца и дату
+      // Если все фотографии были отфильтрованы, устанавливаем пустой массив
+      if (json.photos.length === 0) {
+        console.warn('Все фотографии были отфильтрованы как невалидные');
+        json.photos = [];
+      }
+    } else {
+      // Если фотографии не переданы или не являются массивом, устанавливаем пустой массив
+      json.photos = [];
+    }
+    
+    // Автоматически устанавливаем продавца и дату заказа
+    const newOrderData = {
+      ...json,
       seller: user.username,
       orderDate: new Date().toISOString(),
     };
     
     // Валидируем данные с помощью Zod
-    const validatedOrder = OrderSchema.omit({ id: true }).parse(cleanedData);
+    const validatedOrder = OrderSchema.omit({ id: true }).parse(newOrderData);
 
     // Вставляем заказ в базу данных
     const { data, error } = await supabaseAdmin
@@ -113,24 +115,13 @@ export async function POST(request: Request) {
       const errorDetails = error.errors.map((err: any) => {
         const field = err.path.join('.');
         const message = err.message;
-        const received = err.received;
-        const code = err.code;
-        return `${field}: ${message} (код: ${code}, получено: ${JSON.stringify(received)})`;
+        return `${field}: ${message}`;
       }).join(', ');
-      
-      console.error('Validation error details:', {
-        errors: error.errors,
-        receivedData: json,
-        userAgent: request.headers.get('user-agent'),
-        contentType: request.headers.get('content-type')
-      });
       
       return NextResponse.json({ 
         message: 'Ошибка валидации данных', 
         error: errorDetails,
-        errors: error.errors,
-        receivedData: json,
-        userAgent: request.headers.get('user-agent')
+        errors: error.errors
       }, { status: 400 });
     }
     
