@@ -77,45 +77,32 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
       const filesToProcess = Array.from(files);
       console.log(`Обрабатываем ${filesToProcess.length} файлов...`);
 
-      // Проверяем доступные слоты для фотографий
-      const currentPhotos = form.getValues('photos') || [];
-      const availableSlots = 3 - currentPhotos.length;
-      
-      if (filesToProcess.length > availableSlots) {
-        alert(`Можно добавить еще ${availableSlots} фото (выбрано ${filesToProcess.length})`);
-        setIsUploading(false);
-        return;
-      }
-
       // Обрабатываем файлы по одному для лучшей надежности
       const results: string[] = [];
-      const errors: string[] = [];
       
-      for (let i = 0; i < filesToProcess.length; i++) {
-        const file = filesToProcess[i];
+      for (const file of filesToProcess) {
         try {
-          console.log(`Обрабатываем файл ${i + 1}/${filesToProcess.length}: ${file.name} (${file.size} байт, тип: ${file.type})`);
+          console.log(`Обрабатываем файл: ${file.name} (${file.size} байт)`);
           
           const result = await safeImageToDataURL(file);
           
           if (result.success && result.dataUrl) {
             results.push(result.dataUrl);
-            console.log(`✅ Файл ${file.name} успешно обработан`);
+            console.log(`Файл ${file.name} успешно обработан`);
           } else {
-            const errorMsg = result.error || 'Неизвестная ошибка';
-            console.warn(`❌ Не удалось обработать файл ${file.name}:`, errorMsg);
-            errors.push(`${file.name}: ${errorMsg}`);
+            console.warn(`Не удалось обработать файл ${file.name}:`, result.error);
+            alert(`Не удалось обработать файл "${file.name}": ${result.error}`);
           }
         } catch (fileError) {
-          const errorMsg = fileError instanceof Error ? fileError.message : 'Неизвестная ошибка';
-          console.error(`❌ Ошибка обработки файла ${file.name}:`, fileError);
-          errors.push(`${file.name}: ${errorMsg}`);
+          console.error(`Ошибка обработки файла ${file.name}:`, fileError);
+          alert(`Ошибка обработки файла "${file.name}": ${fileError instanceof Error ? fileError.message : 'Неизвестная ошибка'}`);
         }
       }
 
       if (results.length > 0) {
         // Очищаем и валидируем результаты
         const cleanedResults = cleanImageArray(results);
+        const currentPhotos = form.getValues('photos') || [];
         const newPhotos = [...currentPhotos, ...cleanedResults];
         
         // Проверяем общий размер фотографий
@@ -128,31 +115,25 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
         }, 0);
         
         const totalSizeInMB = totalSize / (1024 * 1024);
-        console.log(`📊 Общий размер фотографий: ${totalSizeInMB.toFixed(2)}MB`);
+        console.log(`Общий размер фотографий: ${totalSizeInMB.toFixed(2)}MB`);
         
         if (totalSizeInMB > 6) { // 6MB лимит (уменьшен для предотвращения ошибок Kong)
-          alert(`⚠️ Внимание: Общий размер фотографий (${totalSizeInMB.toFixed(2)}MB) близок к лимиту. Некоторые фотографии могут быть автоматически сжаты.`);
+          alert(`Внимание: Общий размер фотографий (${totalSizeInMB.toFixed(2)}MB) близок к лимиту. Некоторые фотографии могут быть автоматически сжаты.`);
         }
         
         form.setValue('photos', newPhotos);
         
-        // Показываем результаты пользователю
-        if (cleanedResults.length === results.length && errors.length === 0) {
-          alert(`✅ Успешно загружено ${cleanedResults.length} изображений!`);
-        } else if (cleanedResults.length > 0) {
-          const successMsg = `✅ Успешно загружено ${cleanedResults.length} из ${filesToProcess.length} изображений.`;
-          const errorMsg = errors.length > 0 ? `\n\n❌ Ошибки:\n${errors.slice(0, 3).join('\n')}` : '';
-          const moreErrors = errors.length > 3 ? `\n... и еще ${errors.length - 3} ошибок` : '';
-          alert(successMsg + errorMsg + moreErrors);
+        if (cleanedResults.length < results.length) {
+          alert(`Успешно загружено ${cleanedResults.length} из ${results.length} изображений. Некоторые изображения были отфильтрованы как невалидные.`);
         } else {
-          alert(`❌ Не удалось загрузить ни одного изображения.\n\nОшибки:\n${errors.join('\n')}\n\nПопробуйте выбрать другие файлы или уменьшить их размер.`);
+          alert(`Успешно загружено ${cleanedResults.length} изображений!`);
         }
       } else {
-        alert(`❌ Не удалось загрузить ни одного изображения.\n\nОшибки:\n${errors.join('\n')}\n\nПопробуйте выбрать другие файлы или уменьшить их размер.`);
+        alert('Не удалось загрузить ни одного изображения. Попробуйте выбрать другие файлы или уменьшить их размер.');
       }
     } catch (error) {
-      console.error('❌ Общая ошибка загрузки фото:', error);
-      alert(`❌ Произошла ошибка при загрузке фотографий: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`);
+      console.error('Ошибка загрузки фото:', error);
+      alert(`Произошла ошибка при загрузке фотографий: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`);
     } finally {
       setIsUploading(false);
     }

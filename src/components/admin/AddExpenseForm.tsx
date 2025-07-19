@@ -76,13 +76,11 @@ export function AddExpenseForm({ onSave, currentUser }: AddExpenseFormProps) {
     const file = event.target.files?.[0];
     if (!file) return;
     
-    console.log(`Обработка файла чека: ${file.name} (${file.size} байт, тип: ${file.type})`);
-    
     if (!file.type.startsWith('image/')) {
         toast({
             variant: 'destructive',
             title: 'Неверный тип файла',
-            description: `Файл "${file.name}" не является изображением (тип: ${file.type}).`,
+            description: `Файл "${file.name}" не является изображением.`,
         });
         return;
     }
@@ -102,19 +100,15 @@ export function AddExpenseForm({ onSave, currentUser }: AddExpenseFormProps) {
     const processImage = async () => {
         try {
             const { safeImageToDataURL } = await import('@/lib/imageUtils');
-            console.log('Начинаем обработку изображения...');
-            
             const result = await safeImageToDataURL(file);
             
             if (result.success && result.dataUrl) {
                 setValue('receiptPhoto', result.dataUrl, { shouldValidate: true });
-                console.log('✅ Фото чека успешно обработано');
                 toast({
                     title: 'Фото загружено',
                     description: 'Фотография чека успешно обработана и добавлена.',
                 });
             } else {
-                console.error('❌ Ошибка обработки изображения:', result.error);
                 toast({
                     variant: 'destructive',
                     title: 'Ошибка обработки',
@@ -122,7 +116,7 @@ export function AddExpenseForm({ onSave, currentUser }: AddExpenseFormProps) {
                 });
             }
         } catch (error) {
-            console.error('❌ Ошибка обработки изображения:', error);
+            console.error('Ошибка обработки изображения:', error);
             toast({
                 variant: 'destructive',
                 title: 'Ошибка загрузки',
