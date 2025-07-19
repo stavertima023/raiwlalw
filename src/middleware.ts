@@ -4,6 +4,11 @@ import { getIronSession } from 'iron-session';
 import { sessionOptions } from '@/lib/session';
 
 export async function middleware(request: NextRequest) {
+  // Пропускаем debug страницу
+  if (request.nextUrl.pathname === '/debug') {
+    return NextResponse.next();
+  }
+
   // Проверяем размер запроса для API endpoints
   if (request.nextUrl.pathname.startsWith('/api/')) {
     const contentLength = request.headers.get('content-length');
@@ -52,5 +57,6 @@ export const config = {
     '/api/:path*',
     '/dashboard/:path*',
     '/admin/:path*',
+    '/debug',
   ],
 }; 
