@@ -5,7 +5,7 @@ import { OrderSchema } from '@/lib/types';
 import { cleanImageArray } from '@/lib/imageUtils';
 
 // Увеличиваем лимиты для этого API
-export const maxDuration = 60; // 60 секунд
+export const maxDuration = 90; // 90 секунд
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
@@ -68,13 +68,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Пользователь не авторизован' }, { status: 401 });
     }
 
-    // Проверяем размер запроса
+    // Проверяем размер запроса (увеличен до 15MB)
     const contentLength = request.headers.get('content-length');
     if (contentLength) {
       const sizeInMB = parseInt(contentLength) / (1024 * 1024);
-      if (sizeInMB > 10) { // 10MB лимит
+      if (sizeInMB > 15) { // 15MB лимит
         return NextResponse.json({ 
-          message: 'Размер запроса слишком большой (максимум 10MB)', 
+          message: 'Размер запроса слишком большой (максимум 15MB)', 
           error: `Размер: ${sizeInMB.toFixed(2)}MB`
         }, { status: 413 });
       }
@@ -96,11 +96,32 @@ export async function POST(request: Request) {
       }, 0);
 
       const totalSizeInMB = totalPhotoSize / (1024 * 1024);
-      if (totalSizeInMB > 8) { // 8MB лимит для всех фотографий
+      if (totalSizeInMB > 6) { // 6MB лимит для всех фотографий (уменьшен для предотвращения ошибок Kong)
         return NextResponse.json({ 
-          message: 'Общий размер фотографий слишком большой (максимум 8MB)', 
-          error: `Размер: ${totalSizeInMB.toFixed(2)}MB`
+          message: 'Общий размер фотографий слишком большой (максимум 6MB)', 
+          error: `Размер: ${totalSizeInMB.toFixed(2)}MB`,
+          recommendation: 'Попробуйте уменьшить качество или количество фотографий'
         }, { status: 413 });
+      }
+
+      // Дополнительная проверка отдельных фотографий
+      for (let i = 0; i < json.photos.length; i++) {
+        const photo = json.photos[i];
+        if (photo && typeof photo === 'string') {
+          const base64Data = photo.split(',')[1];
+          if (base64Data) {
+            const photoSize = Math.ceil((base64Data.length * 3) / 4);
+            const photoSizeInMB = photoSize / (1024 * 1024);
+            
+            if (photoSizeInMB > 2) { // 2MB лимит для одной фотографии
+              return NextResponse.json({ 
+                message: `Фотография ${i + 1} слишком большая (максимум 2MB)`, 
+                error: `Размер: ${photoSizeInMB.toFixed(2)}MB`,
+                recommendation: 'Попробуйте сжать изображение перед загрузкой'
+              }, { status: 413 });
+            }
+          }
+        }
       }
 
       json.photos = cleanImageArray(json.photos);

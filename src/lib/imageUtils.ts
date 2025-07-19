@@ -11,8 +11,9 @@ export interface ImageProcessingResult {
 
 /**
  * Сжимает изображение до указанного качества и размера
+ * Более агрессивное сжатие для предотвращения ошибок Kong
  */
-export const compressImage = (file: File, maxWidth: number = 1200, quality: number = 0.7): Promise<File> => {
+export const compressImage = (file: File, maxWidth: number = 800, quality: number = 0.6): Promise<File> => {
   return new Promise((resolve, reject) => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -23,9 +24,17 @@ export const compressImage = (file: File, maxWidth: number = 1200, quality: numb
         // Вычисляем новые размеры с сохранением пропорций
         let { width, height } = img;
         
+        // Более агрессивное уменьшение размера
         if (width > maxWidth) {
           height = (height * maxWidth) / width;
           width = maxWidth;
+        }
+
+        // Дополнительное уменьшение для очень больших изображений
+        if (file.size > 3 * 1024 * 1024) { // 3MB
+          const scale = 0.7;
+          width *= scale;
+          height *= scale;
         }
 
         // Устанавливаем размеры canvas
@@ -71,7 +80,7 @@ export const compressImage = (file: File, maxWidth: number = 1200, quality: numb
 
 /**
  * Безопасно конвертирует файл в base64 data URL с автоматическим сжатием
- * Специально для iOS устройств
+ * Специально для iOS устройств и предотвращения ошибок Kong
  */
 export const safeImageToDataURL = async (file: File): Promise<ImageProcessingResult> => {
   try {
@@ -83,21 +92,38 @@ export const safeImageToDataURL = async (file: File): Promise<ImageProcessingRes
       };
     }
 
-    // Проверяем размер файла (максимум 5MB до сжатия)
-    const maxSize = 5 * 1024 * 1024; // 5MB
+    // Проверяем размер файла (максимум 8MB до сжатия)
+    const maxSize = 8 * 1024 * 1024; // 8MB
     if (file.size > maxSize) {
       return {
         success: false,
-        error: `Файл "${file.name}" слишком большой (максимум 5MB)`
+        error: `Файл "${file.name}" слишком большой (максимум 8MB)`
       };
     }
 
-    // Сжимаем изображение если оно больше 1MB
+    // Более агрессивное сжатие для предотвращения ошибок Kong
     let processedFile = file;
-    if (file.size > 1024 * 1024) { // 1MB
+    let compressionApplied = false;
+    
+    if (file.size > 512 * 1024) { // 512KB - сжимаем файлы больше 512KB
       try {
-        processedFile = await compressImage(file, 1200, 0.7);
-        console.log(`Изображение сжато: ${file.size} -> ${processedFile.size} байт`);
+        let quality = 0.6;
+        let maxWidth = 800;
+        
+        // Более агрессивное сжатие для больших файлов
+        if (file.size > 2 * 1024 * 1024) { // 2MB
+          quality = 0.5;
+          maxWidth = 600;
+        }
+        
+        if (file.size > 4 * 1024 * 1024) { // 4MB
+          quality = 0.4;
+          maxWidth = 500;
+        }
+        
+        processedFile = await compressImage(file, maxWidth, quality);
+        compressionApplied = true;
+        console.log(`Изображение сжато: ${file.size} -> ${processedFile.size} байт (качество: ${quality}, ширина: ${maxWidth}px)`);
       } catch (compressError) {
         console.warn('Не удалось сжать изображение, используем оригинал:', compressError);
         processedFile = file;
@@ -160,16 +186,26 @@ export const safeImageToDataURL = async (file: File): Promise<ImageProcessingRes
             return;
           }
 
-          // Проверяем размер base64 данных (максимум 3MB)
+          // Проверяем размер base64 данных (увеличенный лимит до 2MB)
           const base64Size = Math.ceil((base64Data.length * 3) / 4);
-          const maxBase64Size = 3 * 1024 * 1024; // 3MB
+          const maxBase64Size = 2 * 1024 * 1024; // 2MB
           
           if (base64Size > maxBase64Size) {
-            resolve({
-              success: false,
-              error: `Размер изображения слишком большой (${Math.round(base64Size / 1024 / 1024)}MB). Попробуйте уменьшить качество.`
-            });
-            return;
+            // Если сжатие уже применялось, но размер все еще большой
+            if (compressionApplied) {
+              resolve({
+                success: false,
+                error: `Размер изображения слишком большой даже после сжатия (${Math.round(base64Size / 1024 / 1024)}MB). Попробуйте выбрать изображение меньшего размера.`
+              });
+              return;
+            } else {
+              // Пытаемся применить более агрессивное сжатие
+              resolve({
+                success: false,
+                error: `Размер изображения слишком большой (${Math.round(base64Size / 1024 / 1024)}MB). Попробуйте уменьшить качество или размер изображения.`
+              });
+              return;
+            }
           }
 
           resolve({

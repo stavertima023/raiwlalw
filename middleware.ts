@@ -7,9 +7,11 @@ export async function middleware(request: NextRequest) {
   if (request.nextUrl.pathname.startsWith('/api/')) {
     const response = NextResponse.next();
     
-    // Увеличиваем лимиты для больших запросов
-    response.headers.set('X-Request-Body-Size-Limit', '10mb');
-    response.headers.set('X-Response-Size-Limit', '10mb');
+    // Увеличиваем лимиты для больших запросов (обновлено для предотвращения ошибок Kong)
+    response.headers.set('X-Request-Body-Size-Limit', '15mb');
+    response.headers.set('X-Response-Size-Limit', '15mb');
+    response.headers.set('X-Kong-Client-Body-Buffer-Size', '15mb');
+    response.headers.set('X-Kong-Client-Max-Body-Size', '15mb');
     
     return response;
   }

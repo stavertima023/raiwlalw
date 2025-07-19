@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabaseClient';
 import { ExpenseSchema } from '@/lib/types';
 
 // Увеличиваем лимиты для этого API
-export const maxDuration = 60; // 60 секунд
+export const maxDuration = 90; // 90 секунд
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
@@ -64,13 +64,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Пользователь не авторизован' }, { status: 401 });
     }
 
-    // Проверяем размер запроса
+    // Проверяем размер запроса (увеличен до 15MB)
     const contentLength = request.headers.get('content-length');
     if (contentLength) {
       const sizeInMB = parseInt(contentLength) / (1024 * 1024);
-      if (sizeInMB > 10) { // 10MB лимит
+      if (sizeInMB > 15) { // 15MB лимит
         return NextResponse.json({ 
-          message: 'Размер запроса слишком большой (максимум 10MB)', 
+          message: 'Размер запроса слишком большой (максимум 15MB)', 
           error: `Размер: ${sizeInMB.toFixed(2)}MB`
         }, { status: 413 });
       }
@@ -78,17 +78,18 @@ export async function POST(request: Request) {
 
     const json = await request.json();
     
-    // Проверяем размер фотографии чека
+    // Проверяем размер фотографии чека (уменьшен до 3MB для предотвращения ошибок Kong)
     if (json.receiptPhoto && typeof json.receiptPhoto === 'string') {
       const base64Data = json.receiptPhoto.split(',')[1];
       if (base64Data) {
         const photoSize = Math.ceil((base64Data.length * 3) / 4);
         const photoSizeInMB = photoSize / (1024 * 1024);
         
-        if (photoSizeInMB > 5) { // 5MB лимит для фото чека
+        if (photoSizeInMB > 3) { // 3MB лимит для фото чека
           return NextResponse.json({ 
-            message: 'Размер фотографии чека слишком большой (максимум 5MB)', 
-            error: `Размер: ${photoSizeInMB.toFixed(2)}MB`
+            message: 'Размер фотографии чека слишком большой (максимум 3MB)', 
+            error: `Размер: ${photoSizeInMB.toFixed(2)}MB`,
+            recommendation: 'Попробуйте сжать изображение перед загрузкой'
           }, { status: 413 });
         }
       }

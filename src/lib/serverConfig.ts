@@ -1,39 +1,50 @@
 /**
  * Конфигурация сервера для увеличения лимитов
+ * Обновлено для предотвращения ошибок Kong
  */
 
 export const serverConfig = {
   // Лимиты для API запросов
   api: {
-    maxRequestBodySize: '10mb',
-    maxResponseSize: '10mb',
-    timeout: 60000, // 60 секунд
+    maxRequestBodySize: '15mb',
+    maxResponseSize: '15mb',
+    timeout: 90000, // 90 секунд
   },
   
-  // Лимиты для изображений
+  // Лимиты для изображений (обновлены для предотвращения ошибок Kong)
   images: {
-    maxFileSize: 5 * 1024 * 1024, // 5MB
-    maxBase64Size: 3 * 1024 * 1024, // 3MB
-    maxTotalPhotoSize: 8 * 1024 * 1024, // 8MB для всех фотографий
-    maxReceiptPhotoSize: 5 * 1024 * 1024, // 5MB для фото чека
+    maxFileSize: 8 * 1024 * 1024, // 8MB
+    maxBase64Size: 2 * 1024 * 1024, // 2MB (уменьшен для предотвращения ошибок Kong)
+    maxTotalPhotoSize: 6 * 1024 * 1024, // 6MB для всех фотографий
+    maxReceiptPhotoSize: 3 * 1024 * 1024, // 3MB для фото чека
     compression: {
-      maxWidth: 1200,
-      quality: 0.7,
+      maxWidth: 800, // уменьшено с 1200
+      quality: 0.6, // уменьшено с 0.7
+      aggressiveCompression: {
+        threshold: 512 * 1024, // 512KB - начало сжатия
+        largeFileThreshold: 2 * 1024 * 1024, // 2MB - агрессивное сжатие
+        veryLargeFileThreshold: 4 * 1024 * 1024, // 4MB - очень агрессивное сжатие
+      },
     },
   },
   
   // Лимиты для базы данных
   database: {
-    maxQuerySize: 10 * 1024 * 1024, // 10MB
-    timeout: 30000, // 30 секунд
+    maxQuerySize: 15 * 1024 * 1024, // 15MB
+    timeout: 60000, // 60 секунд
   },
   
-  // Настройки для Railway
+  // Настройки для Railway (обновлены для предотвращения ошибок Kong)
   railway: {
-    maxRequestSize: '10mb',
-    maxResponseSize: '10mb',
-    clientBodyBufferSize: '10mb',
-    clientMaxBodySize: '10mb',
+    maxRequestSize: '15mb',
+    maxResponseSize: '15mb',
+    clientBodyBufferSize: '15mb',
+    clientMaxBodySize: '15mb',
+    kong: {
+      clientBodyBufferSize: '15mb',
+      clientMaxBodySize: '15mb',
+      clientBodyTempPath: '/tmp/kong_client_body_temp',
+    },
   },
 };
 
@@ -47,7 +58,7 @@ export const checkBase64Size = (base64Data: string): { size: number; sizeInMB: n
   return {
     size,
     sizeInMB,
-    isValid: sizeInMB <= 3 // 3MB лимит
+    isValid: sizeInMB <= 2 // 2MB лимит (уменьшен для предотвращения ошибок Kong)
   };
 };
 
@@ -70,6 +81,21 @@ export const checkTotalBase64Size = (base64Array: string[]): { totalSize: number
   return {
     totalSize,
     totalSizeInMB,
-    isValid: totalSizeInMB <= 8 // 8MB лимит для всех фотографий
+    isValid: totalSizeInMB <= 6 // 6MB лимит для всех фотографий (уменьшен)
   };
+};
+
+/**
+ * Рекомендации по сжатию для предотвращения ошибок Kong
+ */
+export const getCompressionRecommendations = (fileSize: number) => {
+  if (fileSize <= 512 * 1024) {
+    return { compress: false, reason: 'Файл достаточно мал' };
+  } else if (fileSize <= 2 * 1024 * 1024) {
+    return { compress: true, quality: 0.6, maxWidth: 800, reason: 'Стандартное сжатие' };
+  } else if (fileSize <= 4 * 1024 * 1024) {
+    return { compress: true, quality: 0.5, maxWidth: 600, reason: 'Агрессивное сжатие' };
+  } else {
+    return { compress: true, quality: 0.4, maxWidth: 500, reason: 'Очень агрессивное сжатие' };
+  }
 }; 

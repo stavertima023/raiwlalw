@@ -85,13 +85,13 @@ export function AddExpenseForm({ onSave, currentUser }: AddExpenseFormProps) {
         return;
     }
 
-    // Проверяем размер файла
-    const maxSize = 5 * 1024 * 1024; // 5MB
+    // Проверяем размер файла (увеличен до 8MB)
+    const maxSize = 8 * 1024 * 1024; // 8MB
     if (file.size > maxSize) {
         toast({
             variant: 'destructive',
             title: 'Файл слишком большой',
-            description: `Файл "${file.name}" превышает лимит 5MB. Попробуйте уменьшить размер изображения.`,
+            description: `Файл "${file.name}" превышает лимит 8MB. Попробуйте уменьшить размер изображения.`,
         });
         return;
     }
