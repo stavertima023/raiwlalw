@@ -143,10 +143,10 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
           
           alert(`Удалось загрузить ${cleanedResults.length} из ${filesToProcess.length} изображений.`);
         } else {
-          alert('Не удалось загрузить ни одного изображения. Попробуйте выбрать другие файлы.');
+          alert('Не удалось загрузить ни одного изображения. Попробуйте выбрать другие файлы или уменьшить их размер.');
         }
       } catch (fallbackError) {
-        alert(`Произошла ошибка при загрузке фотографий: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`);
+        alert(`Произошла ошибка при загрузке фотографий: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}. Попробуйте выбрать изображения меньшего размера.`);
       }
     } finally {
       setIsUploading(false);

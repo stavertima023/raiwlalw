@@ -64,7 +64,42 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Пользователь не авторизован' }, { status: 401 });
     }
 
+    // Проверяем размер запроса
+    const contentLength = request.headers.get('content-length');
+    if (contentLength && parseInt(contentLength) > 10 * 1024 * 1024) { // 10MB
+      return NextResponse.json({ 
+        message: 'Размер данных слишком большой (максимум 10MB). Попробуйте уменьшить размер фотографий.', 
+        error: 'Request too large'
+      }, { status: 413 });
+    }
+
     const json = await request.json();
+    
+    // Проверяем размер фотографий
+    if (json.photos && Array.isArray(json.photos)) {
+      const totalPhotoSize = json.photos.reduce((total: number, photo: string) => {
+        if (photo && photo.startsWith('data:image/')) {
+          const base64Data = photo.split(',')[1];
+          return total + (base64Data ? (base64Data.length * 0.75) / 1024 : 0); // Размер в KB
+        }
+        return total;
+      }, 0);
+
+      if (totalPhotoSize > 2048) { // Больше 2MB в сумме
+        return NextResponse.json({ 
+          message: 'Общий размер фотографий слишком большой (максимум 2MB). Попробуйте уменьшить размер изображений.', 
+          error: 'Photos too large'
+        }, { status: 413 });
+      }
+
+      // Дополнительная проверка на количество фотографий
+      if (json.photos.length > 3) {
+        return NextResponse.json({ 
+          message: 'Слишком много фотографий (максимум 3)', 
+          error: 'Too many photos'
+        }, { status: 400 });
+      }
+    }
     
     // Очищаем и валидируем фотографии перед обработкой
     if (json.photos && Array.isArray(json.photos)) {
@@ -90,14 +125,36 @@ export async function POST(request: Request) {
     // Валидируем данные с помощью Zod
     const validatedOrder = OrderSchema.omit({ id: true }).parse(newOrderData);
 
-    // Вставляем заказ в базу данных
-    const { data, error } = await supabaseAdmin
+    // Вставляем заказ в базу данных с таймаутом
+    const insertPromise = supabaseAdmin
       .from('orders')
       .insert(validatedOrder)
       .select()
       .single();
 
+    // Устанавливаем таймаут 30 секунд для операции вставки
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Таймаут операции вставки')), 30000);
+    });
+
+    const { data, error } = await Promise.race([insertPromise, timeoutPromise]) as any;
+
     if (error) {
+      // Специальная обработка ошибок Railway
+      if (error.message && error.message.includes('response size limit')) {
+        return NextResponse.json({ 
+          message: 'Данные слишком большие для обработки. Попробуйте уменьшить размер фотографий.', 
+          error: 'Railway response size limit exceeded'
+        }, { status: 413 });
+      }
+      
+      if (error.message && error.message.includes('client request body is buffered')) {
+        return NextResponse.json({ 
+          message: 'Запрос слишком большой. Попробуйте уменьшить размер данных.', 
+          error: 'Request body too large for Railway'
+        }, { status: 413 });
+      }
+      
       throw error;
     }
 
