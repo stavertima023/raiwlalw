@@ -9,10 +9,20 @@ import { ReturnOrderDialog } from './ReturnOrderDialog';
 import { CancelOrderDialog } from './CancelOrderDialog';
 import { AddOrderDialog } from './AddOrderDialog';
 import { Button } from '@/components/ui/button';
+import { Pagination } from '@/components/ui/pagination';
 
 interface DashboardProps {
   user: Omit<User, 'password_hash'>;
   orders: Order[];
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+  onPageChange?: (page: number) => void;
   onAddOrder: (order: Omit<Order, 'id' | 'orderDate' | 'seller'>) => void;
   onCancelOrder: (orderNumber: string) => void;
   onReturnOrder: (orderNumber: string) => void;
@@ -25,6 +35,8 @@ interface DashboardProps {
 export function Dashboard({
   user,
   orders,
+  pagination,
+  onPageChange,
   onAddOrder,
   onCancelOrder,
   onReturnOrder,
@@ -51,6 +63,11 @@ export function Dashboard({
             <p className="text-sm md:text-base text-muted-foreground">
                 Добро пожаловать, {user.name}! Здесь все ваши заказы.
             </p>
+            {pagination && (
+              <p className="text-sm text-muted-foreground mt-1">
+                Показано {orders.length} из {pagination.total} заказов (страница {pagination.page} из {pagination.totalPages})
+              </p>
+            )}
         </div>
 
         {/* Инструменты для продавца - оптимизированы для мобильных */}
@@ -159,6 +176,17 @@ export function Dashboard({
           onSearchChange={setSearchTerm}
           showSearch={true}
         />
+
+        {/* Пагинация */}
+        {pagination && onPageChange && pagination.totalPages > 1 && (
+          <div className="mt-6">
+            <Pagination
+              currentPage={pagination.page}
+              totalPages={pagination.totalPages}
+              onPageChange={onPageChange}
+            />
+          </div>
+        )}
     </div>
   );
 }

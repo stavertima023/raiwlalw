@@ -36,9 +36,10 @@ const fetcher = async (url: string) => {
 const swrConfig = {
   revalidateOnFocus: false, // Не перезагружаем при фокусе
   revalidateOnReconnect: true, // Перезагружаем при восстановлении соединения
-  dedupingInterval: 5000, // Дедупликация запросов в течение 5 секунд
+  dedupingInterval: 10000, // Увеличиваем дедупликацию до 10 секунд
   errorRetryCount: 2, // Повторяем ошибки только 2 раза
   errorRetryInterval: 1000, // Интервал между повторами
+  refreshInterval: 30000, // Автообновление каждые 30 секунд
 };
 
 type DashboardRootProps = {
@@ -52,12 +53,30 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
 
   const { toast } = useToast();
 
+  // Состояние пагинации
+  const [ordersPage, setOrdersPage] = React.useState(1);
+  const [ordersLimit] = React.useState(50);
+
   // Оптимизированные запросы с конфигурацией
-  const { data: orders = [], error: ordersError } = useSWR<Order[]>(
-    '/api/orders', 
+  const { data: ordersData = { orders: [], pagination: { total: 0 } }, error: ordersError } = useSWR<{
+    orders: Order[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
+  }>(
+    `/api/orders?page=${ordersPage}&limit=${ordersLimit}`, 
     fetcher, 
     swrConfig
   );
+  
+  // Извлекаем заказы из ответа
+  const orders = ordersData.orders || [];
+  const ordersPagination = ordersData.pagination;
   
   const { data: expenses = [], error: expensesError } = useSWR<Expense[]>(
     initialUser.role === 'Администратор' ? '/api/expenses' : null, 
