@@ -13,34 +13,7 @@ import { ExpensesList } from '@/components/admin/ExpensesList';
 import { PayoutsList } from '@/components/admin/PayoutsList';
 import AIAnalytics from '@/components/admin/AIAnalytics';
 import { Analytics } from '@/components/admin/Analytics';
-
-// Оптимизированный fetcher с кэшированием
-const fetcher = async (url: string) => {
-  const res = await fetch(url, {
-    headers: {
-      'Cache-Control': 'max-age=30', // Кэшируем на 30 секунд
-    },
-  });
-  
-  if (!res.ok) {
-    const error = new Error('Произошла ошибка при загрузке данных');
-    const info = await res.json();
-    (error as any).info = info;
-    throw error;
-  }
-  
-  return res.json();
-};
-
-// Конфигурация SWR для оптимизации
-const swrConfig = {
-  revalidateOnFocus: false, // Не перезагружаем при фокусе
-  revalidateOnReconnect: true, // Перезагружаем при восстановлении соединения
-  dedupingInterval: 10000, // Увеличиваем дедупликацию до 10 секунд
-  errorRetryCount: 2, // Повторяем ошибки только 2 раза
-  errorRetryInterval: 1000, // Интервал между повторами
-  refreshInterval: 30000, // Автообновление каждые 30 секунд
-};
+import { optimizedFetcher, swrConfig, cacheManager, getCacheStatus } from '@/lib/cache';
 
 type DashboardRootProps = {
   initialUser: Omit<User, 'password_hash'> | undefined;
@@ -53,75 +26,119 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
 
   const { toast } = useToast();
 
-  // Состояние пагинации
-  const [ordersPage, setOrdersPage] = React.useState(1);
-  const [ordersLimit] = React.useState(50);
+  // Показываем статус кэша в консоли для отладки
+  React.useEffect(() => {
+    const status = getCacheStatus();
+    console.log('📊 Статус кэша:', status);
+  }, []);
 
-  // Оптимизированные запросы с конфигурацией
-  const { data: ordersData = { orders: [], pagination: { total: 0 } }, error: ordersError } = useSWR<{
-    orders: Order[];
-    pagination: {
-      page: number;
-      limit: number;
-      total: number;
-      totalPages: number;
-      hasNext: boolean;
-      hasPrev: boolean;
-    };
-  }>(
-    `/api/orders?page=${ordersPage}&limit=${ordersLimit}`, 
-    fetcher, 
-    swrConfig
+  // Оптимизированные запросы с улучшенной конфигурацией
+  const { data: orders = [], error: ordersError, isLoading: ordersLoading } = useSWR<Order[]>(
+    '/api/orders', 
+    optimizedFetcher, 
+    {
+      ...swrConfig,
+      fallbackData: cacheManager.get('orders') || [],
+    }
   );
-  
-  // Извлекаем заказы из ответа
-  const orders = ordersData.orders || [];
-  const ordersPagination = ordersData.pagination;
   
   const { data: expenses = [], error: expensesError } = useSWR<Expense[]>(
     initialUser.role === 'Администратор' ? '/api/expenses' : null, 
-    fetcher,
-    swrConfig
+    optimizedFetcher,
+    {
+      ...swrConfig,
+      fallbackData: cacheManager.get('expenses') || [],
+    }
   );
 
   const { data: payouts = [], error: payoutsError } = useSWR<Payout[]>(
     (initialUser.role === 'Администратор' || initialUser.role === 'Продавец') ? '/api/payouts' : null, 
-    fetcher,
-    swrConfig
+    optimizedFetcher,
+    {
+      ...swrConfig,
+      fallbackData: cacheManager.get('payouts') || [],
+    }
   );
 
   const { data: debts = [], error: debtsError } = useSWR<Debt[]>(
     initialUser.role === 'Администратор' ? '/api/debts' : null, 
-    fetcher,
-    swrConfig
+    optimizedFetcher,
+    {
+      ...swrConfig,
+      fallbackData: cacheManager.get('debts') || [],
+    }
   );
 
   const { data: users = [], error: usersError } = useSWR<User[]>(
     initialUser.role === 'Администратор' ? '/api/users' : null, 
-    fetcher,
-    swrConfig
+    optimizedFetcher,
+    {
+      ...swrConfig,
+      fallbackData: cacheManager.get('users') || [],
+    }
   );
 
-  // Обработка ошибок
+  // Обработка ошибок с улучшенными сообщениями
   React.useEffect(() => {
     if (ordersError) {
-      toast({ title: 'Ошибка загрузки заказов', description: ordersError.message, variant: 'destructive' });
+      console.error('Ошибка загрузки заказов:', ordersError);
+      toast({ 
+        title: 'Ошибка загрузки заказов', 
+        description: 'Проверьте подключение к интернету и попробуйте снова', 
+        variant: 'destructive' 
+      });
     }
     if (expensesError) {
-      toast({ title: 'Ошибка загрузки расходов', description: expensesError.message, variant: 'destructive' });
+      console.error('Ошибка загрузки расходов:', expensesError);
+      toast({ 
+        title: 'Ошибка загрузки расходов', 
+        description: expensesError.message, 
+        variant: 'destructive' 
+      });
     }
     if (payoutsError) {
-      toast({ title: 'Ошибка загрузки выводов', description: payoutsError.message, variant: 'destructive' });
+      console.error('Ошибка загрузки выводов:', payoutsError);
+      toast({ 
+        title: 'Ошибка загрузки выводов', 
+        description: payoutsError.message, 
+        variant: 'destructive' 
+      });
     }
     if (debtsError) {
-      toast({ title: 'Ошибка загрузки долгов', description: debtsError.message, variant: 'destructive' });
+      console.error('Ошибка загрузки долгов:', debtsError);
+      toast({ 
+        title: 'Ошибка загрузки долгов', 
+        description: debtsError.message, 
+        variant: 'destructive' 
+      });
     }
     if (usersError) {
-      toast({ title: 'Ошибка загрузки пользователей', description: usersError.message, variant: 'destructive' });
+      console.error('Ошибка загрузки пользователей:', usersError);
+      toast({ 
+        title: 'Ошибка загрузки пользователей', 
+        description: usersError.message, 
+        variant: 'destructive' 
+      });
     }
   }, [ordersError, expensesError, payoutsError, debtsError, usersError, toast]);
 
-  // Оптимистичное добавление заказа
+  // Показываем уведомление о загрузке из кэша
+  React.useEffect(() => {
+    if (!ordersLoading && orders.length > 0) {
+      const lastUpdate = cacheManager.getLastUpdate();
+      const timeSinceUpdate = Date.now() - lastUpdate;
+      
+      if (timeSinceUpdate < 60000) { // Меньше минуты
+        toast({ 
+          title: 'Данные загружены', 
+          description: 'Используются кэшированные данные для быстрой работы', 
+          duration: 2000
+        });
+      }
+    }
+  }, [ordersLoading, orders.length, toast]);
+
+  // Оптимистичное добавление заказа с кэшированием
   const handleAddOrder = async (newOrderData: Omit<Order, 'id' | 'orderDate' | 'seller'>) => {
     // Создаем временный заказ для оптимистичного обновления
     const tempOrder: Order = {
@@ -131,8 +148,9 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       ...newOrderData,
     };
 
-    // Оптимистично обновляем UI
+    // Оптимистично обновляем UI и кэш
     mutate('/api/orders', (currentOrders: Order[] = []) => [tempOrder, ...currentOrders], false);
+    cacheManager.set('orders', [tempOrder, ...orders]);
 
     try {
       const response = await fetch('/api/orders', {
@@ -146,6 +164,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       if (!response.ok) {
         // Откатываем оптимистичное обновление при ошибке
         mutate('/api/orders');
+        cacheManager.set('orders', orders);
         
         let errorMessage = responseData.message || 'Произошла ошибка';
         
@@ -174,7 +193,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
         throw new Error(errorMessage);
       }
       
-      // Обновляем данные с сервера
+      // Обновляем данные с сервера и кэш
       mutate('/api/orders');
       toast({ title: 'Заказ успешно добавлен' });
     } catch (error: any) {
@@ -186,15 +205,15 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     }
   };
   
-  // Оптимистичное обновление статуса заказа
+  // Оптимистичное обновление статуса заказа с кэшированием
   const handleUpdateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
-    // Оптимистично обновляем UI
-    mutate('/api/orders', (currentOrders: Order[] = []) => 
-      currentOrders.map(order => 
-        order.id === orderId ? { ...order, status: newStatus } : order
-      ), 
-      false
+    // Оптимистично обновляем UI и кэш
+    const updatedOrders = orders.map(order => 
+      order.id === orderId ? { ...order, status: newStatus } : order
     );
+    
+    mutate('/api/orders', updatedOrders, false);
+    cacheManager.set('orders', updatedOrders);
 
     try {
       const response = await fetch(`/api/orders/${orderId}`, {
@@ -207,6 +226,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
         const err = await response.json();
         // Откатываем при ошибке
         mutate('/api/orders');
+        cacheManager.set('orders', orders);
         throw new Error(err.message || 'Server error');
       }
       
@@ -357,6 +377,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
            return <Dashboard 
             user={initialUser} 
             orders={orders}
+            isLoading={ordersLoading}
             onAddOrder={handleAddOrder} 
             onCancelOrder={handleCancelOrder}
             onReturnOrder={handleReturnOrder}
@@ -372,6 +393,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
                 currentUser={initialUser}
                 onUpdateStatus={handleUpdateOrderStatus}
                 allOrders={orders}
+                isLoading={ordersLoading}
               />
           )
         }

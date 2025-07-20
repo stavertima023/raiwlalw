@@ -8,31 +8,7 @@ import { cleanImageArray } from '@/lib/imageUtils';
 export const maxDuration = 90; // 90 секунд
 export const dynamic = 'force-dynamic';
 
-// Кэш для заказов (в продакшене лучше использовать Redis)
-const ordersCache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_DURATION = 30 * 1000; // 30 секунд
-
-// Функция для получения кэшированных данных
-function getCachedOrders(cacheKey: string) {
-  const cached = ordersCache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-    return cached.data;
-  }
-  return null;
-}
-
-// Функция для сохранения данных в кэш
-function setCachedOrders(cacheKey: string, data: any) {
-  ordersCache.set(cacheKey, { data, timestamp: Date.now() });
-  
-  // Очищаем старые записи из кэша (оставляем только последние 100)
-  if (ordersCache.size > 100) {
-    const entries = Array.from(ordersCache.entries());
-    entries.slice(0, 50).forEach(([key]) => ordersCache.delete(key));
-  }
-}
-
-export async function GET(request: Request) {
+export async function GET() {
   try {
     // Check supabaseAdmin availability
     if (!supabaseAdmin) {
@@ -46,76 +22,30 @@ export async function GET(request: Request) {
       return NextResponse.json({ message: 'Пользователь не авторизован' }, { status: 401 });
     }
 
-    // Получаем параметры запроса
-    const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '50'); // Ограничиваем количество заказов
-    const status = searchParams.get('status');
-    const seller = searchParams.get('seller');
-    
-    // Создаем ключ кэша
-    const cacheKey = `orders_${user.role}_${user.username}_${page}_${limit}_${status}_${seller}`;
-    
-    // Проверяем кэш
-    const cachedData = getCachedOrders(cacheKey);
-    if (cachedData) {
-      return NextResponse.json(cachedData, {
-        headers: {
-          'X-Cache': 'HIT',
-          'Cache-Control': 'public, max-age=30',
-        }
-      });
-    }
-
-    // Оптимизированный запрос с пагинацией
+    // Оптимизированный запрос с выбором только нужных полей
     let query = supabaseAdmin
       .from('orders')
-      .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment', { count: 'exact' })
-      .order('orderDate', { ascending: false })
-      .range((page - 1) * limit, page * limit - 1);
+      .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment')
+      .order('orderDate', { ascending: false });
 
-    // Применяем фильтры
+    // Если пользователь продавец, фильтруем только его заказы
     if (user.role === 'Продавец') {
       query = query.eq('seller', user.username);
-    } else if (seller && seller !== 'all') {
-      query = query.eq('seller', seller);
     }
     
-    if (status && status !== 'all') {
-      query = query.eq('status', status);
-    }
-    
-    const { data, error, count } = await query;
+    const { data, error } = await query;
 
     if (error) {
       throw error;
     }
 
     // Парсим даты и возвращаем данные
-    const parsedData = {
-      orders: data.map(item => ({
-        ...item, 
-        orderDate: new Date(item.orderDate)
-      })),
-      pagination: {
-        page,
-        limit,
-        total: count || 0,
-        totalPages: Math.ceil((count || 0) / limit),
-        hasNext: page * limit < (count || 0),
-        hasPrev: page > 1
-      }
-    };
+    const parsedData = data.map(item => ({
+      ...item, 
+      orderDate: new Date(item.orderDate)
+    }));
 
-    // Сохраняем в кэш
-    setCachedOrders(cacheKey, parsedData);
-
-    return NextResponse.json(parsedData, {
-      headers: {
-        'X-Cache': 'MISS',
-        'Cache-Control': 'public, max-age=30',
-      }
-    });
+    return NextResponse.json(parsedData);
   } catch (error: any) {
     return NextResponse.json({ 
       message: 'Ошибка загрузки заказов', 

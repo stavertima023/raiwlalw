@@ -8,17 +8,20 @@ import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/ca
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from '@/components/ui/badge';
 import Filters from '@/components/dashboard/Filters';
+import { LoadingIndicator } from '@/components/ui/loading-indicator';
 
 interface PrinterDashboardProps {
   currentUser: User;
   onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void;
   allOrders: Order[];
+  isLoading?: boolean;
 }
 
 export function PrinterDashboard({
   currentUser,
   onUpdateStatus,
   allOrders,
+  isLoading = false,
 }: PrinterDashboardProps) {
   const [filters, setFilters] = React.useState({
     status: 'all' as OrderStatus | 'all',
@@ -57,6 +60,14 @@ export function PrinterDashboard({
         </CardHeader>
       </Card>
 
+      {/* Индикатор загрузки */}
+      <LoadingIndicator 
+        isLoading={isLoading}
+        dataCount={allOrders.length}
+        dataType="заказов"
+        showCacheStatus={true}
+      />
+
       <Filters onFilterChange={setFilters} currentFilters={filters} />
       
        <Tabs defaultValue="production" className="w-full">
@@ -82,6 +93,7 @@ export function PrinterDashboard({
                 currentUser={currentUser} 
                 onUpdateStatus={onUpdateStatus}
                 useLargeLayout={true}
+                isLoading={isLoading}
             />
         </TabsContent>
         <TabsContent value="shipment">
@@ -90,6 +102,7 @@ export function PrinterDashboard({
                 currentUser={currentUser} 
                 onUpdateStatus={onUpdateStatus}
                 useLargeLayout={true}
+                isLoading={isLoading}
             />
         </TabsContent>
         <TabsContent value="all">
@@ -98,6 +111,7 @@ export function PrinterDashboard({
                 currentUser={currentUser} 
                 onUpdateStatus={onUpdateStatus}
                 useLargeLayout={true}
+                isLoading={isLoading}
             />
         </TabsContent>
       </Tabs>
