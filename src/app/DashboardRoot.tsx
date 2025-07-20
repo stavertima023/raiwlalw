@@ -1,396 +1,291 @@
 'use client';
 
-import * as React from 'react';
-import useSWR, { mutate } from 'swr';
-import { Order, OrderStatus, User, Expense, Payout, PayoutStatus, Debt } from '@/lib/types';
-import { useToast } from '@/hooks/use-toast';
-import { AppLayout } from '@/components/layout/AppLayout';
-import { Dashboard } from '@/components/dashboard/Dashboard';
-import { PrinterDashboard } from '@/components/printer/PrinterDashboard';
-import { AdminOrderList } from '@/components/admin/AdminOrderList';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ExpensesList } from '@/components/admin/ExpensesList';
-import { PayoutsList } from '@/components/admin/PayoutsList';
-import AIAnalytics from '@/components/admin/AIAnalytics';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSession } from '@/lib/session';
+import { OrderForm } from '@/components/dashboard/OrderForm';
+import { OrderTable } from '@/components/dashboard/OrderTable';
 import { Analytics } from '@/components/admin/Analytics';
+import { AddExpenseForm } from '@/components/admin/AddExpenseForm';
+import { SimpleDebtsSection } from '@/components/admin/SimpleDebtsSection';
+import useSWR, { mutate } from 'swr';
 
-// Оптимизированный fetcher с кэшированием
+// Функция для получения данных с пагинацией
 const fetcher = async (url: string) => {
-  const res = await fetch(url, {
-    headers: {
-      'Cache-Control': 'max-age=30', // Кэшируем на 30 секунд
-    },
-  });
-  
-  if (!res.ok) {
-    const error = new Error('Произошла ошибка при загрузке данных');
-    const info = await res.json();
-    (error as any).info = info;
-    throw error;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error('Network response was not ok');
   }
-  
-  return res.json();
+  return response.json();
 };
 
-// Конфигурация SWR для оптимизации
-const swrConfig = {
-  revalidateOnFocus: false, // Не перезагружаем при фокусе
-  revalidateOnReconnect: true, // Перезагружаем при восстановлении соединения
-  dedupingInterval: 5000, // Дедупликация запросов в течение 5 секунд
-  errorRetryCount: 2, // Повторяем ошибки только 2 раза
-  errorRetryInterval: 1000, // Интервал между повторами
-};
+export default function DashboardRoot() {
+  const { user, isLoggedIn } = useSession();
+  const [activeTab, setActiveTab] = useState('orders');
+  const [ordersPage, setOrdersPage] = useState(1);
+  const [expensesPage, setExpensesPage] = useState(1);
+  const [hasMoreOrders, setHasMoreOrders] = useState(true);
+  const [hasMoreExpenses, setHasMoreExpenses] = useState(true);
 
-type DashboardRootProps = {
-  initialUser: Omit<User, 'password_hash'> | undefined;
-}
-
-export default function DashboardRoot({ initialUser }: DashboardRootProps) {
-  if (!initialUser) {
-    return null;
-  }
-
-  const { toast } = useToast();
-
-  // Оптимизированные запросы с конфигурацией
-  const { data: orders = [], error: ordersError } = useSWR<Order[]>(
-    '/api/orders', 
-    fetcher, 
-    swrConfig
+  // Мемоизированные ключи для SWR
+  const ordersKey = useMemo(() => 
+    `/api/orders?page=${ordersPage}&limit=50`, [ordersPage]
   );
-  
-  const { data: expenses = [], error: expensesError } = useSWR<Expense[]>(
-    initialUser.role === 'Администратор' ? '/api/expenses' : null, 
+  const expensesKey = useMemo(() => 
+    `/api/expenses?page=${expensesPage}&limit=50`, [expensesPage]
+  );
+  const debtsKey = useMemo(() => '/api/debts', []);
+
+  // Запросы данных с пагинацией
+  const { data: ordersData, error: ordersError, mutate: mutateOrders } = useSWR(
+    activeTab === 'orders' ? ordersKey : null,
     fetcher,
-    swrConfig
+    { 
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 5000
+    }
   );
 
-  const { data: payouts = [], error: payoutsError } = useSWR<Payout[]>(
-    (initialUser.role === 'Администратор' || initialUser.role === 'Продавец') ? '/api/payouts' : null, 
+  const { data: expensesData, error: expensesError, mutate: mutateExpenses } = useSWR(
+    activeTab === 'expenses' ? expensesKey : null,
     fetcher,
-    swrConfig
+    { 
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 5000
+    }
   );
 
-  const { data: debts = [], error: debtsError } = useSWR<Debt[]>(
-    initialUser.role === 'Администратор' ? '/api/debts' : null, 
+  const { data: debtsData, error: debtsError, mutate: mutateDebts } = useSWR(
+    activeTab === 'expenses' ? debtsKey : null,
     fetcher,
-    swrConfig
+    { 
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 10000
+    }
   );
 
-  const { data: users = [], error: usersError } = useSWR<User[]>(
-    initialUser.role === 'Администратор' ? '/api/users' : null, 
-    fetcher,
-    swrConfig
-  );
+  // Обновляем состояние пагинации
+  useEffect(() => {
+    if (ordersData) {
+      setHasMoreOrders(ordersData.hasMore);
+    }
+  }, [ordersData]);
 
-  // Обработка ошибок
-  React.useEffect(() => {
-    if (ordersError) {
-      toast({ title: 'Ошибка загрузки заказов', description: ordersError.message, variant: 'destructive' });
+  useEffect(() => {
+    if (expensesData) {
+      setHasMoreExpenses(expensesData.hasMore);
     }
-    if (expensesError) {
-      toast({ title: 'Ошибка загрузки расходов', description: expensesError.message, variant: 'destructive' });
-    }
-    if (payoutsError) {
-      toast({ title: 'Ошибка загрузки выводов', description: payoutsError.message, variant: 'destructive' });
-    }
-    if (debtsError) {
-      toast({ title: 'Ошибка загрузки долгов', description: debtsError.message, variant: 'destructive' });
-    }
-    if (usersError) {
-      toast({ title: 'Ошибка загрузки пользователей', description: usersError.message, variant: 'destructive' });
-    }
-  }, [ordersError, expensesError, payoutsError, debtsError, usersError, toast]);
+  }, [expensesData]);
 
-  // Оптимистичное добавление заказа
-  const handleAddOrder = async (newOrderData: Omit<Order, 'id' | 'orderDate' | 'seller'>) => {
-    // Создаем временный заказ для оптимистичного обновления
-    const tempOrder: Order = {
-      id: `temp-${Date.now()}`,
-      orderDate: new Date(),
-      seller: initialUser.username,
-      ...newOrderData,
-    };
-
-    // Оптимистично обновляем UI
-    mutate('/api/orders', (currentOrders: Order[] = []) => [tempOrder, ...currentOrders], false);
-
-    try {
-      const response = await fetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newOrderData),
-      });
-      
-      const responseData = await response.json();
-      
-      if (!response.ok) {
-        // Откатываем оптимистичное обновление при ошибке
-        mutate('/api/orders');
-        
-        let errorMessage = responseData.message || 'Произошла ошибка';
-        
-        if (responseData.errors) {
-          const errorDetails = responseData.errors.map((e: any) => {
-            const field = e.path.join('.');
-            const message = e.message;
-            // Переводим названия полей на русский
-            const fieldNames: { [key: string]: string } = {
-              'orderNumber': 'Номер заказа',
-              'shipmentNumber': 'Номер отправления',
-              'productType': 'Тип товара',
-              'size': 'Размер',
-              'price': 'Цена',
-              'comment': 'Комментарий',
-              'photos': 'Фотографии'
-            };
-            const fieldName = fieldNames[field] || field;
-            return `${fieldName}: ${message}`;
-          }).join(', ');
-          errorMessage += `: ${errorDetails}`;
-        } else if (responseData.error) {
-          errorMessage += `: ${responseData.error}`;
-        }
-        
-        throw new Error(errorMessage);
-      }
-      
-      // Обновляем данные с сервера
-      mutate('/api/orders');
-      toast({ title: 'Заказ успешно добавлен' });
-    } catch (error: any) {
-      toast({ 
-        title: 'Ошибка добавления заказа', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+  // Функции для загрузки следующей страницы
+  const loadMoreOrders = useCallback(() => {
+    if (hasMoreOrders) {
+      setOrdersPage(prev => prev + 1);
     }
-  };
-  
-  // Оптимистичное обновление статуса заказа
-  const handleUpdateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
-    // Оптимистично обновляем UI
-    mutate('/api/orders', (currentOrders: Order[] = []) => 
-      currentOrders.map(order => 
-        order.id === orderId ? { ...order, status: newStatus } : order
-      ), 
-      false
+  }, [hasMoreOrders]);
+
+  const loadMoreExpenses = useCallback(() => {
+    if (hasMoreExpenses) {
+      setExpensesPage(prev => prev + 1);
+    }
+  }, [hasMoreExpenses]);
+
+  // Функции для обновления данных
+  const refreshOrders = useCallback(() => {
+    setOrdersPage(1);
+    mutateOrders();
+  }, [mutateOrders]);
+
+  const refreshExpenses = useCallback(() => {
+    setExpensesPage(1);
+    mutateExpenses();
+  }, [mutateExpenses]);
+
+  const refreshDebts = useCallback(() => {
+    mutateDebts();
+  }, [mutateDebts]);
+
+  // Обработчики успешного добавления
+  const handleOrderAdded = useCallback(() => {
+    refreshOrders();
+  }, [refreshOrders]);
+
+  const handleExpenseAdded = useCallback(() => {
+    refreshExpenses();
+    refreshDebts();
+  }, [refreshExpenses, refreshDebts]);
+
+  const handleDebtPaid = useCallback(() => {
+    refreshDebts();
+  }, [refreshDebts]);
+
+  if (!isLoggedIn) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">
+            Доступ запрещен
+          </h1>
+          <p className="text-gray-600">
+            Пожалуйста, войдите в систему для доступа к панели управления.
+          </p>
+        </div>
+      </div>
     );
-
-    try {
-      const response = await fetch(`/api/orders/${orderId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
-      });
-      
-      if (!response.ok) {
-        const err = await response.json();
-        // Откатываем при ошибке
-        mutate('/api/orders');
-        throw new Error(err.message || 'Server error');
-      }
-      
-      // Обновляем данные с сервера
-      mutate('/api/orders');
-      toast({ 
-        title: 'Статус заказа обновлен', 
-        description: `Заказ получил новый статус: "${newStatus}".` 
-      });
-    } catch (error: any) {
-      toast({ 
-        title: 'Ошибка обновления статуса', 
-        description: error.message, 
-        variant: 'destructive' 
-      });
-    }
-  };
-  
-  // Оптимизированное добавление расхода
-  const handleAddExpense = async (newExpenseData: Omit<Expense, 'id' | 'date'>) => {
-    try {
-      const response = await fetch('/api/expenses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newExpenseData),
-      });
-      
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.message || 'Server error');
-      }
-      
-      // Обновляем данные
-      mutate('/api/expenses');
-      mutate('/api/debts');
-      toast({ title: 'Расход успешно добавлен' });
-    } catch (error: any) {
-      toast({ 
-        title: 'Ошибка добавления расхода', 
-        description: error.message, 
-        variant: 'destructive' 
-      });
-    }
   }
-
-  const handleDebtUpdate = () => {
-    mutate('/api/debts');
-  };
-
-  const handleUpdatePayoutStatus = async (payoutId: string, newStatus: PayoutStatus) => {
-    try {
-      const response = await fetch(`/api/payouts/${payoutId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
-      });
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.message || 'Server error');
-      }
-      mutate('/api/payouts');
-      toast({ title: 'Статус вывода обновлен' });
-    } catch (error: any) {
-      toast({ 
-        title: 'Ошибка обновления статуса', 
-        description: error.message, 
-        variant: 'destructive' 
-      });
-    }
-  }
-
-  const handleCancelOrder = (orderNumber: string) => {
-    const order = findOrder(orderNumber);
-    if (order?.id) handleUpdateOrderStatus(order.id, 'Отменен');
-  };
-  
-  const handleReturnOrder = (orderNumber: string) => {
-    const order = findOrder(orderNumber);
-    if (order?.id) handleUpdateOrderStatus(order.id, 'Возврат');
-  };
-
-  const handlePayout = async (orderNumbers: string[]) => {
-    try {
-      const selectedOrders = findOrders(orderNumbers);
-      const totalAmount = selectedOrders.reduce((sum, order) => sum + order.price, 0);
-      
-      const payoutData = {
-        orderNumbers,
-        amount: totalAmount,
-        orderCount: selectedOrders.length,
-        seller: initialUser.username,
-        comment: `Выплата по заказам: ${orderNumbers.join(', ')}`,
-      };
-
-      const response = await fetch('/api/payouts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payoutData),
-      });
-
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.message || 'Ошибка создания выплаты');
-      }
-
-      // Обновляем данные
-      mutate('/api/orders');
-      mutate('/api/payouts');
-      
-      toast({ 
-        title: 'Выплата создана', 
-        description: `Создана выплата на сумму ${totalAmount.toLocaleString('ru-RU')} ₽ по ${selectedOrders.length} заказ(ам). Заказы отмечены как "Исполнен".` 
-      });
-    } catch (error: any) {
-      toast({ 
-        title: 'Ошибка создания выплаты', 
-        description: error.message, 
-        variant: 'destructive' 
-      });
-    }
-  };
-
-  // Мемоизированные функции поиска
-  const findOrder = React.useCallback((orderNumber: string): Order | undefined => {
-    return orders.find((order: Order) => order.orderNumber === orderNumber);
-  }, [orders]);
-  
-  const findOrders = React.useCallback((orderNumbers: string[]): Order[] => {
-    return orders.filter((order: Order) => orderNumbers.includes(order.orderNumber));
-  }, [orders]);
-
-  const PlaceholderComponent = ({ title, description }: { title: string, description: string }) => (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <p>Этот раздел находится в разработке. Полный функционал будет добавлен в следующих итерациях.</p>
-      </CardContent>
-    </Card>
-  )
 
   return (
-    <AppLayout currentUser={initialUser}>
-      {(activeView: string) => {
-        if (initialUser.role === 'Продавец') {
-           return <Dashboard 
-            user={initialUser} 
-            orders={orders}
-            onAddOrder={handleAddOrder} 
-            onCancelOrder={handleCancelOrder}
-            onReturnOrder={handleReturnOrder}
-            findOrder={findOrder}
-            findOrders={findOrders}
-            onPayout={handlePayout}
-            onUpdateStatus={handleUpdateOrderStatus}
-          />
-        }
-        if (initialUser.role === 'Принтовщик') {
-          return (
-             <PrinterDashboard
-                currentUser={initialUser}
-                onUpdateStatus={handleUpdateOrderStatus}
-                allOrders={orders}
+    <div className="min-h-screen bg-gray-50">
+      {/* Заголовок */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                Панель управления
+              </h1>
+              <p className="text-sm text-gray-600">
+                Добро пожаловать, {user?.username || 'Пользователь'}
+              </p>
+            </div>
+            <div className="text-sm text-gray-500">
+              Роль: {user?.role || 'Неизвестно'}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Навигация */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="border-b border-gray-200 mb-6">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab('orders')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'orders'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Заказы
+            </button>
+            <button
+              onClick={() => setActiveTab('expenses')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'expenses'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Расходы
+            </button>
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'analytics'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Аналитика
+            </button>
+          </nav>
+        </div>
+
+        {/* Контент */}
+        <div className="space-y-6">
+          {/* Вкладка Заказы */}
+          {activeTab === 'orders' && (
+            <div className="space-y-6">
+              <OrderForm onOrderAdded={handleOrderAdded} />
+              
+              <div className="bg-white shadow rounded-lg">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h2 className="text-lg font-medium text-gray-900">
+                    Список заказов
+                  </h2>
+                </div>
+                <OrderTable 
+                  orders={ordersData?.orders || []}
+                  error={ordersError}
+                  onRefresh={refreshOrders}
+                  hasMore={hasMoreOrders}
+                  onLoadMore={loadMoreOrders}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Вкладка Расходы */}
+          {activeTab === 'expenses' && (
+            <div className="space-y-6">
+              <AddExpenseForm onExpenseAdded={handleExpenseAdded} />
+              
+              <div className="bg-white shadow rounded-lg">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h2 className="text-lg font-medium text-gray-900">
+                    Список расходов
+                  </h2>
+                </div>
+                <div className="p-6">
+                  {expensesError ? (
+                    <div className="text-red-600">
+                      Ошибка загрузки расходов: {expensesError.message}
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {expensesData?.expenses?.map((expense: any) => (
+                        <div key={expense.id} className="border rounded-lg p-4">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h3 className="font-medium">{expense.category}</h3>
+                              <p className="text-sm text-gray-600">{expense.description}</p>
+                              <p className="text-sm text-gray-500">
+                                {new Date(expense.date).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-medium">{expense.amount} ₽</p>
+                              <p className="text-sm text-gray-500">{expense.responsible}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      {hasMoreExpenses && (
+                        <button
+                          onClick={loadMoreExpenses}
+                          className="w-full py-2 px-4 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                        >
+                          Загрузить еще
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Секция долгов */}
+              <SimpleDebtsSection 
+                debts={debtsData || []}
+                error={debtsError}
+                onDebtPaid={handleDebtPaid}
               />
-          )
-        }
-        if (initialUser.role === 'Администратор') {
-          switch (activeView) {
-            case 'admin-orders':
-              return <AdminOrderList allOrders={orders} allUsers={users} />;
-            case 'admin-expenses':
-              return <ExpensesList 
-                        allExpenses={expenses} 
-                        allUsers={users} 
-                        onAddExpense={handleAddExpense}
-                        currentUser={initialUser}
-                        debts={debts}
-                        onDebtUpdate={handleDebtUpdate}
-                      />;
-            case 'admin-payouts':
-              return <PayoutsList 
-                        allPayouts={payouts} 
-                        allUsers={users} 
-                        onUpdateStatus={handleUpdatePayoutStatus}
-                        currentUser={initialUser}
-                      />;
-            case 'admin-analytics':
-              return <Analytics 
-                        orders={orders} 
-                        users={users} 
-                        expenses={expenses} 
-                        payouts={payouts} 
-                      />;
-            case 'admin-ai-analytics':
-               return <AIAnalytics orders={orders} expenses={expenses} />;
-            default:
-              return <AdminOrderList allOrders={orders} allUsers={users} />;
-          }
-        }
-        return null;
-      }}
-    </AppLayout>
+            </div>
+          )}
+
+          {/* Вкладка Аналитика */}
+          {activeTab === 'analytics' && (
+            <Analytics 
+              orders={ordersData?.orders || []}
+              expenses={expensesData?.expenses || []}
+              debts={debtsData || []}
+            />
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

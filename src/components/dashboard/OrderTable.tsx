@@ -391,6 +391,9 @@ const OrderTableRow = React.memo<{
     return null;
   }, [currentUser?.role, renderPrinterActions, renderSellerActions]);
 
+  // Определяем порядок столбцов в зависимости от роли пользователя
+  const isPrinter = currentUser?.role === 'Принтовщик';
+
   return (
     <TableRow key={order.id}>
       <TableCell className="font-medium">{order.orderNumber}</TableCell>
@@ -399,12 +402,27 @@ const OrderTableRow = React.memo<{
         <StatusBadge status={order.status} useLargeLayout={useLargeLayout} />
       </TableCell>
       <TableCell>{order.productType}</TableCell>
-      <TableCell>{order.size}</TableCell>
-      <TableCell>{order.seller}</TableCell>
-      <TableCell className="text-right">{order.price.toLocaleString('ru-RU')} ₽</TableCell>
-      <TableCell>
-        <OrderPhotos photos={order.photos || []} size={photoSize} />
-      </TableCell>
+      {isPrinter ? (
+        // Для принтовщика: Размер рядом с Фото
+        <>
+          <TableCell>{order.seller}</TableCell>
+          <TableCell className="text-right">{order.price.toLocaleString('ru-RU')} ₽</TableCell>
+          <TableCell>{order.size}</TableCell>
+          <TableCell>
+            <OrderPhotos photos={order.photos || []} size={photoSize} />
+          </TableCell>
+        </>
+      ) : (
+        // Для остальных: стандартный порядок
+        <>
+          <TableCell>{order.size}</TableCell>
+          <TableCell>{order.seller}</TableCell>
+          <TableCell className="text-right">{order.price.toLocaleString('ru-RU')} ₽</TableCell>
+          <TableCell>
+            <OrderPhotos photos={order.photos || []} size={photoSize} />
+          </TableCell>
+        </>
+      )}
       <TableCell>{order.comment}</TableCell>
       <TableCell>{format(new Date(order.orderDate), 'dd.MM.yyyy HH:mm', { locale: ru })}</TableCell>
       <TableCell>{renderActionsCell(order)}</TableCell>
@@ -479,10 +497,23 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
               <TableHead>Номер отправления</TableHead>
               <TableHead>Статус</TableHead>
               <TableHead>Тип товара</TableHead>
-              <TableHead>Размер</TableHead>
-              <TableHead>Продавец</TableHead>
-              <TableHead className="text-right">Цена</TableHead>
-              <TableHead>Фото</TableHead>
+              {currentUser?.role === 'Принтовщик' ? (
+                // Для принтовщика: Размер рядом с Фото
+                <>
+                  <TableHead>Продавец</TableHead>
+                  <TableHead className="text-right">Цена</TableHead>
+                  <TableHead>Размер</TableHead>
+                  <TableHead>Фото</TableHead>
+                </>
+              ) : (
+                // Для остальных: стандартный порядок
+                <>
+                  <TableHead>Размер</TableHead>
+                  <TableHead>Продавец</TableHead>
+                  <TableHead className="text-right">Цена</TableHead>
+                  <TableHead>Фото</TableHead>
+                </>
+              )}
               <TableHead>Комментарий</TableHead>
               <TableHead>Дата</TableHead>
               <TableHead>Действия</TableHead>
