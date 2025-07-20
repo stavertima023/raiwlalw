@@ -393,30 +393,31 @@ const OrderTableRow = React.memo<{
 
   return (
     <TableRow key={order.id}>
-      <TableCell className="font-medium">{order.orderNumber}</TableCell>
-      <TableCell>{order.shipmentNumber}</TableCell>
-      <TableCell>
+      <TableCell className="font-medium min-w-[120px]">{order.orderNumber}</TableCell>
+      <TableCell className="min-w-[120px]">{order.shipmentNumber}</TableCell>
+      <TableCell className="min-w-[100px]">
         <StatusBadge status={order.status} useLargeLayout={useLargeLayout} />
       </TableCell>
-      <TableCell>{order.productType}</TableCell>
+      <TableCell className="min-w-[80px]">{order.productType}</TableCell>
       {currentUser?.role === 'Принтовщик' ? (
         <>
-          <TableCell className="text-right">{order.price.toLocaleString('ru-RU')} ₽</TableCell>
-          <TableCell>{order.size}</TableCell>
+          <TableCell className="text-right min-w-[80px]">{order.price.toLocaleString('ru-RU')} ₽</TableCell>
+          <TableCell className="min-w-[100px]">{order.seller}</TableCell>
+          <TableCell className="min-w-[80px]">{order.size}</TableCell>
         </>
       ) : (
         <>
-          <TableCell>{order.size}</TableCell>
-          <TableCell className="text-right">{order.price.toLocaleString('ru-RU')} ₽</TableCell>
+          <TableCell className="min-w-[80px]">{order.size}</TableCell>
+          <TableCell className="text-right min-w-[80px]">{order.price.toLocaleString('ru-RU')} ₽</TableCell>
+          <TableCell className="min-w-[100px]">{order.seller}</TableCell>
         </>
       )}
-      <TableCell>{order.seller}</TableCell>
-      <TableCell>
+      <TableCell className="min-w-[120px]">
         <OrderPhotos photos={order.photos || []} size={photoSize} />
       </TableCell>
-      <TableCell>{order.comment}</TableCell>
-      <TableCell>{format(new Date(order.orderDate), 'dd.MM.yyyy HH:mm', { locale: ru })}</TableCell>
-      <TableCell>{renderActionsCell(order)}</TableCell>
+      <TableCell className="min-w-[150px]">{order.comment}</TableCell>
+      <TableCell className="min-w-[120px]">{format(new Date(order.orderDate), 'dd.MM.yyyy HH:mm', { locale: ru })}</TableCell>
+      <TableCell className="min-w-[100px]">{renderActionsCell(order)}</TableCell>
     </TableRow>
   );
 });
@@ -480,30 +481,31 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
         </div>
       )}
       
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Номер заказа</TableHead>
-              <TableHead>Номер отправления</TableHead>
-              <TableHead>Статус</TableHead>
-              <TableHead>Тип товара</TableHead>
+              <TableHead className="min-w-[120px]">Номер заказа</TableHead>
+              <TableHead className="min-w-[120px]">Номер отправления</TableHead>
+              <TableHead className="min-w-[100px]">Статус</TableHead>
+              <TableHead className="min-w-[80px]">Тип товара</TableHead>
               {currentUser?.role === 'Принтовщик' ? (
                 <>
-                  <TableHead className="text-right">Цена</TableHead>
-                  <TableHead>Размер</TableHead>
+                  <TableHead className="text-right min-w-[80px]">Цена</TableHead>
+                  <TableHead className="min-w-[100px]">Продавец</TableHead>
+                  <TableHead className="min-w-[80px]">Размер</TableHead>
                 </>
               ) : (
                 <>
-                  <TableHead>Размер</TableHead>
-                  <TableHead className="text-right">Цена</TableHead>
+                  <TableHead className="min-w-[80px]">Размер</TableHead>
+                  <TableHead className="text-right min-w-[80px]">Цена</TableHead>
+                  <TableHead className="min-w-[100px]">Продавец</TableHead>
                 </>
               )}
-              <TableHead>Продавец</TableHead>
-              <TableHead>Фото</TableHead>
-              <TableHead>Комментарий</TableHead>
-              <TableHead>Дата</TableHead>
-              <TableHead>Действия</TableHead>
+              <TableHead className="min-w-[120px]">Фото</TableHead>
+              <TableHead className="min-w-[150px]">Комментарий</TableHead>
+              <TableHead className="min-w-[120px]">Дата</TableHead>
+              <TableHead className="min-w-[100px]">Действия</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
