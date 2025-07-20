@@ -60,26 +60,20 @@ export function PrinterDashboard({
       <Filters onFilterChange={setFilters} currentFilters={filters} />
       
        <Tabs defaultValue="production" className="w-full">
-        <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 gap-1 p-1">
-          <TabsTrigger 
-            value="production" 
-            className="flex flex-col items-center justify-center min-h-[60px] text-xs sm:text-sm px-2 py-3"
-          >
-            <span className="whitespace-nowrap">На изготовление</span>
-            <Badge variant="secondary" className="ml-1 mt-1 text-xs">{ordersForProduction.length}</Badge>
+        <TabsList className="grid w-full grid-cols-3 gap-1 p-1">
+          <TabsTrigger value="production" className="text-xs px-2 py-1">
+            <span className="hidden sm:inline">На изготовление</span>
+            <span className="sm:hidden">Изготовление</span>
+            <Badge variant="secondary" className="ml-1 text-xs">{ordersForProduction.length}</Badge>
           </TabsTrigger>
-          <TabsTrigger 
-            value="shipment" 
-            className="flex flex-col items-center justify-center min-h-[60px] text-xs sm:text-sm px-2 py-3"
-          >
-            <span className="whitespace-nowrap">На отправку</span>
-            <Badge variant="secondary" className="ml-1 mt-1 text-xs">{ordersForShipment.length}</Badge>
+          <TabsTrigger value="shipment" className="text-xs px-2 py-1">
+            <span className="hidden sm:inline">На отправку</span>
+            <span className="sm:hidden">Отправка</span>
+            <Badge variant="secondary" className="ml-1 text-xs">{ordersForShipment.length}</Badge>
           </TabsTrigger>
-          <TabsTrigger 
-            value="all" 
-            className="flex flex-col items-center justify-center min-h-[60px] text-xs sm:text-sm px-2 py-3"
-          >
-            <span className="whitespace-nowrap">Все заказы</span>
+          <TabsTrigger value="all" className="text-xs px-2 py-1">
+            Все заказы
+            <Badge variant="secondary" className="ml-1 text-xs">{filteredOrders.length}</Badge>
           </TabsTrigger>
         </TabsList>
         <TabsContent value="production">
