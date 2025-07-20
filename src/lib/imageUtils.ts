@@ -1,236 +1,385 @@
-// Утилиты для работы с изображениями
-import { serverConfig } from './serverConfig';
+/**
+ * Утилиты для безопасной обработки изображений
+ * Специально оптимизированы для iOS устройств
+ */
 
-// Функция для безопасного преобразования File в base64
-export async function fileToBase64(file: File): Promise<string> {
+export interface ImageProcessingResult {
+  success: boolean;
+  dataUrl?: string;
+  error?: string;
+}
+
+/**
+ * Сжимает изображение до указанного качества и размера
+ * Более агрессивное сжатие для предотвращения ошибок Kong
+ */
+export const compressImage = (file: File, maxWidth: number = 800, quality: number = 0.6): Promise<File> => {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    
-    reader.onload = () => {
-      const result = reader.result as string;
-      if (result) {
-        resolve(result);
-      } else {
-        reject(new Error('Failed to convert file to base64'));
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+
+    img.onload = () => {
+      try {
+        // Вычисляем новые размеры с сохранением пропорций
+        let { width, height } = img;
+        
+        // Более агрессивное уменьшение размера
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+
+        // Дополнительное уменьшение для очень больших изображений
+        if (file.size > 3 * 1024 * 1024) { // 3MB
+          const scale = 0.7;
+          width *= scale;
+          height *= scale;
+        }
+
+        // Устанавливаем размеры canvas
+        canvas.width = width;
+        canvas.height = height;
+
+        // Рисуем изображение с новыми размерами
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        // Конвертируем в blob с указанным качеством
+        canvas.toBlob((blob) => {
+          if (blob) {
+            // Создаем новый файл со сжатыми данными
+            const compressedFile = new File([blob], file.name, {
+              type: file.type,
+              lastModified: Date.now()
+            });
+            resolve(compressedFile);
+          } else {
+            reject(new Error('Не удалось сжать изображение'));
+          }
+        }, file.type, quality);
+      } catch (error) {
+        reject(error);
       }
     };
-    
-    reader.onerror = () => {
-      reject(new Error('Error reading file'));
+
+    img.onerror = () => {
+      reject(new Error('Не удалось загрузить изображение для сжатия'));
     };
 
-    // Специальная обработка для Android
-    try {
-      reader.readAsDataURL(file);
-    } catch (error) {
-      console.error('Error reading file on Android:', error);
-      reject(error);
-    }
+    // Загружаем изображение
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => {
+      reject(new Error('Ошибка чтения файла для сжатия'));
+    };
+    reader.readAsDataURL(file);
   });
-}
+};
 
-// Функция для валидации и очистки base64 строки
-export function validateAndCleanBase64(base64String: string): string | null {
+/**
+ * Безопасно конвертирует файл в base64 data URL с автоматическим сжатием
+ * Специально для iOS устройств и предотвращения ошибок Kong
+ */
+export const safeImageToDataURL = async (file: File): Promise<ImageProcessingResult> => {
   try {
-    if (!base64String || typeof base64String !== 'string') {
-      console.warn('Invalid base64 string type:', typeof base64String);
-      return null;
+    // Проверяем тип файла
+    if (!file.type.startsWith('image/')) {
+      return {
+        success: false,
+        error: `Файл "${file.name}" не является изображением`
+      };
     }
 
-    // Убираем лишние пробелы и переносы строк
-    let cleaned = base64String.trim();
+    // Проверяем размер файла (максимум 8MB до сжатия)
+    const maxSize = 8 * 1024 * 1024; // 8MB
+    if (file.size > maxSize) {
+      return {
+        success: false,
+        error: `Файл "${file.name}" слишком большой (максимум 8MB)`
+      };
+    }
+
+    // Более агрессивное сжатие для предотвращения ошибок Kong
+    let processedFile = file;
+    let compressionApplied = false;
     
-    // Проверяем, что это действительно base64
-    if (!cleaned.startsWith('data:image/')) {
-      console.warn('Base64 string does not start with data:image/');
-      return null;
+    if (file.size > 512 * 1024) { // 512KB - сжимаем файлы больше 512KB
+      try {
+        let quality = 0.6;
+        let maxWidth = 800;
+        
+        // Более агрессивное сжатие для больших файлов
+        if (file.size > 2 * 1024 * 1024) { // 2MB
+          quality = 0.5;
+          maxWidth = 600;
+        }
+        
+        if (file.size > 4 * 1024 * 1024) { // 4MB
+          quality = 0.4;
+          maxWidth = 500;
+        }
+        
+        processedFile = await compressImage(file, maxWidth, quality);
+        compressionApplied = true;
+        console.log(`Изображение сжато: ${file.size} -> ${processedFile.size} байт (качество: ${quality}, ширина: ${maxWidth}px)`);
+      } catch (compressError) {
+        console.warn('Не удалось сжать изображение, используем оригинал:', compressError);
+        processedFile = file;
+      }
     }
 
-    // Проверяем длину (не слишком длинная)
-    if (cleaned.length > 10 * 1024 * 1024) { // 10MB максимум
-      console.warn('Base64 string too long:', cleaned.length);
-      return null;
-    }
-
-    // Проверяем, что это валидный base64
-    const base64Data = cleaned.split(',')[1];
-    if (!base64Data) {
-      console.warn('No base64 data found after comma');
-      return null;
-    }
-
-    // Проверяем, что строка содержит только валидные символы base64
-    const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
-    if (!base64Regex.test(base64Data)) {
-      console.warn('Invalid base64 characters detected');
-      return null;
-    }
-
-    return cleaned;
-  } catch (error) {
-    console.error('Error validating base64:', error);
-    return null;
-  }
-}
-
-// Функция для сжатия изображения
-export async function compressImage(base64String: string): Promise<string | null> {
-  try {
-    // Создаем изображение
-    const img = new Image();
-    
-    return new Promise((resolve, reject) => {
-      img.onload = () => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      
+      reader.onload = (e) => {
         try {
-          // Создаем canvas
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
+          const result = e.target?.result as string;
           
-          if (!ctx) {
-            reject(new Error('Could not get canvas context'));
+          // Дополнительная проверка результата
+          if (!result || typeof result !== 'string') {
+            resolve({
+              success: false,
+              error: 'Ошибка чтения файла'
+            });
             return;
           }
 
-          // Определяем размеры для сжатия
-          let { width, height } = img;
-          const maxWidth = 1200;
-          const maxHeight = 1200;
-          
-          // Масштабируем, если изображение слишком большое
-          if (width > maxWidth || height > maxHeight) {
-            const ratio = Math.min(maxWidth / width, maxHeight / height);
-            width *= ratio;
-            height *= ratio;
+          // Проверяем, что это валидный data URL
+          if (!result.startsWith('data:image/')) {
+            resolve({
+              success: false,
+              error: 'Неверный формат изображения'
+            });
+            return;
           }
 
-          // Устанавливаем размеры canvas
-          canvas.width = width;
-          canvas.height = height;
-
-          // Рисуем изображение
-          ctx.drawImage(img, 0, 0, width, height);
-
-          // Определяем качество сжатия
-          let quality = 0.7;
-          
-          // Проверяем размер исходного base64
-          const originalSize = base64String.length;
-          const sizeInMB = originalSize / (1024 * 1024);
-          
-          // Адаптивное качество в зависимости от размера
-          if (sizeInMB > 2) {
-            quality = 0.6;
-          }
-          if (sizeInMB > 4) {
-            quality = 0.5;
-          }
-          if (sizeInMB > 6) {
-            quality = 0.4;
+          // Проверяем MIME тип
+          const mimeMatch = result.match(/^data:image\/([a-zA-Z]+);base64,/);
+          if (!mimeMatch) {
+            resolve({
+              success: false,
+              error: 'Неверный MIME тип изображения'
+            });
+            return;
           }
 
-          // Конвертируем в base64 с сжатием
-          const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+          // Проверяем base64 данные
+          const base64Data = result.split(',')[1];
+          if (!base64Data || base64Data.length === 0) {
+            resolve({
+              success: false,
+              error: 'Пустые данные изображения'
+            });
+            return;
+          }
+
+          // Проверяем, что base64 данные валидны
+          try {
+            atob(base64Data);
+          } catch {
+            resolve({
+              success: false,
+              error: 'Неверные base64 данные'
+            });
+            return;
+          }
+
+          // Проверяем размер base64 данных (увеличенный лимит до 2MB)
+          const base64Size = Math.ceil((base64Data.length * 3) / 4);
+          const maxBase64Size = 2 * 1024 * 1024; // 2MB
           
-          console.log(`Image compressed: ${originalSize} -> ${compressedBase64.length} bytes, quality: ${quality}`);
-          
-          resolve(compressedBase64);
+          if (base64Size > maxBase64Size) {
+            // Если сжатие уже применялось, но размер все еще большой
+            if (compressionApplied) {
+              resolve({
+                success: false,
+                error: `Размер изображения слишком большой даже после сжатия (${Math.round(base64Size / 1024 / 1024)}MB). Попробуйте выбрать изображение меньшего размера.`
+              });
+              return;
+            } else {
+              // Пытаемся применить более агрессивное сжатие
+              resolve({
+                success: false,
+                error: `Размер изображения слишком большой (${Math.round(base64Size / 1024 / 1024)}MB). Попробуйте уменьшить качество или размер изображения.`
+              });
+              return;
+            }
+          }
+
+          resolve({
+            success: true,
+            dataUrl: result
+          });
         } catch (error) {
-          console.error('Error compressing image:', error);
-          reject(error);
+          resolve({
+            success: false,
+            error: 'Ошибка обработки изображения'
+          });
         }
       };
 
-      img.onerror = () => {
-        reject(new Error('Failed to load image'));
+      reader.onerror = () => {
+        resolve({
+          success: false,
+          error: `Ошибка чтения файла "${file.name}"`
+        });
       };
 
-      // Устанавливаем crossOrigin для предотвращения ошибок CORS
-      img.crossOrigin = 'anonymous';
-      img.src = base64String;
+      reader.onabort = () => {
+        resolve({
+          success: false,
+          error: 'Чтение файла было прервано'
+        });
+      };
+
+      // Устанавливаем таймаут для iOS
+      const timeout = setTimeout(() => {
+        reader.abort();
+        resolve({
+          success: false,
+          error: 'Таймаут чтения файла'
+        });
+      }, 30000); // 30 секунд
+
+      reader.onloadend = () => {
+        clearTimeout(timeout);
+      };
+
+      // Читаем файл как data URL
+      reader.readAsDataURL(processedFile);
     });
   } catch (error) {
-    console.error('Error in compressImage:', error);
-    return null;
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Неизвестная ошибка'
+    };
   }
-}
+};
 
-// Функция для обработки файлов с поддержкой Android
-export async function processImageFile(file: File): Promise<string | null> {
-  try {
-    console.log('Processing image file:', {
-      name: file.name,
-      size: file.size,
-      type: file.type
-    });
+/**
+ * Валидирует массив data URL изображений
+ */
+export const validateImageDataUrls = (dataUrls: string[]): { valid: string[]; invalid: string[] } => {
+  const valid: string[] = [];
+  const invalid: string[] = [];
 
-    // Проверяем размер файла
-    const maxSize = serverConfig.images.maxFileSize;
-    if (file.size > maxSize) {
-      console.warn(`File too large: ${file.size} bytes (max: ${maxSize})`);
-      return null;
-    }
-
-    // Проверяем тип файла
-    if (!file.type.startsWith('image/')) {
-      console.warn('File is not an image:', file.type);
-      return null;
-    }
-
-    // Конвертируем в base64
-    const base64 = await fileToBase64(file);
-    
-    // Валидируем base64
-    const validatedBase64 = validateAndCleanBase64(base64);
-    if (!validatedBase64) {
-      console.warn('Base64 validation failed');
-      return null;
-    }
-
-    // Сжимаем изображение
-    const compressedBase64 = await compressImage(validatedBase64);
-    if (!compressedBase64) {
-      console.warn('Image compression failed');
-      return null;
-    }
-
-    console.log('Image processed successfully');
-    return compressedBase64;
-  } catch (error) {
-    console.error('Error processing image file:', error);
-    return null;
-  }
-}
-
-// Функция для обработки множественных файлов
-export async function processMultipleImages(files: File[]): Promise<string[]> {
-  const results: string[] = [];
-  
-  for (let i = 0; i < files.length; i++) {
+  for (const dataUrl of dataUrls) {
     try {
-      const processed = await processImageFile(files[i]);
-      if (processed) {
-        results.push(processed);
-        console.log(`Processed image ${i + 1}/${files.length}`);
-      } else {
-        console.warn(`Failed to process image ${i + 1}/${files.length}`);
+      // Проверяем, что это валидный data URL
+      if (!dataUrl.startsWith('data:image/')) {
+        invalid.push(dataUrl);
+        continue;
       }
-    } catch (error) {
-      console.error(`Error processing image ${i + 1}/${files.length}:`, error);
+
+      // Проверяем MIME тип
+      const mimeMatch = dataUrl.match(/^data:image\/([a-zA-Z]+);base64,/);
+      if (!mimeMatch) {
+        invalid.push(dataUrl);
+        continue;
+      }
+
+      // Проверяем base64 данные
+      const base64Data = dataUrl.split(',')[1];
+      if (!base64Data || base64Data.length === 0) {
+        invalid.push(dataUrl);
+        continue;
+      }
+
+      // Проверяем размер base64 данных
+      const base64SizeKB = (base64Data.length * 0.75) / 1024;
+      if (base64SizeKB > 1000) { // 1MB
+        invalid.push(dataUrl);
+        continue;
+      }
+
+      // Проверяем, что base64 данные валидны
+      try {
+        atob(base64Data);
+      } catch {
+        invalid.push(dataUrl);
+        continue;
+      }
+
+      valid.push(dataUrl);
+    } catch {
+      invalid.push(dataUrl);
     }
   }
-  
-  return results;
-}
 
-// Функция для проверки поддержки WebP
-export function supportsWebP(): boolean {
+  return { valid, invalid };
+};
+
+/**
+ * Очищает массив изображений от невалидных данных
+ */
+export const cleanImageArray = (images: string[]): string[] => {
+  const { valid } = validateImageDataUrls(images);
+  return valid;
+};
+
+/**
+ * Проверяет, поддерживается ли WebP на устройстве
+ */
+export const isWebPSupported = (): boolean => {
   const canvas = document.createElement('canvas');
   canvas.width = 1;
   canvas.height = 1;
-  return canvas.toDataURL('image/webp').indexOf('image/webp') === 5;
-}
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return false;
+  
+  try {
+    ctx.fillStyle = 'rgba(0,0,0,0)';
+    ctx.fillRect(0, 0, 1, 1);
+    const dataURL = canvas.toDataURL('image/webp');
+    return dataURL.startsWith('data:image/webp');
+  } catch {
+    return false;
+  }
+};
 
-// Функция для получения оптимального формата изображения
-export function getOptimalImageFormat(): string {
-  return supportsWebP() ? 'image/webp' : 'image/jpeg';
-} 
+/**
+ * Оптимизирует изображение для iOS
+ */
+export const optimizeImageForIOS = async (file: File): Promise<File> => {
+  return new Promise((resolve) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+
+    img.onload = () => {
+      // Устанавливаем размеры canvas
+      canvas.width = img.width;
+      canvas.height = img.height;
+
+      // Рисуем изображение
+      ctx?.drawImage(img, 0, 0);
+
+      // Конвертируем в blob
+      canvas.toBlob((blob) => {
+        if (blob) {
+          // Создаем новый файл с оптимизированными данными
+          const optimizedFile = new File([blob], file.name, {
+            type: file.type,
+            lastModified: Date.now()
+          });
+          resolve(optimizedFile);
+        } else {
+          resolve(file);
+        }
+      }, file.type, 0.8); // Качество 80%
+    };
+
+    img.onerror = () => {
+      resolve(file);
+    };
+
+    // Загружаем изображение
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      img.src = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+}; 

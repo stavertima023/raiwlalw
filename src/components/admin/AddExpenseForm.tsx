@@ -1,289 +1,358 @@
 
 'use client';
 
-import { useState, useCallback } from 'react';
-import { useForm } from 'react-hook-form';
+import * as React from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ExpenseSchema } from '@/lib/types';
-import { processMultipleImages } from '@/lib/imageUtils';
+import { useForm } from 'react-hook-form';
+import type { z } from 'zod';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
+import { Textarea } from '@/components/ui/textarea';
+import { ExpenseSchema, ExpenseCategoryEnum, User, Expense } from '@/lib/types';
+import { Check, PlusCircle, Plus, X, ZoomIn } from 'lucide-react';
+import Image from 'next/image';
+import { ScrollArea } from '../ui/scroll-area';
+
+type ExpenseFormData = z.infer<typeof ExpenseSchema>;
 
 interface AddExpenseFormProps {
-  onExpenseAdded: () => void;
+  onSave: (data: Omit<Expense, 'id' | 'date'>) => void;
+  currentUser: User;
 }
 
-export function AddExpenseForm({ onExpenseAdded }: AddExpenseFormProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [processedPhotos, setProcessedPhotos] = useState<string[]>([]);
-  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+export function AddExpenseForm({ onSave, currentUser }: AddExpenseFormProps) {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const { toast } = useToast();
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors }
-  } = useForm({
-    resolver: zodResolver(ExpenseSchema.omit({ id: true }))
+  const form = useForm<Omit<ExpenseFormData, 'id' | 'date'>>({
+    resolver: zodResolver(ExpenseSchema.omit({ id: true, date: true })),
+    defaultValues: {
+      amount: undefined,
+      category: undefined,
+      responsible: currentUser.username,
+      comment: '',
+      receiptPhoto: undefined,
+    },
+    mode: 'onChange',
   });
+  
+  const { watch, setValue, getValues } = form;
+  const watchedPhoto = watch('receiptPhoto');
 
-  // Обработка выбора файлов
-  const handleFileSelect = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
+
+
+  const handleClose = () => {
+    form.reset();
+    setIsOpen(false);
+  };
+  
+  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
     
-    if (files.length === 0) return;
-
-    setError(null);
-    setSelectedFiles(files);
-
-    try {
-      console.log(`Processing ${files.length} selected files for expense`);
-      
-      // Обрабатываем изображения
-      const processed = await processMultipleImages(files);
-      
-      if (processed.length > 0) {
-        setProcessedPhotos(processed);
-        console.log(`Successfully processed ${processed.length} images for expense`);
-      } else {
-        setError('Не удалось обработать выбранные изображения');
-        setSelectedFiles([]);
-      }
-    } catch (error) {
-      console.error('Error processing expense images:', error);
-      setError('Ошибка при обработке изображений');
-      setSelectedFiles([]);
+    if (!file.type.startsWith('image/')) {
+        toast({
+            variant: 'destructive',
+            title: 'Неверный тип файла',
+            description: `Файл "${file.name}" не является изображением.`,
+        });
+        return;
     }
-  }, []);
 
-  // Удаление фотографии
-  const removePhoto = useCallback((index: number) => {
-    setProcessedPhotos(prev => prev.filter((_, i) => i !== index));
-    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
-  }, []);
+    // Проверяем размер файла (увеличен до 8MB)
+    const maxSize = 8 * 1024 * 1024; // 8MB
+    if (file.size > maxSize) {
+        toast({
+            variant: 'destructive',
+            title: 'Файл слишком большой',
+            description: `Файл "${file.name}" превышает лимит 8MB. Попробуйте уменьшить размер изображения.`,
+        });
+        return;
+    }
 
-  // Открытие модального окна с фотографией
-  const openPhotoModal = useCallback((photo: string) => {
-    setSelectedPhoto(photo);
-  }, []);
+    // Используем улучшенную утилиту для обработки изображения
+    const processImage = async () => {
+        try {
+            const { safeImageToDataURL } = await import('@/lib/imageUtils');
+            const result = await safeImageToDataURL(file);
+            
+            if (result.success && result.dataUrl) {
+                setValue('receiptPhoto', result.dataUrl, { shouldValidate: true });
+                toast({
+                    title: 'Фото загружено',
+                    description: 'Фотография чека успешно обработана и добавлена.',
+                });
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Ошибка обработки',
+                    description: result.error || 'Не удалось обработать изображение.',
+                });
+            }
+        } catch (error) {
+            console.error('Ошибка обработки изображения:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Ошибка загрузки',
+                description: 'Произошла ошибка при обработке изображения. Попробуйте другой файл.',
+            });
+        }
+    };
 
-  // Закрытие модального окна
-  const closePhotoModal = useCallback(() => {
-    setSelectedPhoto(null);
-  }, []);
+    processImage();
 
-  // Отправка формы
-  const onSubmit = async (data: any) => {
-    setIsSubmitting(true);
-    setError(null);
-
-    try {
-      const expenseData = {
-        ...data,
-        photos: processedPhotos,
-        date: new Date().toISOString()
-      };
-
-      console.log('Submitting expense with data:', {
-        ...expenseData,
-        photos: expenseData.photos ? `${expenseData.photos.length} photos` : 'no photos'
-      });
-
-      const response = await fetch('/api/expenses', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(expenseData),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Ошибка при создании расхода');
-      }
-
-      console.log('Expense created successfully:', result);
-      
-      // Сбрасываем форму
-      reset();
-      setSelectedFiles([]);
-      setProcessedPhotos([]);
-      setError(null);
-      
-      // Уведомляем родительский компонент
-      onExpenseAdded();
-      
-    } catch (error) {
-      console.error('Error creating expense:', error);
-      setError(error instanceof Error ? error.message : 'Ошибка при создании расхода');
-    } finally {
-      setIsSubmitting(false);
+    if(fileInputRef.current) {
+        fileInputRef.current.value = '';
     }
   };
 
+  const handleAddPhotoClick = () => {
+    fileInputRef.current?.click();
+  };
+  
+  const handleRemovePhoto = () => {
+    setValue('receiptPhoto', undefined, { shouldValidate: true });
+  };
+
+  const onSubmit = (data: Omit<ExpenseFormData, 'id' | 'date'>) => {
+    console.log('Form data before cleanup:', data);
+    console.log('Current user:', currentUser);
+    
+    // Clean up the data before sending
+    const cleanData = {
+      ...data,
+      amount: Number(data.amount),
+      category: data.category,
+      comment: data.comment || '',
+      receiptPhoto: data.receiptPhoto || undefined,
+    };
+    
+    console.log('Form data after cleanup:', cleanData);
+    console.log('Responsible field in cleanData:', cleanData.responsible);
+    console.log('Responsible field type:', typeof cleanData.responsible);
+    
+    onSave(cleanData);
+    handleClose();
+    toast({
+      title: 'Расход добавлен',
+      description: 'Новая запись о расходах успешно создана.',
+    });
+  };
+
   return (
-    <div className="bg-white shadow rounded-lg p-6">
-      <h2 className="text-lg font-medium text-gray-900 mb-6">
-        Добавить расход
-      </h2>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+        if (!open) {
+            handleClose();
+        } else {
+            setIsOpen(true);
+        }
+    }}>
+      <DialogTrigger asChild>
+        <Button>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Добавить расход
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Новый расход</DialogTitle>
+          <DialogDescription>Заполните информацию о новом расходе.</DialogDescription>
+        </DialogHeader>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {/* Основные поля */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Категория
-            </label>
-            <select
-              {...register('category')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Выберите категорию</option>
-              <option value="Ткань">Ткань</option>
-              <option value="Курьер">Курьер</option>
-              <option value="Расходники швейки">Расходники швейки</option>
-              <option value="Доставка">Доставка</option>
-              <option value="Упаковка">Упаковка</option>
-              <option value="Прочее">Прочее</option>
-            </select>
-            {errors.category && (
-              <p className="mt-1 text-sm text-red-600">{errors.category.message?.toString()}</p>
-            )}
-          </div>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <ScrollArea className="h-[60vh] pr-6">
+                <div className="space-y-4">
+                    <FormField
+                    control={form.control}
+                    name="amount"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Сумма</FormLabel>
+                        <FormControl>
+                            <Input 
+                                type="number" 
+                                placeholder="5000" 
+                                {...field}
+                                onChange={(e) => field.onChange(Number(e.target.value))}
+                            />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Сумма
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              {...register('amount', { valueAsNumber: true })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Введите сумму"
-            />
-            {errors.amount && (
-              <p className="mt-1 text-sm text-red-600">{errors.amount.message?.toString()}</p>
-            )}
-          </div>
+                    <FormField
+                    control={form.control}
+                    name="category"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Категория</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || ''}>
+                            <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Выберите категорию..." />
+                            </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                            {ExpenseCategoryEnum.options.map((cat) => (
+                                <SelectItem key={cat} value={cat}>
+                                {cat}
+                                </SelectItem>
+                            ))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Комментарий
-            </label>
-            <input
-              type="text"
-              {...register('comment')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Введите комментарий к расходу"
-            />
-            {errors.comment && (
-              <p className="mt-1 text-sm text-red-600">{errors.comment.message?.toString()}</p>
-            )}
-          </div>
+                    <FormField
+                    control={form.control}
+                    name="responsible"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Ответственный</FormLabel>
+                        <FormControl>
+                            <Input 
+                                {...field} 
+                                value={currentUser.username}
+                                disabled
+                                className="bg-muted"
+                            />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Ответственный
-            </label>
-            <input
-              type="text"
-              {...register('responsible')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Введите имя ответственного"
-            />
-            {errors.responsible && (
-              <p className="mt-1 text-sm text-red-600">{errors.responsible.message?.toString()}</p>
-            )}
-          </div>
-        </div>
+                    <FormField
+                    control={form.control}
+                    name="comment"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Комментарий</FormLabel>
+                        <FormControl>
+                            <Textarea placeholder="Например, аренда за октябрь" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    
+                     <FormField
+                        control={form.control}
+                        name="receiptPhoto"
+                        render={() => (
+                            <FormItem>
+                            <FormLabel>Фото чека (необязательно)</FormLabel>
+                            <FormControl>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <input 
+                                        type="file" 
+                                        ref={fileInputRef} 
+                                        onChange={handlePhotoUpload}
+                                        className="hidden" 
+                                        accept="image/*"
+                                     />
+                                    {watchedPhoto ? (
+                                        <div className="relative group w-full h-48">
+                                            <Dialog>
+                                                <DialogTrigger asChild>
+                                                    <button className="w-full h-full rounded-md overflow-hidden hover:opacity-80 transition-opacity">
+                                                        <Image
+                                                            src={watchedPhoto}
+                                                            alt="Receipt photo"
+                                                            fill
+                                                            className="rounded-md object-contain"
+                                                            data-ai-hint="receipt photo"
+                                                        />
+                                                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all flex items-center justify-center">
+                                                            <ZoomIn className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                        </div>
+                                                    </button>
+                                                </DialogTrigger>
+                                                <DialogContent className="max-w-[90vw] max-h-[90vh] p-2 sm:max-w-2xl md:max-w-4xl">
+                                                    <DialogHeader>
+                                                        <DialogTitle>Фото чека</DialogTitle>
+                                                    </DialogHeader>
+                                                    <div className="flex justify-center items-center">
+                                                        <Image
+                                                            src={watchedPhoto}
+                                                            alt="Receipt photo"
+                                                            width={800}
+                                                            height={800}
+                                                            className="rounded-md object-contain max-w-full max-h-[70vh]"
+                                                        />
+                                                    </div>
+                                                </DialogContent>
+                                            </Dialog>
+                                            <Button
+                                                type="button"
+                                                variant="destructive"
+                                                size="icon"
+                                                className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                onClick={handleRemovePhoto}
+                                            >
+                                                <X className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            className="h-28 w-full border-dashed"
+                                            onClick={handleAddPhotoClick}
+                                        >
+                                            <Plus className="h-8 w-8 text-muted-foreground" />
+                                        </Button>
+                                    )}
+                                </div>
+                            </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                        />
 
-        {/* Загрузка фотографий */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Фотографии чека
-          </label>
-          <input
-            type="file"
-            multiple
-            accept="image/*"
-            onChange={handleFileSelect}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <p className="mt-1 text-sm text-gray-500">
-            Выберите фотографии чека (JPG, PNG, до 8MB каждая)
-          </p>
-        </div>
-
-        {/* Предварительный просмотр фотографий */}
-        {processedPhotos.length > 0 && (
-          <div>
-            <h3 className="text-sm font-medium text-gray-700 mb-2">
-              Выбранные фотографии ({processedPhotos.length})
-            </h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {processedPhotos.map((photo, index) => (
-                <div key={index} className="relative group">
-                  <img
-                    src={photo}
-                    alt={`Фото ${index + 1}`}
-                    className="w-full h-24 object-cover rounded-lg cursor-pointer"
-                    onClick={() => openPhotoModal(photo)}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removePhoto(index)}
-                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    ×
-                  </button>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Ошибка */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-md p-4">
-            <p className="text-sm text-red-600">{error}</p>
-          </div>
-        )}
-
-        {/* Кнопка отправки */}
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isSubmitting ? 'Добавление...' : 'Добавить расход'}
-          </button>
-        </div>
-      </form>
-
-      {/* Модальное окно для просмотра фотографии */}
-      {selectedPhoto && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-4 max-w-4xl max-h-[90vh] overflow-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium">Просмотр фотографии</h3>
-              <button
-                onClick={closePhotoModal}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                ×
-              </button>
-            </div>
-            <img
-              src={selectedPhoto}
-              alt="Фотография"
-              className="max-w-full max-h-[70vh] object-contain"
-            />
-          </div>
-        </div>
-      )}
-    </div>
+            </ScrollArea>
+            <DialogFooter className="pt-4 border-t">
+              <Button type="button" variant="secondary" onClick={handleClose}>
+                Отмена
+              </Button>
+              <Button type="submit">
+                <Check className="mr-2 h-4 w-4" /> Сохранить
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
   );
 }

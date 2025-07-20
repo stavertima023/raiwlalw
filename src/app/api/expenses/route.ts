@@ -1,123 +1,156 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { supabase, fetchExpensesWithPagination } from '@/lib/serverConfig';
+import { NextResponse } from 'next/server';
+import { getSession } from '@/lib/session';
+import { supabaseAdmin } from '@/lib/supabaseClient';
 import { ExpenseSchema } from '@/lib/types';
-import { compressImage, validateAndCleanBase64 } from '@/lib/imageUtils';
 
-export async function GET(request: NextRequest) {
+// Увеличиваем лимиты для этого API
+export const maxDuration = 90; // 90 секунд
+export const dynamic = 'force-dynamic';
+
+export async function GET() {
   try {
-    const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '50');
-
-    // Используем оптимизированный запрос с пагинацией
-    const result = await fetchExpensesWithPagination(page, limit);
+    if (!supabaseAdmin) {
+      return NextResponse.json({ message: 'Сервис недоступен' }, { status: 503 });
+    }
     
-    return NextResponse.json({
-      expenses: result.data,
-      total: result.count,
-      hasMore: result.hasMore,
-      page,
-      limit
-    });
-  } catch (error) {
-    console.error('GET /api/expenses error:', error);
-    return NextResponse.json(
-      { error: 'Ошибка при получении расходов' },
-      { status: 500 }
-    );
+    const session = await getSession();
+    const { user } = session;
+
+    if (!user || !session.isLoggedIn) {
+      return NextResponse.json({ message: 'Пользователь не авторизован' }, { status: 401 });
+    }
+
+    let query = supabaseAdmin
+      .from('expenses')
+      .select('*')
+      .order('date', { ascending: false });
+
+    // Если пользователь не администратор, фильтруем только его расходы
+    if (user.role !== 'Администратор') {
+      query = query.eq('responsible', user.username);
+    }
+    
+    const { data, error } = await query;
+
+    if (error) {
+      throw error;
+    }
+
+    // Парсим даты
+    const parsedData = data.map(item => ({
+      ...item, 
+      date: new Date(item.date)
+    }));
+
+    return NextResponse.json(parsedData);
+  } catch (error: any) {
+    return NextResponse.json({ 
+      message: 'Ошибка загрузки расходов', 
+      error: error.message 
+    }, { status: 500 });
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    if (!supabaseAdmin) {
+      return NextResponse.json({ message: 'Сервис недоступен' }, { status: 503 });
+    }
+
+    const session = await getSession();
+    const { user } = session;
+
+    if (!user || !session.isLoggedIn) {
+      return NextResponse.json({ message: 'Пользователь не авторизован' }, { status: 401 });
+    }
+
+    // Проверяем размер запроса (увеличен до 15MB)
+    const contentLength = request.headers.get('content-length');
+    if (contentLength) {
+      const sizeInMB = parseInt(contentLength) / (1024 * 1024);
+      if (sizeInMB > 15) { // 15MB лимит
+        return NextResponse.json({ 
+          message: 'Размер запроса слишком большой (максимум 15MB)', 
+          error: `Размер: ${sizeInMB.toFixed(2)}MB`
+        }, { status: 413 });
+      }
+    }
+
+    const json = await request.json();
     
-    // Валидация данных
-    const validatedData = ExpenseSchema.omit({ id: true }).parse(body);
-    
-    // Обработка фотографий
-    let processedPhotos: string[] = [];
-    
-    if (validatedData.photos && validatedData.photos.length > 0) {
-      console.log(`Processing ${validatedData.photos.length} photos for expense`);
-      
-      for (let i = 0; i < validatedData.photos.length; i++) {
-        const photo = validatedData.photos[i];
+    // Проверяем размер фотографии чека (уменьшен до 3MB для предотвращения ошибок Kong)
+    if (json.receiptPhoto && typeof json.receiptPhoto === 'string') {
+      const base64Data = json.receiptPhoto.split(',')[1];
+      if (base64Data) {
+        const photoSize = Math.ceil((base64Data.length * 3) / 4);
+        const photoSizeInMB = photoSize / (1024 * 1024);
         
-        try {
-          // Проверяем, что фото не пустое
-          if (!photo || photo.trim() === '') {
-            console.warn(`Expense photo ${i} is empty, skipping`);
-            continue;
-          }
-
-          // Валидируем и очищаем base64
-          const cleanedPhoto = validateAndCleanBase64(photo);
-          if (!cleanedPhoto) {
-            console.warn(`Expense photo ${i} failed validation, skipping`);
-            continue;
-          }
-
-          // Сжимаем изображение
-          const compressedPhoto = await compressImage(cleanedPhoto);
-          if (compressedPhoto) {
-            processedPhotos.push(compressedPhoto);
-            console.log(`Expense photo ${i} processed successfully`);
-          } else {
-            console.warn(`Expense photo ${i} compression failed, skipping`);
-          }
-        } catch (photoError) {
-          console.error(`Error processing expense photo ${i}:`, photoError);
-          // Продолжаем обработку других фото
+        if (photoSizeInMB > 3) { // 3MB лимит для фото чека
+          return NextResponse.json({ 
+            message: 'Размер фотографии чека слишком большой (максимум 3MB)', 
+            error: `Размер: ${photoSizeInMB.toFixed(2)}MB`,
+            recommendation: 'Попробуйте сжать изображение перед загрузкой'
+          }, { status: 413 });
         }
       }
     }
 
-    // Создаем расход с обработанными фотографиями
-    const expenseData = {
-      ...validatedData,
-      photos: processedPhotos,
-      date: new Date().toISOString()
+    // Автоматически устанавливаем дату
+    const newExpenseData = {
+      ...json,
+      date: new Date().toISOString(),
     };
+    
+    // Валидируем данные
+    const validatedExpense = ExpenseSchema.omit({ id: true }).parse(newExpenseData);
 
-    console.log('Creating expense with data:', {
-      ...expenseData,
-      photos: expenseData.photos ? `${expenseData.photos.length} photos` : 'no photos'
-    });
-
-    const { data, error } = await supabase
+    // Вставляем расход в базу данных
+    const { data, error } = await supabaseAdmin
       .from('expenses')
-      .insert([expenseData])
+      .insert(validatedExpense)
       .select()
       .single();
 
     if (error) {
-      console.error('Supabase insert error:', error);
-      return NextResponse.json(
-        { error: 'Ошибка при создании расхода', details: error.message },
-        { status: 400 }
-      );
+      throw error;
     }
 
-    console.log('Expense created successfully:', data.id);
-    return NextResponse.json({ expense: data }, { status: 201 });
+    // Парсим дату перед отправкой ответа
+    const result = {
+      ...data,
+      date: new Date(data.date)
+    };
+
+    return NextResponse.json(result, { status: 201 });
 
   } catch (error: any) {
-    console.error('POST /api/expenses error:', error);
-    
+    // Обрабатываем ошибки валидации Zod
     if (error.name === 'ZodError') {
-      return NextResponse.json(
-        { 
-          error: 'Ошибка валидации данных',
-          details: error.errors.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ')
-        },
-        { status: 400 }
-      );
+      const errorDetails = error.errors.map((err: any) => {
+        const field = err.path.join('.');
+        const message = err.message;
+        return `${field}: ${message}`;
+      }).join(', ');
+      
+      return NextResponse.json({ 
+        message: 'Ошибка валидации данных', 
+        error: errorDetails,
+        errors: error.errors
+      }, { status: 400 });
     }
-
-    return NextResponse.json(
-      { error: 'Ошибка при создании расхода' },
-      { status: 500 }
-    );
+    
+    // Обрабатываем ошибки Supabase
+    if (error.code) {
+      return NextResponse.json({ 
+        message: 'Ошибка базы данных', 
+        error: error.message,
+        code: error.code
+      }, { status: 500 });
+    }
+    
+    return NextResponse.json({ 
+      message: 'Ошибка добавления расхода', 
+      error: error.message || 'Unknown error'
+    }, { status: 500 });
   }
 } 

@@ -1,342 +1,401 @@
 
 'use client';
 
-import { useState, useCallback } from 'react';
+import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { OrderSchema } from '@/lib/types';
-import { processMultipleImages } from '@/lib/imageUtils';
+import { z } from 'zod';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { OrderSchema, ProductTypeEnum, SizeEnum } from '@/lib/types';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { X, Plus, Upload, ZoomIn } from 'lucide-react';
+import Image from 'next/image';
+import { safeImageToDataURL, cleanImageArray } from '@/lib/imageUtils';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
-interface OrderFormProps {
-  onOrderAdded: () => void;
-}
+// Updated form schema with shipmentNumber required and cost removed
+const FormSchema = z.object({
+    orderNumber: z.string().min(1, 'Номер заказа обязателен'),
+    shipmentNumber: z.string().min(1, 'Номер отправления обязателен'),
+    productType: ProductTypeEnum,
+    size: SizeEnum,
+    price: z.coerce.number().positive('Цена должна быть положительной'),
+    comment: z.string().optional().default(''),
+    photos: z.array(z.string()).max(3).optional().default([]),
+});
 
-export function OrderForm({ onOrderAdded }: OrderFormProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [processedPhotos, setProcessedPhotos] = useState<string[]>([]);
-  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+type OrderFormValues = z.infer<typeof FormSchema>;
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors }
-  } = useForm({
-    resolver: zodResolver(OrderSchema)
+type OrderFormProps = {
+  onSave: (data: OrderFormValues) => void;
+  initialData?: Partial<OrderFormValues>;
+};
+
+export function OrderForm({ onSave, initialData }: OrderFormProps) {
+  const [isUploading, setIsUploading] = React.useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const form = useForm<OrderFormValues>({
+    resolver: zodResolver(FormSchema),
+    defaultValues: {
+      orderNumber: initialData?.orderNumber || '',
+      shipmentNumber: initialData?.shipmentNumber || '',
+      productType: initialData?.productType || undefined,
+      size: initialData?.size || undefined,
+      price: initialData?.price || undefined,
+      comment: initialData?.comment || '',
+      photos: initialData?.photos || [],
+    },
   });
 
-  // Обработка выбора файлов
-  const handleFileSelect = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
+  // Watch photos value from form
+  const photos = form.watch('photos') || [];
+  
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploading(true);
     
-    if (files.length === 0) return;
-
-    setError(null);
-    setSelectedFiles(files);
-
     try {
-      console.log(`Processing ${files.length} selected files`);
+      const filesToProcess = Array.from(files);
+      console.log(`Обрабатываем ${filesToProcess.length} файлов...`);
+
+      // Обрабатываем файлы по одному для лучшей надежности
+      const results: string[] = [];
       
-      // Обрабатываем изображения
-      const processed = await processMultipleImages(files);
-      
-      if (processed.length > 0) {
-        setProcessedPhotos(processed);
-        console.log(`Successfully processed ${processed.length} images`);
+      for (const file of filesToProcess) {
+        try {
+          console.log(`Обрабатываем файл: ${file.name} (${file.size} байт)`);
+          
+          const result = await safeImageToDataURL(file);
+          
+          if (result.success && result.dataUrl) {
+            results.push(result.dataUrl);
+            console.log(`Файл ${file.name} успешно обработан`);
+          } else {
+            console.warn(`Не удалось обработать файл ${file.name}:`, result.error);
+            alert(`Не удалось обработать файл "${file.name}": ${result.error}`);
+          }
+        } catch (fileError) {
+          console.error(`Ошибка обработки файла ${file.name}:`, fileError);
+          alert(`Ошибка обработки файла "${file.name}": ${fileError instanceof Error ? fileError.message : 'Неизвестная ошибка'}`);
+        }
+      }
+
+      if (results.length > 0) {
+        // Очищаем и валидируем результаты
+        const cleanedResults = cleanImageArray(results);
+        const currentPhotos = form.getValues('photos') || [];
+        const newPhotos = [...currentPhotos, ...cleanedResults];
+        
+        // Проверяем общий размер фотографий
+        const totalSize = cleanedResults.reduce((total, photo) => {
+          const base64Data = photo.split(',')[1];
+          if (base64Data) {
+            return total + Math.ceil((base64Data.length * 3) / 4);
+          }
+          return total;
+        }, 0);
+        
+        const totalSizeInMB = totalSize / (1024 * 1024);
+        console.log(`Общий размер фотографий: ${totalSizeInMB.toFixed(2)}MB`);
+        
+        if (totalSizeInMB > 6) { // 6MB лимит (уменьшен для предотвращения ошибок Kong)
+          alert(`Внимание: Общий размер фотографий (${totalSizeInMB.toFixed(2)}MB) близок к лимиту. Некоторые фотографии могут быть автоматически сжаты.`);
+        }
+        
+        form.setValue('photos', newPhotos);
+        
+        if (cleanedResults.length < results.length) {
+          alert(`Успешно загружено ${cleanedResults.length} из ${results.length} изображений. Некоторые изображения были отфильтрованы как невалидные.`);
+        } else {
+          alert(`Успешно загружено ${cleanedResults.length} изображений!`);
+        }
       } else {
-        setError('Не удалось обработать выбранные изображения');
-        setSelectedFiles([]);
+        alert('Не удалось загрузить ни одного изображения. Попробуйте выбрать другие файлы или уменьшить их размер.');
       }
     } catch (error) {
-      console.error('Error processing images:', error);
-      setError('Ошибка при обработке изображений');
-      setSelectedFiles([]);
-    }
-  }, []);
-
-  // Удаление фотографии
-  const removePhoto = useCallback((index: number) => {
-    setProcessedPhotos(prev => prev.filter((_, i) => i !== index));
-    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
-  }, []);
-
-  // Открытие модального окна с фотографией
-  const openPhotoModal = useCallback((photo: string) => {
-    setSelectedPhoto(photo);
-  }, []);
-
-  // Закрытие модального окна
-  const closePhotoModal = useCallback(() => {
-    setSelectedPhoto(null);
-  }, []);
-
-  // Отправка формы
-  const onSubmit = async (data: any) => {
-    setIsSubmitting(true);
-    setError(null);
-
-    try {
-      const orderData = {
-        ...data,
-        photos: processedPhotos
-      };
-
-      console.log('Submitting order with data:', {
-        ...orderData,
-        photos: orderData.photos ? `${orderData.photos.length} photos` : 'no photos'
-      });
-
-      const response = await fetch('/api/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(orderData),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Ошибка при создании заказа');
-      }
-
-      console.log('Order created successfully:', result);
-      
-      // Сбрасываем форму
-      reset();
-      setSelectedFiles([]);
-      setProcessedPhotos([]);
-      setError(null);
-      
-      // Уведомляем родительский компонент
-      onOrderAdded();
-      
-    } catch (error) {
-      console.error('Error creating order:', error);
-      setError(error instanceof Error ? error.message : 'Ошибка при создании заказа');
+      console.error('Ошибка загрузки фото:', error);
+      alert(`Произошла ошибка при загрузке фотографий: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`);
     } finally {
-      setIsSubmitting(false);
+      setIsUploading(false);
+    }
+
+    // Reset file input
+    if (fileInputRef.current) {
+        fileInputRef.current.value = '';
     }
   };
 
+  const handleRemovePhoto = (index: number) => {
+    const currentPhotos = form.getValues('photos') || [];
+    const newPhotos = currentPhotos.filter((_, i) => i !== index);
+    form.setValue('photos', newPhotos);
+  };
+
+  const onSubmit = (data: OrderFormValues) => {
+    // Дополнительная валидация перед отправкой
+    if (!data.orderNumber?.trim()) {
+      alert('Номер заказа обязателен');
+      return;
+    }
+    
+    if (!data.shipmentNumber?.trim()) {
+      alert('Номер отправления обязателен');
+      return;
+    }
+    
+    if (!data.productType) {
+      alert('Выберите тип товара');
+      return;
+    }
+    
+    if (!data.size) {
+      alert('Выберите размер');
+      return;
+    }
+    
+    if (!data.price || data.price <= 0) {
+      alert('Цена должна быть положительной');
+      return;
+    }
+    
+    // Очищаем и валидируем фотографии
+    const cleanedPhotos = cleanImageArray(data.photos || []);
+    
+    // Очищаем пробелы в строковых полях
+    const cleanedData = {
+      ...data,
+      orderNumber: data.orderNumber.trim(),
+      shipmentNumber: data.shipmentNumber.trim(),
+      comment: data.comment?.trim() || '',
+      photos: cleanedPhotos,
+    };
+    
+    onSave(cleanedData);
+  };
+
   return (
-    <div className="bg-white shadow rounded-lg p-6">
-      <h2 className="text-lg font-medium text-gray-900 mb-6">
-        Добавить заказ
-      </h2>
+        <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 py-4">
+                        <FormField
+                            control={form.control}
+                            name="orderNumber"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Номер заказа</FormLabel>
+                                <FormControl>
+                <Input placeholder="WB-12345" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+        
+                        <FormField
+                            control={form.control}
+                            name="shipmentNumber"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Номер отправления</FormLabel>
+                                <FormControl>
+                <Input placeholder="SHP-A1B2C3" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+        
+                        <FormField
+                            control={form.control}
+          name="productType"
+                            render={({ field }) => (
+                            <FormItem>
+              <FormLabel>Тип товара</FormLabel>
+               <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                  <SelectTrigger><SelectValue placeholder="Выберите тип" /></SelectTrigger>
+                                </FormControl>
+                 <SelectContent>
+                    {ProductTypeEnum.options.map(option => (
+                        <SelectItem key={option} value={option}>{option}</SelectItem>
+                    ))}
+                 </SelectContent>
+               </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {/* Основные поля */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Номер заказа
-            </label>
-            <input
-              type="text"
-              {...register('orderNumber')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Введите номер заказа"
-            />
-            {errors.orderNumber && (
-              <p className="mt-1 text-sm text-red-600">{errors.orderNumber.message?.toString()}</p>
-            )}
-          </div>
+                    <FormField
+                    control={form.control}
+                    name="size"
+                    render={({ field }) => (
+            <FormItem>
+              <FormLabel>Размер</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                  <SelectTrigger><SelectValue placeholder="Выберите размер" /></SelectTrigger>
+                 </FormControl>
+                 <SelectContent>
+                    {SizeEnum.options.map(option => (
+                        <SelectItem key={option} value={option}>{option}</SelectItem>
+                                ))}
+                 </SelectContent>
+               </Select>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Номер отправления
-            </label>
-            <input
-              type="text"
-              {...register('shipmentNumber')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Введите номер отправления"
-            />
-            {errors.shipmentNumber && (
-              <p className="mt-1 text-sm text-red-600">{errors.shipmentNumber.message?.toString()}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Тип товара
-            </label>
-            <input
-              type="text"
-              {...register('productType')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Введите тип товара"
-            />
-            {errors.productType && (
-              <p className="mt-1 text-sm text-red-600">{errors.productType.message?.toString()}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Размер
-            </label>
-            <input
-              type="text"
-              {...register('size')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Введите размер"
-            />
-            {errors.size && (
-              <p className="mt-1 text-sm text-red-600">{errors.size.message?.toString()}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Продавец
-            </label>
-            <input
-              type="text"
-              {...register('seller')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Введите имя продавца"
-            />
-            {errors.seller && (
-              <p className="mt-1 text-sm text-red-600">{errors.seller.message?.toString()}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Цена
-            </label>
-            <input
-              type="number"
-              {...register('price', { valueAsNumber: true })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Введите цену"
-            />
-            {errors.price && (
-              <p className="mt-1 text-sm text-red-600">{errors.price.message?.toString()}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Себестоимость
-            </label>
-            <input
-              type="number"
-              {...register('cost', { valueAsNumber: true })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Введите себестоимость"
-            />
-            {errors.cost && (
-              <p className="mt-1 text-sm text-red-600">{errors.cost.message?.toString()}</p>
-            )}
-          </div>
-        </div>
-
-        {/* Комментарий */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Комментарий
-          </label>
-          <textarea
-            {...register('comment')}
-            rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Введите комментарий к заказу"
-          />
-          {errors.comment && (
-            <p className="mt-1 text-sm text-red-600">{errors.comment.message?.toString()}</p>
-          )}
-        </div>
-
-        {/* Загрузка фотографий */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Фотографии
-          </label>
-          <input
-            type="file"
-            multiple
-            accept="image/*"
-            onChange={handleFileSelect}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <p className="mt-1 text-sm text-gray-500">
-            Выберите фотографии товара (JPG, PNG, до 8MB каждая)
-          </p>
-        </div>
-
-        {/* Предварительный просмотр фотографий */}
-        {processedPhotos.length > 0 && (
-          <div>
-            <h3 className="text-sm font-medium text-gray-700 mb-2">
-              Выбранные фотографии ({processedPhotos.length})
-            </h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {processedPhotos.map((photo, index) => (
-                <div key={index} className="relative group">
-                  <img
-                    src={photo}
-                    alt={`Фото ${index + 1}`}
-                    className="w-full h-24 object-cover rounded-lg cursor-pointer"
-                    onClick={() => openPhotoModal(photo)}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removePhoto(index)}
-                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    ×
-                  </button>
+                    <FormField
+                    control={form.control}
+          name="price"
+                    render={({ field }) => (
+            <FormItem>
+              <FormLabel>Цена</FormLabel>
+                        <FormControl>
+                <Input 
+                  type="number" 
+                  placeholder="С учетом Авито комиссии" 
+                  {...field}
+                  value={field.value || ''}
+                  onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                
+        {/* Photo Upload Section */}
+                    <FormField
+                        control={form.control}
+                        name="photos"
+                        render={() => (
+            <FormItem>
+                            <FormLabel>Фотографии (до 3)</FormLabel>
+              <p className="text-sm text-muted-foreground">
+                Можно выбрать несколько фото одновременно
+              </p>
+                            <FormControl>
+                <div className="space-y-4">
+                                    <input 
+                                        type="file" 
+                                        ref={fileInputRef} 
+                                        onChange={handlePhotoUpload}
+                                        className="hidden" 
+                                        accept="image/*"
+                                        multiple
+                                     />
+                  
+                  <div className="flex flex-wrap gap-2">
+                    {photos.map((photo, index) => (
+                      <div key={index} className="relative group w-20 h-20">
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <button className="w-full h-full rounded-md overflow-hidden border hover:opacity-80 transition-opacity">
+                              <Image
+                                src={photo}
+                                alt={`Фото ${index + 1}`}
+                                width={80}
+                                height={80}
+                                className="rounded-md object-cover w-full h-full"
+                              />
+                              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all flex items-center justify-center">
+                                <ZoomIn className="h-4 w-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                              </div>
+                            </button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-[90vw] max-h-[90vh] p-2 sm:max-w-2xl md:max-w-4xl">
+                            <DialogHeader>
+                              <DialogTitle>Фото {index + 1}</DialogTitle>
+                            </DialogHeader>
+                            <div className="flex justify-center items-center">
+                              <Image
+                                src={photo}
+                                alt={`Фото ${index + 1}`}
+                                width={800}
+                                height={800}
+                                className="rounded-md object-contain max-w-full max-h-[70vh]"
+                              />
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => handleRemovePhoto(index)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                    
+                    {photos.length < 3 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-20 w-20 border-dashed flex flex-col items-center justify-center"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploading}
+                      >
+                        {isUploading ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900 mb-1"></div>
+                            <span className="text-xs">Загрузка...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="h-4 w-4 mb-1" />
+                            <span className="text-xs">Фото</span>
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Ошибка */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-md p-4">
-            <p className="text-sm text-red-600">{error}</p>
-          </div>
-        )}
-
-        {/* Кнопка отправки */}
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isSubmitting ? 'Добавление...' : 'Добавить заказ'}
-          </button>
-        </div>
-      </form>
-
-      {/* Модальное окно для просмотра фотографии */}
-      {selectedPhoto && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-4 max-w-4xl max-h-[90vh] overflow-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium">Просмотр фотографии</h3>
-              <button
-                onClick={closePhotoModal}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                ×
-              </button>
-            </div>
-            <img
-              src={selectedPhoto}
-              alt="Фотография"
-              className="max-w-full max-h-[70vh] object-contain"
-            />
-          </div>
-        </div>
-      )}
-    </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
+          name="comment"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Комментарий</FormLabel>
+              <FormControl>
+                <Textarea placeholder="Любые детали..." {...field} />
+                            </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+        
+        <Button type="submit">Сохранить</Button>
+          </form>
+        </Form>
   );
 }
