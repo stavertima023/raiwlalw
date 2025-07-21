@@ -76,6 +76,15 @@ export function Dashboard({
               Отмена заказа
             </Button>
           </CancelOrderDialog>
+          <PayoutDialog 
+            findOrders={findOrders}
+            onConfirmPayout={onPayout}
+            currentUser={user}
+          >
+            <Button variant="default" className="w-full">
+              Создать выплату
+            </Button>
+          </PayoutDialog>
           <ReturnOrderDialog 
             onConfirmReturn={onReturnOrder}
             findOrder={findOrder}
