@@ -45,7 +45,14 @@ export function PrinterDashboard({
   
   const ordersForShipment = React.useMemo(() => {
     return filteredOrders
-      .filter(order => order.status === 'Готов');
+      .filter(order => order.status === 'Готов')
+      .sort((a, b) => {
+        // Сортировка по времени готовности (сначала самые новые)
+        if (!a.ready_at && !b.ready_at) return 0;
+        if (!a.ready_at) return 1;
+        if (!b.ready_at) return -1;
+        return new Date(b.ready_at).getTime() - new Date(a.ready_at).getTime();
+      });
   }, [filteredOrders]);
 
 

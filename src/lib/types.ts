@@ -77,6 +77,7 @@ export const OrderSchema = z.object({
       }, 'Неверный формат изображения')
   ).max(3, 'Максимум 3 фотографии').optional().default([]),
   comment: z.string().optional().default(''),
+  ready_at: z.union([z.date(), z.string().transform((str) => new Date(str))]).optional(),
 });
 
 export type Order = z.infer<typeof OrderSchema>;

@@ -25,7 +25,7 @@ export async function GET() {
     // Оптимизированный запрос с выбором только нужных полей
     let query = supabaseAdmin
       .from('orders')
-      .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment')
+      .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment, ready_at')
       .order('orderDate', { ascending: false });
 
     // Если пользователь продавец, фильтруем только его заказы
