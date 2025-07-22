@@ -22,11 +22,12 @@ export async function GET() {
       return NextResponse.json({ message: 'Пользователь не авторизован' }, { status: 401 });
     }
 
-    // Оптимизированный запрос с выбором только нужных полей
+    // Оптимизированный запрос с выбором только нужных полей и пагинацией
     let query = supabaseAdmin
       .from('orders')
       .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment, ready_at')
-      .order('orderDate', { ascending: false });
+      .order('orderDate', { ascending: false })
+      .limit(1000); // Ограничиваем количество записей для быстрой загрузки
 
     // Если пользователь продавец, фильтруем только его заказы
     if (user.role === 'Продавец') {

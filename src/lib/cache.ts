@@ -14,14 +14,15 @@ const CACHE_KEYS = {
   USERS: 'users_cache',
   LAST_UPDATE: 'last_update',
   CACHE_VERSION: 'cache_version',
+  LAST_SYNC: 'last_sync',
 } as const;
 
 // Версия кэша для инвалидации при обновлениях
-const CACHE_VERSION = '1.0.0';
+const CACHE_VERSION = '1.1.0';
 
 // Время жизни кэша (в миллисекундах)
 const CACHE_TTL = {
-  ORDERS: 5 * 60 * 1000, // 5 минут
+  ORDERS: 2 * 60 * 1000, // 2 минуты (уменьшено для быстрого обновления)
   EXPENSES: 10 * 60 * 1000, // 10 минут
   PAYOUTS: 5 * 60 * 1000, // 5 минут
   DEBTS: 2 * 60 * 1000, // 2 минуты
@@ -189,6 +190,32 @@ class CacheManager {
       return 0;
     }
   }
+
+  /**
+   * Сохраняет время последней синхронизации
+   */
+  setLastSync(timestamp: string): void {
+    if (!this.isAvailable) return;
+
+    try {
+      localStorage.setItem(CACHE_KEYS.LAST_SYNC, timestamp);
+    } catch (error) {
+      console.warn('Ошибка сохранения времени синхронизации:', error);
+    }
+  }
+
+  /**
+   * Получает время последней синхронизации
+   */
+  getLastSync(): string | null {
+    if (!this.isAvailable) return null;
+
+    try {
+      return localStorage.getItem(CACHE_KEYS.LAST_SYNC);
+    } catch (error) {
+      return null;
+    }
+  }
 }
 
 // Создаем глобальный экземпляр кэш-менеджера
@@ -232,15 +259,47 @@ export const optimizedFetcher = async (url: string) => {
 };
 
 /**
+ * Fetcher для получения только изменений
+ */
+export const changesFetcher = async (url: string) => {
+  const lastSync = cacheManager.getLastSync();
+  const syncUrl = lastSync ? `${url}?lastSync=${lastSync}` : url;
+  
+  console.log(`🔄 Загрузка изменений: ${syncUrl}`);
+  
+  const res = await fetch(syncUrl, {
+    headers: {
+      'Cache-Control': 'no-cache',
+    },
+  });
+  
+  if (!res.ok) {
+    const error = new Error('Произошла ошибка при загрузке изменений');
+    const info = await res.json();
+    (error as any).info = info;
+    throw error;
+  }
+  
+  const data = await res.json();
+  
+  // Обновляем время синхронизации
+  if (data.timestamp) {
+    cacheManager.setLastSync(data.timestamp);
+  }
+  
+  return data;
+};
+
+/**
  * Конфигурация SWR для максимальной производительности
  */
 export const swrConfig = {
   revalidateOnFocus: false, // Не перезагружаем при фокусе
   revalidateOnReconnect: true, // Перезагружаем при восстановлении соединения
-  dedupingInterval: 10000, // Дедупликация запросов в течение 10 секунд
+  dedupingInterval: 5000, // Дедупликация запросов в течение 5 секунд (уменьшено)
   errorRetryCount: 2, // Повторяем ошибки только 2 раза
   errorRetryInterval: 1000, // Интервал между повторами
-  refreshInterval: 30000, // Автообновление каждые 30 секунд
+  refreshInterval: 15000, // Автообновление каждые 15 секунд (уменьшено)
   refreshWhenHidden: false, // Не обновляем когда вкладка неактивна
   refreshWhenOffline: false, // Не обновляем когда нет интернета
   revalidateIfStale: true, // Перезагружаем если данные устарели
@@ -264,6 +323,7 @@ export const refreshCache = (key?: string) => {
 export const getCacheStatus = () => {
   return {
     lastUpdate: cacheManager.getLastUpdate(),
+    lastSync: cacheManager.getLastSync(),
     isAvailable: cacheManager.isAvailable,
     version: CACHE_VERSION,
   };
