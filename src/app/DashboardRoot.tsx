@@ -45,14 +45,14 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
 
   // Заказы для "На изготовление" (только статус 'Добавлен')
   const { data: productionOrders = [], error: productionError, isLoading: productionLoading, mutate: mutateProduction } = useSWR<Order[]>(
-    initialUser.role === 'Принтовщик' ? ['/api/orders?status=Добавлен'] : null,
+    initialUser.role === 'Принтовщик' ? '/api/orders?status=Добавлен' : null,
     optimizedFetcher,
     { ...swrConfig }
   );
 
   // Заказы для "На отправку" и "Все заказы" (все заказы, только по кнопке)
   const { data: allOrders = [], error: allOrdersError, isLoading: allOrdersLoadingSWR, mutate: mutateAllOrders } = useSWR<Order[]>(
-    initialUser.role === 'Принтовщик' && allOrdersLoaded ? ['/api/orders'] : null,
+    initialUser.role === 'Принтовщик' && allOrdersLoaded ? '/api/orders' : null,
     optimizedFetcher,
     { ...swrConfig }
   );
