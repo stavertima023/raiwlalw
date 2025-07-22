@@ -32,13 +32,31 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     console.log('📊 Статус кэша:', status);
   }, []);
 
-  // Оптимизированные запросы с улучшенной конфигурацией
+  // Получаем заказы из localStorage (только на клиенте)
+  const getOrdersFromStorage = () => {
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('orders');
+        if (raw) return JSON.parse(raw);
+      } catch {}
+    }
+    return [];
+  };
+
+  // SWR с fallbackData из localStorage и обновлением localStorage при успехе
   const { data: orders = [], error: ordersError, isLoading: ordersLoading } = useSWR<Order[]>(
-    '/api/orders', 
-    optimizedFetcher, 
+    '/api/orders',
+    optimizedFetcher,
     {
       ...swrConfig,
-      fallbackData: cacheManager.get('orders') || [],
+      fallbackData: getOrdersFromStorage(),
+      onSuccess: (data) => {
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem('orders', JSON.stringify(data));
+          } catch {}
+        }
+      },
     }
   );
   
