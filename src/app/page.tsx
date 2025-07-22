@@ -1,6 +1,6 @@
 import { getSession } from '@/lib/session';
 import { redirect } from 'next/navigation';
-import DashboardRootOptimized from './DashboardRootOptimized';
+import DashboardRoot from './DashboardRoot';
 
 export default async function Home() {
   const session = await getSession();
@@ -10,5 +10,5 @@ export default async function Home() {
     redirect('/login');
   }
 
-  return <DashboardRootOptimized initialUser={user || null} />;
+  return <DashboardRoot initialUser={user || null} />;
 } 

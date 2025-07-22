@@ -14,6 +14,7 @@ import { PayoutsList } from '@/components/admin/PayoutsList';
 import AIAnalytics from '@/components/admin/AIAnalytics';
 import { Analytics } from '@/components/admin/Analytics';
 import { optimizedFetcher, swrConfig, cacheManager, getCacheStatus } from '@/lib/cache';
+import { useOrders } from '@/hooks/useOrders';
 
 type DashboardRootProps = {
   initialUser: Omit<User, 'password_hash'> | undefined;
@@ -32,15 +33,19 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     console.log('📊 Статус кэша:', status);
   }, []);
 
-  // Оптимизированные запросы с улучшенной конфигурацией
-  const { data: orders = [], error: ordersError, isLoading: ordersLoading } = useSWR<Order[]>(
-    '/api/orders', 
-    optimizedFetcher, 
-    {
-      ...swrConfig,
-      fallbackData: cacheManager.get('orders') || [],
-    }
-  );
+  // Оптимизированный хук для заказов с пагинацией и фильтрацией
+  const {
+    orders,
+    pagination,
+    isLoading: ordersLoading,
+    error: ordersError,
+    updateOrderStatus,
+    addOrder
+  } = useOrders({
+    limit: 100, // Увеличиваем лимит для лучшего UX
+    includePhotos: true,
+    enabled: true
+  });
   
   const { data: expenses = [], error: expensesError } = useSWR<Expense[]>(
     initialUser.role === 'Администратор' ? '/api/expenses' : null, 
@@ -128,11 +133,11 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       const lastUpdate = cacheManager.getLastUpdate();
       const timeSinceUpdate = Date.now() - lastUpdate;
       
-      if (timeSinceUpdate < 60000) { // Меньше минуты
-        toast({ 
-          title: 'Данные загружены', 
-          description: 'Используются кэшированные данные для быстрой работы', 
-          duration: 2000
+      if (timeSinceUpdate > 30000) { // 30 секунд
+        toast({
+          title: 'Данные загружены из кэша',
+          description: 'Для получения актуальных данных обновите страницу',
+          variant: 'default'
         });
       }
     }
