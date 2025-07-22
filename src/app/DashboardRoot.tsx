@@ -17,10 +17,9 @@ import { optimizedFetcher, swrConfig, cacheManager, getCacheStatus } from '@/lib
 
 type DashboardRootProps = {
   initialUser: Omit<User, 'password_hash'> | undefined;
-  initialOrders?: Order[];
 }
 
-export default function DashboardRoot({ initialUser, initialOrders = [] }: DashboardRootProps) {
+export default function DashboardRoot({ initialUser }: DashboardRootProps) {
   if (!initialUser) {
     return null;
   }
@@ -33,21 +32,13 @@ export default function DashboardRoot({ initialUser, initialOrders = [] }: Dashb
     console.log('📊 Статус кэша:', status);
   }, []);
 
-  // Сохраняем initialOrders в localStorage для ускорения последующих загрузок
-  React.useEffect(() => {
-    if (initialOrders.length > 0) {
-      cacheManager.set('orders', initialOrders);
-      console.log('💾 Сохранено в кэш:', initialOrders.length, 'заказов');
-    }
-  }, [initialOrders]);
-
   // Оптимизированные запросы с улучшенной конфигурацией
   const { data: orders = [], error: ordersError, isLoading: ordersLoading } = useSWR<Order[]>(
     '/api/orders', 
     optimizedFetcher, 
     {
       ...swrConfig,
-      fallbackData: initialOrders.length > 0 ? initialOrders : (cacheManager.get('orders') || []),
+      fallbackData: cacheManager.get('orders') || [],
     }
   );
   
