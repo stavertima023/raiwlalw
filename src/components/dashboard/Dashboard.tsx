@@ -22,8 +22,6 @@ interface DashboardProps {
   onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void;
   findOrder: (orderNumber: string) => Order | undefined;
   findOrders: (orderNumbers: string[]) => Order[];
-  onLoadOrders?: () => void;
-  ordersLoaded?: boolean;
 }
 
 export function Dashboard({
@@ -37,8 +35,6 @@ export function Dashboard({
   onUpdateStatus,
   findOrder,
   findOrders,
-  onLoadOrders,
-  ordersLoaded,
 }: DashboardProps) {
   const [selectedOrders, setSelectedOrders] = React.useState<string[]>([]);
   const [searchTerm, setSearchTerm] = React.useState('');
@@ -59,15 +55,6 @@ export function Dashboard({
           Управление заказами и отслеживание статусов
         </p>
       </div>
-
-      {/* Кнопка загрузки заказов */}
-      {typeof onLoadOrders === 'function' && !ordersLoaded && (
-        <div className="mb-2">
-          <Button onClick={onLoadOrders} variant="outline" className="w-full md:w-auto">
-            Загрузить заказы
-          </Button>
-        </div>
-      )}
 
       {/* Индикатор загрузки */}
       <LoadingIndicator 

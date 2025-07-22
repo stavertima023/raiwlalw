@@ -14,7 +14,6 @@ import { PayoutsList } from '@/components/admin/PayoutsList';
 import AIAnalytics from '@/components/admin/AIAnalytics';
 import { Analytics } from '@/components/admin/Analytics';
 import { optimizedFetcher, swrConfig, cacheManager, getCacheStatus } from '@/lib/cache';
-import { useRef } from 'react';
 
 type DashboardRootProps = {
   initialUser: Omit<User, 'password_hash'> | undefined;
@@ -27,17 +26,6 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
 
   const { toast } = useToast();
 
-  // --- Новое состояние для ленивой загрузки заказов продавца ---
-  const [sellerOrders, setSellerOrders] = React.useState<Order[]>([]);
-  const [sellerOrdersLoaded, setSellerOrdersLoaded] = React.useState(false);
-  const [sellerOrdersLoading, setSellerOrdersLoading] = React.useState(false);
-  const tempOrdersRef = useRef<Order[]>([]); // Для хранения локально добавленных заказов
-
-  // --- Быстрый кэш для принтовщика ---
-  const [printerOrders, setPrinterOrders] = React.useState<Order[] | null>(null);
-  const [printerOrdersLoading, setPrinterOrdersLoading] = React.useState(false);
-  const printerOrdersLoadedRef = useRef(false);
-
   // Показываем статус кэша в консоли для отладки
   React.useEffect(() => {
     const status = getCacheStatus();
@@ -46,12 +34,11 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
 
   // Оптимизированные запросы с улучшенной конфигурацией
   const { data: orders = [], error: ordersError, isLoading: ordersLoading } = useSWR<Order[]>(
-    initialUser.role === 'Продавец' && !sellerOrdersLoaded ? null : '/api/orders',
-    optimizedFetcher,
+    '/api/orders', 
+    optimizedFetcher, 
     {
       ...swrConfig,
       fallbackData: cacheManager.get('orders') || [],
-      revalidateOnFocus: true,
     }
   );
   
@@ -90,26 +77,6 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       fallbackData: cacheManager.get('users') || [],
     }
   );
-
-  // --- Мгновенное отображение кэша для принтовщика ---
-  React.useEffect(() => {
-    if (initialUser.role === 'Принтовщик') {
-      const cached = cacheManager.get<Order[]>('orders');
-      if (cached && !printerOrdersLoadedRef.current) {
-        setPrinterOrders(cached);
-        printerOrdersLoadedRef.current = true;
-      }
-      setPrinterOrdersLoading(true);
-      fetch('/api/orders')
-        .then(res => res.json())
-        .then(data => {
-          setPrinterOrders(data);
-          cacheManager.set('orders', data);
-        })
-        .catch(() => {})
-        .finally(() => setPrinterOrdersLoading(false));
-    }
-  }, [initialUser.role]);
 
   // Обработка ошибок с улучшенными сообщениями
   React.useEffect(() => {
@@ -173,16 +140,15 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
 
   // Оптимистичное добавление заказа с кэшированием
   const handleAddOrder = async (newOrderData: Omit<Order, 'id' | 'orderDate' | 'seller'>) => {
+    // Создаем временный заказ для оптимистичного обновления
     const tempOrder: Order = {
       id: `temp-${Date.now()}`,
       orderDate: new Date(),
       seller: initialUser.username,
       ...newOrderData,
     };
-    if (initialUser.role === 'Продавец') {
-      tempOrdersRef.current = [tempOrder, ...tempOrdersRef.current];
-      setSellerOrders((prev) => [tempOrder, ...prev]);
-    }
+
+    // Оптимистично обновляем UI и кэш
     mutate('/api/orders', (currentOrders: Order[] = []) => [tempOrder, ...currentOrders], false);
     cacheManager.set('orders', [tempOrder, ...orders]);
 
@@ -199,9 +165,6 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
         // Откатываем оптимистичное обновление при ошибке
         mutate('/api/orders');
         cacheManager.set('orders', orders);
-        
-        setSellerOrders((prev) => prev.filter((o) => o.id !== tempOrder.id));
-        tempOrdersRef.current = tempOrdersRef.current.filter((o) => o.id !== tempOrder.id);
         
         let errorMessage = responseData.message || 'Произошла ошибка';
         
@@ -386,24 +349,6 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     }
   };
 
-  // --- Обработчик загрузки заказов продавца ---
-  const handleLoadSellerOrders = async () => {
-    setSellerOrdersLoading(true);
-    try {
-      const response = await fetch('/api/orders');
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Ошибка загрузки заказов');
-      // Объединяем локальные заказы и заказы с сервера без дублей
-      const allOrders = [...tempOrdersRef.current, ...data.filter((o: Order) => !tempOrdersRef.current.some((t) => t.orderNumber === o.orderNumber))];
-      setSellerOrders(allOrders);
-      setSellerOrdersLoaded(true);
-    } catch (e: any) {
-      toast({ title: 'Ошибка загрузки заказов', description: e.message, variant: 'destructive' });
-    } finally {
-      setSellerOrdersLoading(false);
-    }
-  };
-
   // Мемоизированные функции поиска
   const findOrder = React.useCallback((orderNumber: string): Order | undefined => {
     return orders.find((order: Order) => order.orderNumber === orderNumber);
@@ -429,10 +374,10 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     <AppLayout currentUser={initialUser}>
       {(activeView: string) => {
         if (initialUser.role === 'Продавец') {
-          return <Dashboard 
+           return <Dashboard 
             user={initialUser} 
-            orders={sellerOrdersLoaded ? sellerOrders : tempOrdersRef.current}
-            isLoading={sellerOrdersLoading}
+            orders={orders}
+            isLoading={ordersLoading}
             onAddOrder={handleAddOrder} 
             onCancelOrder={handleCancelOrder}
             onReturnOrder={handleReturnOrder}
@@ -440,8 +385,6 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
             findOrders={findOrders}
             onPayout={handlePayout}
             onUpdateStatus={handleUpdateOrderStatus}
-            onLoadOrders={handleLoadSellerOrders}
-            ordersLoaded={sellerOrdersLoaded}
           />
         }
         if (initialUser.role === 'Принтовщик') {
@@ -449,8 +392,8 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
              <PrinterDashboard
                 currentUser={initialUser}
                 onUpdateStatus={handleUpdateOrderStatus}
-                allOrders={printerOrders || orders}
-                isLoading={printerOrdersLoading && !(printerOrders && printerOrders.length > 0)}
+                allOrders={orders}
+                isLoading={ordersLoading}
               />
           )
         }
