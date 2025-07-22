@@ -42,7 +42,8 @@ export async function GET() {
     // Парсим даты и возвращаем данные
     const parsedData = data.map(item => ({
       ...item, 
-      orderDate: new Date(item.orderDate)
+      orderDate: new Date(item.orderDate),
+      ready_at: item.ready_at ? new Date(item.ready_at) : undefined
     }));
 
     return NextResponse.json(parsedData);

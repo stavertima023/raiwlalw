@@ -17,9 +17,10 @@ import { optimizedFetcher, swrConfig, cacheManager, getCacheStatus } from '@/lib
 
 type DashboardRootProps = {
   initialUser: Omit<User, 'password_hash'> | undefined;
+  initialOrders?: Order[];
 }
 
-export default function DashboardRoot({ initialUser }: DashboardRootProps) {
+export default function DashboardRoot({ initialUser, initialOrders = [] }: DashboardRootProps) {
   if (!initialUser) {
     return null;
   }
@@ -32,31 +33,21 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     console.log('📊 Статус кэша:', status);
   }, []);
 
-  // Получаем заказы из localStorage (только на клиенте)
-  const getOrdersFromStorage = () => {
-    if (typeof window !== 'undefined') {
-      try {
-        const raw = localStorage.getItem('orders');
-        if (raw) return JSON.parse(raw);
-      } catch {}
+  // Сохраняем initialOrders в localStorage для ускорения последующих загрузок
+  React.useEffect(() => {
+    if (initialOrders.length > 0) {
+      cacheManager.set('orders', initialOrders);
+      console.log('💾 Сохранено в кэш:', initialOrders.length, 'заказов');
     }
-    return [];
-  };
+  }, [initialOrders]);
 
-  // SWR с fallbackData из localStorage и обновлением localStorage при успехе
+  // Оптимизированные запросы с улучшенной конфигурацией
   const { data: orders = [], error: ordersError, isLoading: ordersLoading } = useSWR<Order[]>(
-    '/api/orders',
-    optimizedFetcher,
+    '/api/orders', 
+    optimizedFetcher, 
     {
       ...swrConfig,
-      fallbackData: getOrdersFromStorage(),
-      onSuccess: (data) => {
-        if (typeof window !== 'undefined') {
-          try {
-            localStorage.setItem('orders', JSON.stringify(data));
-          } catch {}
-        }
-      },
+      fallbackData: initialOrders.length > 0 ? initialOrders : (cacheManager.get('orders') || []),
     }
   );
   
