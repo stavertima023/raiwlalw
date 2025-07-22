@@ -33,6 +33,11 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
   const [sellerOrdersLoading, setSellerOrdersLoading] = React.useState(false);
   const tempOrdersRef = useRef<Order[]>([]); // Для хранения локально добавленных заказов
 
+  // --- Быстрый кэш для принтовщика ---
+  const [printerOrders, setPrinterOrders] = React.useState<Order[] | null>(null);
+  const [printerOrdersLoading, setPrinterOrdersLoading] = React.useState(false);
+  const printerOrdersLoadedRef = useRef(false);
+
   // Показываем статус кэша в консоли для отладки
   React.useEffect(() => {
     const status = getCacheStatus();
@@ -46,6 +51,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     {
       ...swrConfig,
       fallbackData: cacheManager.get('orders') || [],
+      revalidateOnFocus: true,
     }
   );
   
@@ -84,6 +90,26 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       fallbackData: cacheManager.get('users') || [],
     }
   );
+
+  // --- Мгновенное отображение кэша для принтовщика ---
+  React.useEffect(() => {
+    if (initialUser.role === 'Принтовщик') {
+      const cached = cacheManager.get<Order[]>('orders');
+      if (cached && !printerOrdersLoadedRef.current) {
+        setPrinterOrders(cached);
+        printerOrdersLoadedRef.current = true;
+      }
+      setPrinterOrdersLoading(true);
+      fetch('/api/orders')
+        .then(res => res.json())
+        .then(data => {
+          setPrinterOrders(data);
+          cacheManager.set('orders', data);
+        })
+        .catch(() => {})
+        .finally(() => setPrinterOrdersLoading(false));
+    }
+  }, [initialUser.role]);
 
   // Обработка ошибок с улучшенными сообщениями
   React.useEffect(() => {
@@ -423,8 +449,8 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
              <PrinterDashboard
                 currentUser={initialUser}
                 onUpdateStatus={handleUpdateOrderStatus}
-                allOrders={orders}
-                isLoading={ordersLoading}
+                allOrders={printerOrders || orders}
+                isLoading={printerOrdersLoading && !(printerOrders && printerOrders.length > 0)}
               />
           )
         }
