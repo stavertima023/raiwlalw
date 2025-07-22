@@ -52,7 +52,6 @@ import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { LazyPhotoGallery } from '@/components/ui/LazyImage';
 
 interface OrderTableProps {
   orders: Order[];
@@ -99,9 +98,68 @@ const StatusBadge = React.memo<{ status: OrderStatus; useLargeLayout?: boolean }
 });
 StatusBadge.displayName = 'StatusBadge';
 
-// Мемоизированный компонент фотографий с lazy loading
+// Мемоизированный компонент фотографий
 const OrderPhotos = React.memo<{ photos: string[]; size: number }>(({ photos, size }) => {
-  return <LazyPhotoGallery photos={photos} size={size} maxVisible={3} />;
+  if (!photos || photos.length === 0) {
+    return (
+      <div className="flex gap-1">
+        {[1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="bg-muted rounded border-2 border-dashed border-muted-foreground/25 flex items-center justify-center"
+            style={{ width: size, height: size }}
+          >
+            <span className="text-xs text-muted-foreground">Фото {i}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex gap-1">
+      {photos.map((photo, index) => (
+        <div key={index} className="relative">
+          <Dialog>
+            <DialogTrigger asChild>
+              <button className="block">
+                <Image
+                  src={photo}
+                  alt={`Фото ${index + 1}`}
+                  width={size}
+                  height={size}
+                  className="rounded object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                  style={{ width: size, height: size }}
+                />
+              </button>
+            </DialogTrigger>
+            <DialogContent className="max-w-[90vw] max-h-[90vh] p-2 sm:max-w-2xl md:max-w-4xl">
+              <DialogHeader>
+                <DialogTitle>Фото {index + 1}</DialogTitle>
+              </DialogHeader>
+              <div className="flex justify-center items-center">
+                <Image
+                  src={photo}
+                  alt={`Фото ${index + 1}`}
+                  width={800}
+                  height={800}
+                  className="rounded-md object-contain max-w-full max-h-[70vh]"
+                />
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+      ))}
+      {photos.length < 3 && (
+        <div
+          className="bg-muted rounded border-2 border-dashed border-muted-foreground/25 flex items-center justify-center"
+          style={{ width: size, height: size }}
+        >
+          <span className="text-xs text-muted-foreground">Фото {photos.length + 1}</span>
+        </div>
+      )}
+    </div>
+  );
 });
 OrderPhotos.displayName = 'OrderPhotos';
 

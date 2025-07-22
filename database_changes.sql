@@ -4,9 +4,9 @@ ALTER TABLE orders ADD COLUMN ready_at TIMESTAMP WITH TIME ZONE;
 -- Создаем индекс для быстрой сортировки
 CREATE INDEX idx_orders_ready_at ON orders(ready_at DESC);
 
--- Обновляем существующие заказы со статусом 'Готов', устанавливая ready_at равным текущему времени
+-- Обновляем существующие заказы со статусом 'Готов', устанавливая ready_at равным updated_at
 UPDATE orders 
-SET ready_at = NOW() 
+SET ready_at = updated_at 
 WHERE status = 'Готов' AND ready_at IS NULL;
 
 -- Создаем функцию для автоматического обновления ready_at при изменении статуса

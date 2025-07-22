@@ -8,7 +8,7 @@ import { cleanImageArray } from '@/lib/imageUtils';
 export const maxDuration = 90; // 90 секунд
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
     // Check supabaseAdmin availability
     if (!supabaseAdmin) {
@@ -22,73 +22,30 @@ export async function GET(request: Request) {
       return NextResponse.json({ message: 'Пользователь не авторизован' }, { status: 401 });
     }
 
-    // Получаем параметры запроса
-    const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const status = searchParams.get('status');
-    const seller = searchParams.get('seller');
-    const orderNumber = searchParams.get('orderNumber');
-    const includePhotos = searchParams.get('includePhotos') !== 'false'; // по умолчанию true
-    const sortBy = searchParams.get('sortBy') || 'orderDate';
-    const sortOrder = searchParams.get('sortOrder') || 'desc';
-
-    // Выбираем поля в зависимости от необходимости фото
-    const selectFields = includePhotos 
-      ? 'id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment, ready_at'
-      : 'id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, comment, ready_at';
-
-    // Строим запрос с фильтрами
+    // Оптимизированный запрос с выбором только нужных полей
     let query = supabaseAdmin
       .from('orders')
-      .select(selectFields, { count: 'exact' });
-
-    // Применяем фильтры
-    if (status && status !== 'all') {
-      query = query.eq('status', status);
-    }
-    if (seller && seller !== 'all') {
-      query = query.eq('seller', seller);
-    }
-    if (orderNumber) {
-      query = query.ilike('orderNumber', `%${orderNumber}%`);
-    }
+      .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment, ready_at')
+      .order('orderDate', { ascending: false });
 
     // Если пользователь продавец, фильтруем только его заказы
     if (user.role === 'Продавец') {
       query = query.eq('seller', user.username);
     }
-
-    // Применяем сортировку
-    const sortDirection = sortOrder === 'asc' ? { ascending: true } : { ascending: false };
-    query = query.order(sortBy, sortDirection);
-
-    // Применяем пагинацию
-    const offset = (page - 1) * limit;
-    query = query.range(offset, offset + limit - 1);
     
-    const { data, error, count } = await query;
+    const { data, error } = await query;
 
     if (error) {
       throw error;
     }
 
     // Парсим даты и возвращаем данные
-    const parsedData = data.map((item: any) => ({
+    const parsedData = data.map(item => ({
       ...item, 
-      orderDate: new Date(item.orderDate),
-      ready_at: item.ready_at ? new Date(item.ready_at) : null
+      orderDate: new Date(item.orderDate)
     }));
 
-    return NextResponse.json({
-      data: parsedData,
-      pagination: {
-        page,
-        limit,
-        total: count || 0,
-        totalPages: Math.ceil((count || 0) / limit)
-      }
-    });
+    return NextResponse.json(parsedData);
   } catch (error: any) {
     return NextResponse.json({ 
       message: 'Ошибка загрузки заказов', 
