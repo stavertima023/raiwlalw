@@ -14,8 +14,7 @@ import { PayoutsList } from '@/components/admin/PayoutsList';
 import AIAnalytics from '@/components/admin/AIAnalytics';
 import { Analytics } from '@/components/admin/Analytics';
 import { optimizedFetcher, swrConfig, cacheManager, getCacheStatus } from '@/lib/cache';
-import { useState, useRef } from 'react';
-import { Button } from '@/components/ui/button';
+import { useRef } from 'react';
 
 type DashboardRootProps = {
   initialUser: Omit<User, 'password_hash'> | undefined;
@@ -28,33 +27,26 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
 
   const { toast } = useToast();
 
+  // --- Новое состояние для ленивой загрузки заказов продавца ---
+  const [sellerOrders, setSellerOrders] = React.useState<Order[]>([]);
+  const [sellerOrdersLoaded, setSellerOrdersLoaded] = React.useState(false);
+  const [sellerOrdersLoading, setSellerOrdersLoading] = React.useState(false);
+  const tempOrdersRef = useRef<Order[]>([]); // Для хранения локально добавленных заказов
+
   // Показываем статус кэша в консоли для отладки
   React.useEffect(() => {
     const status = getCacheStatus();
     console.log('📊 Статус кэша:', status);
   }, []);
 
-  // --- Продавец: ручная загрузка всех заказов ---
-  const [ordersLoaded, setOrdersLoaded] = useState(false);
-  const [ordersLoadingManual, setOrdersLoadingManual] = useState(false);
-
-  // --- Принтовщик: раздельная загрузка ---
-  const [printerTab, setPrinterTab] = useState<'production'|'shipment'|'all'>('production');
-  const [allOrdersLoaded, setAllOrdersLoaded] = useState(false);
-  const [allOrdersLoading, setAllOrdersLoading] = useState(false);
-
-  // Заказы для "На изготовление" (только статус 'Добавлен')
-  const { data: productionOrders = [], error: productionError, isLoading: productionLoading, mutate: mutateProduction } = useSWR<Order[]>(
-    initialUser.role === 'Принтовщик' ? '/api/orders?status=Добавлен' : null,
+  // Оптимизированные запросы с улучшенной конфигурацией
+  const { data: orders = [], error: ordersError, isLoading: ordersLoading } = useSWR<Order[]>(
+    initialUser.role === 'Продавец' && !sellerOrdersLoaded ? null : '/api/orders',
     optimizedFetcher,
-    { ...swrConfig }
-  );
-
-  // Заказы для "На отправку" и "Все заказы" (все заказы, только по кнопке)
-  const { data: allOrders = [], error: allOrdersError, isLoading: allOrdersLoadingSWR, mutate: mutateAllOrders } = useSWR<Order[]>(
-    initialUser.role === 'Принтовщик' && allOrdersLoaded ? '/api/orders' : null,
-    optimizedFetcher,
-    { ...swrConfig }
+    {
+      ...swrConfig,
+      fallbackData: cacheManager.get('orders') || [],
+    }
   );
   
   const { data: expenses = [], error: expensesError } = useSWR<Expense[]>(
@@ -95,19 +87,11 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
 
   // Обработка ошибок с улучшенными сообщениями
   React.useEffect(() => {
-    if (productionError) {
-      console.error('Ошибка загрузки заказов для принтовщика:', productionError);
+    if (ordersError) {
+      console.error('Ошибка загрузки заказов:', ordersError);
       toast({ 
-        title: 'Ошибка загрузки заказов для принтовщика', 
-        description: productionError.message, 
-        variant: 'destructive' 
-      });
-    }
-    if (allOrdersError) {
-      console.error('Ошибка загрузки всех заказов для принтовщика:', allOrdersError);
-      toast({ 
-        title: 'Ошибка загрузки всех заказов для принтовщика', 
-        description: allOrdersError.message, 
+        title: 'Ошибка загрузки заказов', 
+        description: 'Проверьте подключение к интернету и попробуйте снова', 
         variant: 'destructive' 
       });
     }
@@ -143,11 +127,11 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
         variant: 'destructive' 
       });
     }
-  }, [productionError, allOrdersError, expensesError, payoutsError, debtsError, usersError, toast]);
+  }, [ordersError, expensesError, payoutsError, debtsError, usersError, toast]);
 
   // Показываем уведомление о загрузке из кэша
   React.useEffect(() => {
-    if (!productionLoading && productionOrders.length > 0) {
+    if (!ordersLoading && orders.length > 0) {
       const lastUpdate = cacheManager.getLastUpdate();
       const timeSinceUpdate = Date.now() - lastUpdate;
       
@@ -159,33 +143,22 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
         });
       }
     }
-    if (!allOrdersLoadingSWR && allOrders.length > 0) {
-      const lastUpdate = cacheManager.getLastUpdate();
-      const timeSinceUpdate = Date.now() - lastUpdate;
-      
-      if (timeSinceUpdate < 60000) { // Меньше минуты
-        toast({ 
-          title: 'Данные загружены', 
-          description: 'Используются кэшированные данные для быстрой работы', 
-          duration: 2000
-        });
-      }
-    }
-  }, [productionLoading, productionOrders.length, allOrdersLoadingSWR, allOrders.length, toast]);
+  }, [ordersLoading, orders.length, toast]);
 
   // Оптимистичное добавление заказа с кэшированием
   const handleAddOrder = async (newOrderData: Omit<Order, 'id' | 'orderDate' | 'seller'>) => {
-    // Создаем временный заказ для оптимистичного обновления
     const tempOrder: Order = {
       id: `temp-${Date.now()}`,
       orderDate: new Date(),
       seller: initialUser.username,
       ...newOrderData,
     };
-
-    // Оптимистично обновляем UI и кэш
+    if (initialUser.role === 'Продавец') {
+      tempOrdersRef.current = [tempOrder, ...tempOrdersRef.current];
+      setSellerOrders((prev) => [tempOrder, ...prev]);
+    }
     mutate('/api/orders', (currentOrders: Order[] = []) => [tempOrder, ...currentOrders], false);
-    cacheManager.set('orders', [tempOrder, ...allOrders]); // Обновляем кэш всех заказов
+    cacheManager.set('orders', [tempOrder, ...orders]);
 
     try {
       const response = await fetch('/api/orders', {
@@ -199,7 +172,10 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       if (!response.ok) {
         // Откатываем оптимистичное обновление при ошибке
         mutate('/api/orders');
-        cacheManager.set('orders', allOrders); // Откатываем кэш всех заказов
+        cacheManager.set('orders', orders);
+        
+        setSellerOrders((prev) => prev.filter((o) => o.id !== tempOrder.id));
+        tempOrdersRef.current = tempOrdersRef.current.filter((o) => o.id !== tempOrder.id);
         
         let errorMessage = responseData.message || 'Произошла ошибка';
         
@@ -243,7 +219,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
   // Оптимистичное обновление статуса заказа с кэшированием
   const handleUpdateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
     // Оптимистично обновляем UI и кэш
-    const updatedOrders = allOrders.map(order => 
+    const updatedOrders = orders.map(order => 
       order.id === orderId ? { ...order, status: newStatus } : order
     );
     
@@ -261,7 +237,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
         const err = await response.json();
         // Откатываем при ошибке
         mutate('/api/orders');
-        cacheManager.set('orders', allOrders);
+        cacheManager.set('orders', orders);
         throw new Error(err.message || 'Server error');
       }
       
@@ -384,41 +360,32 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     }
   };
 
-  // --- Функция ручной загрузки заказов для продавца ---
-  const handleLoadOrders = async () => {
-    setOrdersLoadingManual(true);
+  // --- Обработчик загрузки заказов продавца ---
+  const handleLoadSellerOrders = async () => {
+    setSellerOrdersLoading(true);
     try {
-      await mutateProduction(); // Используем mutateProduction для загрузки только productionOrders
-      setOrdersLoaded(true);
+      const response = await fetch('/api/orders');
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Ошибка загрузки заказов');
+      // Объединяем локальные заказы и заказы с сервера без дублей
+      const allOrders = [...tempOrdersRef.current, ...data.filter((o: Order) => !tempOrdersRef.current.some((t) => t.orderNumber === o.orderNumber))];
+      setSellerOrders(allOrders);
+      setSellerOrdersLoaded(true);
+    } catch (e: any) {
+      toast({ title: 'Ошибка загрузки заказов', description: e.message, variant: 'destructive' });
     } finally {
-      setOrdersLoadingManual(false);
+      setSellerOrdersLoading(false);
     }
-  };
-
-  // --- Функция ручной загрузки всех заказов для принтовщика ---
-  const handleLoadAllOrders = async () => {
-    setAllOrdersLoading(true);
-    try {
-      await mutateAllOrders();
-      setAllOrdersLoaded(true);
-    } finally {
-      setAllOrdersLoading(false);
-    }
-  };
-
-  // --- Для принтовщика: переключение табов ---
-  const handlePrinterTabChange = (tab: 'production'|'shipment'|'all') => {
-    setPrinterTab(tab);
   };
 
   // Мемоизированные функции поиска
   const findOrder = React.useCallback((orderNumber: string): Order | undefined => {
-    return allOrders.find((order: Order) => order.orderNumber === orderNumber);
-  }, [allOrders]);
+    return orders.find((order: Order) => order.orderNumber === orderNumber);
+  }, [orders]);
   
   const findOrders = React.useCallback((orderNumbers: string[]): Order[] => {
-    return allOrders.filter((order: Order) => orderNumbers.includes(order.orderNumber));
-  }, [allOrders]);
+    return orders.filter((order: Order) => orderNumbers.includes(order.orderNumber));
+  }, [orders]);
 
   const PlaceholderComponent = ({ title, description }: { title: string, description: string }) => (
     <Card>
@@ -432,92 +399,70 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     </Card>
   )
 
-  if (initialUser.role === 'Продавец') {
-    return (
-      <AppLayout currentUser={initialUser}>
-        {() => (
-          <Dashboard
-            user={initialUser}
-            orders={allOrders}
-            isLoading={ordersLoadingManual || allOrdersLoadingSWR}
-            onAddOrder={handleAddOrder}
+  return (
+    <AppLayout currentUser={initialUser}>
+      {(activeView: string) => {
+        if (initialUser.role === 'Продавец') {
+          return <Dashboard 
+            user={initialUser} 
+            orders={sellerOrdersLoaded ? sellerOrders : tempOrdersRef.current}
+            isLoading={sellerOrdersLoading}
+            onAddOrder={handleAddOrder} 
             onCancelOrder={handleCancelOrder}
             onReturnOrder={handleReturnOrder}
-            onPayout={handlePayout}
-            onUpdateStatus={handleUpdateOrderStatus}
             findOrder={findOrder}
             findOrders={findOrders}
-            loadOrdersButton={
-              !ordersLoaded && (
-                <Button onClick={handleLoadOrders} disabled={ordersLoadingManual}>
-                  {ordersLoadingManual ? 'Загрузка...' : 'Загрузить заказы'}
-                </Button>
-              )
-            }
-          />
-        )}
-      </AppLayout>
-    );
-  }
-
-  if (initialUser.role === 'Принтовщик') {
-    return (
-      <AppLayout currentUser={initialUser}>
-        {() => (
-          <PrinterDashboard
-            currentUser={initialUser}
-            productionOrders={productionOrders}
-            allOrders={allOrders}
-            isLoadingProduction={productionLoading}
-            isLoadingAll={allOrdersLoading || allOrdersLoadingSWR}
+            onPayout={handlePayout}
             onUpdateStatus={handleUpdateOrderStatus}
-            printerTab={printerTab}
-            onTabChange={handlePrinterTabChange}
-            loadOrdersButton={
-              (printerTab === 'shipment' || printerTab === 'all') && !allOrdersLoaded && (
-                <Button onClick={handleLoadAllOrders} disabled={allOrdersLoading}>
-                  {allOrdersLoading ? 'Загрузка...' : 'Загрузить заказы'}
-                </Button>
-              )
-            }
+            onLoadOrders={handleLoadSellerOrders}
+            ordersLoaded={sellerOrdersLoaded}
           />
-        )}
-      </AppLayout>
-    );
-  }
-
-  if (initialUser.role === 'Администратор') {
-    switch (activeView) {
-      case 'admin-orders':
-        return <AdminOrderList allOrders={allOrders} allUsers={users} />;
-      case 'admin-expenses':
-        return <ExpensesList 
-                  allExpenses={expenses} 
-                  allUsers={users} 
-                  onAddExpense={handleAddExpense}
-                  currentUser={initialUser}
-                  debts={debts}
-                  onDebtUpdate={handleDebtUpdate}
-                />;
-      case 'admin-payouts':
-        return <PayoutsList 
-                  allPayouts={payouts} 
-                  allUsers={users} 
-                  onUpdateStatus={handleUpdatePayoutStatus}
-                  currentUser={initialUser}
-                />;
-      case 'admin-analytics':
-        return <Analytics 
-                  orders={allOrders} 
-                  users={users} 
-                  expenses={expenses} 
-                  payouts={payouts} 
-                />;
-      case 'admin-ai-analytics':
-         return <AIAnalytics orders={allOrders} expenses={expenses} />;
-      default:
-        return <AdminOrderList allOrders={allOrders} allUsers={users} />;
-    }
-  }
-  return null;
+        }
+        if (initialUser.role === 'Принтовщик') {
+          return (
+             <PrinterDashboard
+                currentUser={initialUser}
+                onUpdateStatus={handleUpdateOrderStatus}
+                allOrders={orders}
+                isLoading={ordersLoading}
+              />
+          )
+        }
+        if (initialUser.role === 'Администратор') {
+          switch (activeView) {
+            case 'admin-orders':
+              return <AdminOrderList allOrders={orders} allUsers={users} />;
+            case 'admin-expenses':
+              return <ExpensesList 
+                        allExpenses={expenses} 
+                        allUsers={users} 
+                        onAddExpense={handleAddExpense}
+                        currentUser={initialUser}
+                        debts={debts}
+                        onDebtUpdate={handleDebtUpdate}
+                      />;
+            case 'admin-payouts':
+              return <PayoutsList 
+                        allPayouts={payouts} 
+                        allUsers={users} 
+                        onUpdateStatus={handleUpdatePayoutStatus}
+                        currentUser={initialUser}
+                      />;
+            case 'admin-analytics':
+              return <Analytics 
+                        orders={orders} 
+                        users={users} 
+                        expenses={expenses} 
+                        payouts={payouts} 
+                      />;
+            case 'admin-ai-analytics':
+               return <AIAnalytics orders={orders} expenses={expenses} />;
+            default:
+              return <AdminOrderList allOrders={orders} allUsers={users} />;
+          }
+        }
+        return null;
+      }}
+    </AppLayout>
+  );
 }

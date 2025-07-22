@@ -12,26 +12,16 @@ import { LoadingIndicator } from '@/components/ui/loading-indicator';
 
 interface PrinterDashboardProps {
   currentUser: User;
-  productionOrders: Order[];
-  allOrders: Order[];
-  isLoadingProduction?: boolean;
-  isLoadingAll?: boolean;
   onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void;
-  printerTab?: 'production'|'shipment'|'all';
-  onTabChange?: (tab: 'production'|'shipment'|'all') => void;
-  loadOrdersButton?: React.ReactNode;
+  allOrders: Order[];
+  isLoading?: boolean;
 }
 
 export function PrinterDashboard({
   currentUser,
-  productionOrders,
-  allOrders,
-  isLoadingProduction = false,
-  isLoadingAll = false,
   onUpdateStatus,
-  printerTab = 'production',
-  onTabChange,
-  loadOrdersButton,
+  allOrders,
+  isLoading = false,
 }: PrinterDashboardProps) {
   const [filters, setFilters] = React.useState({
     status: 'all' as OrderStatus | 'all',
@@ -39,17 +29,7 @@ export function PrinterDashboard({
     orderNumber: '',
   });
 
-  // Для раздела "На изготовление" — только productionOrders
-  const filteredProduction = React.useMemo(() => {
-    return productionOrders.filter(order => {
-      const productTypeMatch = filters.productType === 'all' || order.productType === filters.productType;
-      const orderNumberMatch = filters.orderNumber === '' || order.orderNumber.toLowerCase().includes(filters.orderNumber.toLowerCase());
-      return productTypeMatch && orderNumberMatch;
-    });
-  }, [productionOrders, filters]);
-
-  // Для остальных разделов — allOrders
-  const filteredAll = React.useMemo(() => {
+  const filteredOrders = React.useMemo(() => {
     return allOrders.filter(order => {
       const statusMatch = filters.status === 'all' || order.status === filters.status;
       const productTypeMatch = filters.productType === 'all' || order.productType === filters.productType;
@@ -58,17 +38,23 @@ export function PrinterDashboard({
     });
   }, [allOrders, filters]);
 
-  const ordersForProduction = filteredProduction;
+  const ordersForProduction = React.useMemo(() => {
+    return filteredOrders
+      .filter(order => order.status === 'Добавлен');
+  }, [filteredOrders]);
+  
   const ordersForShipment = React.useMemo(() => {
-    return filteredAll
+    return filteredOrders
       .filter(order => order.status === 'Готов')
       .sort((a, b) => {
+        // Сортировка по времени готовности (сначала самые новые)
         if (!a.ready_at && !b.ready_at) return 0;
         if (!a.ready_at) return 1;
         if (!b.ready_at) return -1;
         return new Date(b.ready_at).getTime() - new Date(a.ready_at).getTime();
       });
-  }, [filteredAll]);
+  }, [filteredOrders]);
+
 
   return (
     <div className="space-y-6">
@@ -81,17 +67,17 @@ export function PrinterDashboard({
         </CardHeader>
       </Card>
 
-      {loadOrdersButton && (
-        <div className="mb-2">{loadOrdersButton}</div>
-      )}
+      {/* Индикатор загрузки */}
+      <LoadingIndicator 
+        isLoading={isLoading}
+        dataCount={allOrders.length}
+        dataType="заказов"
+        showCacheStatus={true}
+      />
 
       <Filters onFilterChange={setFilters} currentFilters={filters} />
       
-      <Tabs 
-        defaultValue={printerTab} 
-        className="w-full" 
-        onValueChange={onTabChange ? (val => onTabChange(val as 'production'|'shipment'|'all')) : undefined}
-      >
+       <Tabs defaultValue="production" className="w-full">
         <TabsList className="grid w-full grid-cols-3 gap-1 p-1">
           <TabsTrigger value="production" className="text-xs px-2 py-1">
             <span className="hidden sm:inline">На изготовление</span>
@@ -105,53 +91,35 @@ export function PrinterDashboard({
           </TabsTrigger>
           <TabsTrigger value="all" className="text-xs px-2 py-1">
             Все заказы
-            <Badge variant="secondary" className="ml-1 text-xs">{filteredAll.length}</Badge>
+            <Badge variant="secondary" className="ml-1 text-xs">{filteredOrders.length}</Badge>
           </TabsTrigger>
         </TabsList>
         <TabsContent value="production">
-          <LoadingIndicator 
-            isLoading={isLoadingProduction}
-            dataCount={ordersForProduction.length}
-            dataType="заказов"
-            showCacheStatus={true}
-          />
-          <OrderTable 
-            orders={ordersForProduction} 
-            currentUser={currentUser} 
-            onUpdateStatus={onUpdateStatus}
-            useLargeLayout={true}
-            isLoading={isLoadingProduction}
-          />
+            <OrderTable 
+                orders={ordersForProduction} 
+                currentUser={currentUser} 
+                onUpdateStatus={onUpdateStatus}
+                useLargeLayout={true}
+                isLoading={isLoading}
+            />
         </TabsContent>
         <TabsContent value="shipment">
-          <LoadingIndicator 
-            isLoading={isLoadingAll}
-            dataCount={ordersForShipment.length}
-            dataType="заказов"
-            showCacheStatus={true}
-          />
-          <OrderTable 
-            orders={ordersForShipment} 
-            currentUser={currentUser} 
-            onUpdateStatus={onUpdateStatus}
-            useLargeLayout={true}
-            isLoading={isLoadingAll}
-          />
+             <OrderTable 
+                orders={ordersForShipment} 
+                currentUser={currentUser} 
+                onUpdateStatus={onUpdateStatus}
+                useLargeLayout={true}
+                isLoading={isLoading}
+            />
         </TabsContent>
         <TabsContent value="all">
-          <LoadingIndicator 
-            isLoading={isLoadingAll}
-            dataCount={filteredAll.length}
-            dataType="заказов"
-            showCacheStatus={true}
-          />
-          <OrderTable 
-            orders={filteredAll} 
-            currentUser={currentUser} 
-            onUpdateStatus={onUpdateStatus}
-            useLargeLayout={true}
-            isLoading={isLoadingAll}
-          />
+             <OrderTable 
+                orders={filteredOrders} 
+                currentUser={currentUser} 
+                onUpdateStatus={onUpdateStatus}
+                useLargeLayout={true}
+                isLoading={isLoading}
+            />
         </TabsContent>
       </Tabs>
     </div>
