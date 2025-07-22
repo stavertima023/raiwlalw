@@ -15,6 +15,9 @@ interface PrinterDashboardProps {
   onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void;
   allOrders: Order[];
   isLoading?: boolean;
+  printerTab?: 'production'|'shipment'|'all';
+  onTabChange?: (tab: 'production'|'shipment'|'all') => void;
+  loadOrdersButton?: React.ReactNode;
 }
 
 export function PrinterDashboard({
@@ -22,6 +25,9 @@ export function PrinterDashboard({
   onUpdateStatus,
   allOrders,
   isLoading = false,
+  printerTab = 'production',
+  onTabChange,
+  loadOrdersButton,
 }: PrinterDashboardProps) {
   const [filters, setFilters] = React.useState({
     status: 'all' as OrderStatus | 'all',
@@ -67,6 +73,10 @@ export function PrinterDashboard({
         </CardHeader>
       </Card>
 
+      {loadOrdersButton && (
+        <div className="mb-2">{loadOrdersButton}</div>
+      )}
+
       {/* Индикатор загрузки */}
       <LoadingIndicator 
         isLoading={isLoading}
@@ -77,7 +87,7 @@ export function PrinterDashboard({
 
       <Filters onFilterChange={setFilters} currentFilters={filters} />
       
-       <Tabs defaultValue="production" className="w-full">
+       <Tabs defaultValue={printerTab} className="w-full" onValueChange={onTabChange}>
         <TabsList className="grid w-full grid-cols-3 gap-1 p-1">
           <TabsTrigger value="production" className="text-xs px-2 py-1">
             <span className="hidden sm:inline">На изготовление</span>

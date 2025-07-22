@@ -14,6 +14,8 @@ import { PayoutsList } from '@/components/admin/PayoutsList';
 import AIAnalytics from '@/components/admin/AIAnalytics';
 import { Analytics } from '@/components/admin/Analytics';
 import { optimizedFetcher, swrConfig, cacheManager, getCacheStatus } from '@/lib/cache';
+import { useState, useRef } from 'react';
+import { Button } from '@/components/ui/button';
 
 type DashboardRootProps = {
   initialUser: Omit<User, 'password_hash'> | undefined;
@@ -32,15 +34,21 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     console.log('📊 Статус кэша:', status);
   }, []);
 
-  // Оптимизированные запросы с улучшенной конфигурацией
-  const { data: orders = [], error: ordersError, isLoading: ordersLoading } = useSWR<Order[]>(
-    '/api/orders', 
-    optimizedFetcher, 
+  // --- Новое состояние для ручной загрузки заказов ---
+  const [ordersLoaded, setOrdersLoaded] = useState(false);
+  const [ordersLoadingManual, setOrdersLoadingManual] = useState(false);
+  const [printerTab, setPrinterTab] = useState<'production'|'shipment'|'all'>('production');
+  const ordersSWR = useSWR<Order[]>(
+    ordersLoaded || (initialUser.role === 'Принтовщик' && printerTab === 'production')
+      ? '/api/orders'
+      : null,
+    optimizedFetcher,
     {
       ...swrConfig,
       fallbackData: cacheManager.get('orders') || [],
     }
   );
+  const { data: orders = [], error: ordersError, isLoading: ordersLoading } = ordersSWR;
   
   const { data: expenses = [], error: expensesError } = useSWR<Expense[]>(
     initialUser.role === 'Администратор' ? '/api/expenses' : null, 
@@ -349,6 +357,25 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     }
   };
 
+  // --- Функция ручной загрузки заказов ---
+  const handleLoadOrders = async () => {
+    setOrdersLoadingManual(true);
+    try {
+      await ordersSWR.mutate();
+      setOrdersLoaded(true);
+    } finally {
+      setOrdersLoadingManual(false);
+    }
+  };
+
+  // --- Для принтовщика: переключение табов ---
+  const handlePrinterTabChange = (tab: 'production'|'shipment'|'all') => {
+    setPrinterTab(tab);
+    if (tab === 'shipment' || tab === 'all') {
+      setOrdersLoaded(false);
+    }
+  };
+
   // Мемоизированные функции поиска
   const findOrder = React.useCallback((orderNumber: string): Order | undefined => {
     return orders.find((order: Order) => order.orderNumber === orderNumber);
@@ -370,68 +397,90 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     </Card>
   )
 
-  return (
-    <AppLayout currentUser={initialUser}>
-      {(activeView: string) => {
-        if (initialUser.role === 'Продавец') {
-           return <Dashboard 
-            user={initialUser} 
+  if (initialUser.role === 'Продавец') {
+    return (
+      <AppLayout currentUser={initialUser}>
+        {() => (
+          <Dashboard
+            user={initialUser}
             orders={orders}
-            isLoading={ordersLoading}
-            onAddOrder={handleAddOrder} 
+            isLoading={ordersLoadingManual || ordersLoading}
+            onAddOrder={handleAddOrder}
             onCancelOrder={handleCancelOrder}
             onReturnOrder={handleReturnOrder}
-            findOrder={findOrder}
-            findOrders={findOrders}
             onPayout={handlePayout}
             onUpdateStatus={handleUpdateOrderStatus}
+            findOrder={findOrder}
+            findOrders={findOrders}
+            loadOrdersButton={
+              !ordersLoaded && (
+                <Button onClick={handleLoadOrders} disabled={ordersLoadingManual}>
+                  {ordersLoadingManual ? 'Загрузка...' : 'Загрузить заказы'}
+                </Button>
+              )
+            }
           />
-        }
-        if (initialUser.role === 'Принтовщик') {
-          return (
-             <PrinterDashboard
-                currentUser={initialUser}
-                onUpdateStatus={handleUpdateOrderStatus}
-                allOrders={orders}
-                isLoading={ordersLoading}
-              />
-          )
-        }
-        if (initialUser.role === 'Администратор') {
-          switch (activeView) {
-            case 'admin-orders':
-              return <AdminOrderList allOrders={orders} allUsers={users} />;
-            case 'admin-expenses':
-              return <ExpensesList 
-                        allExpenses={expenses} 
-                        allUsers={users} 
-                        onAddExpense={handleAddExpense}
-                        currentUser={initialUser}
-                        debts={debts}
-                        onDebtUpdate={handleDebtUpdate}
-                      />;
-            case 'admin-payouts':
-              return <PayoutsList 
-                        allPayouts={payouts} 
-                        allUsers={users} 
-                        onUpdateStatus={handleUpdatePayoutStatus}
-                        currentUser={initialUser}
-                      />;
-            case 'admin-analytics':
-              return <Analytics 
-                        orders={orders} 
-                        users={users} 
-                        expenses={expenses} 
-                        payouts={payouts} 
-                      />;
-            case 'admin-ai-analytics':
-               return <AIAnalytics orders={orders} expenses={expenses} />;
-            default:
-              return <AdminOrderList allOrders={orders} allUsers={users} />;
-          }
-        }
-        return null;
-      }}
-    </AppLayout>
-  );
+        )}
+      </AppLayout>
+    );
+  }
+
+  if (initialUser.role === 'Принтовщик') {
+    return (
+      <AppLayout currentUser={initialUser}>
+        {() => (
+          <PrinterDashboard
+            currentUser={initialUser}
+            allOrders={orders}
+            isLoading={ordersLoadingManual || ordersLoading}
+            onUpdateStatus={handleUpdateOrderStatus}
+            printerTab={printerTab}
+            onTabChange={handlePrinterTabChange}
+            loadOrdersButton={
+              (printerTab === 'shipment' || printerTab === 'all') && !ordersLoaded && (
+                <Button onClick={handleLoadOrders} disabled={ordersLoadingManual}>
+                  {ordersLoadingManual ? 'Загрузка...' : 'Загрузить заказы'}
+                </Button>
+              )
+            }
+          />
+        )}
+      </AppLayout>
+    );
+  }
+
+  if (initialUser.role === 'Администратор') {
+    switch (activeView) {
+      case 'admin-orders':
+        return <AdminOrderList allOrders={orders} allUsers={users} />;
+      case 'admin-expenses':
+        return <ExpensesList 
+                  allExpenses={expenses} 
+                  allUsers={users} 
+                  onAddExpense={handleAddExpense}
+                  currentUser={initialUser}
+                  debts={debts}
+                  onDebtUpdate={handleDebtUpdate}
+                />;
+      case 'admin-payouts':
+        return <PayoutsList 
+                  allPayouts={payouts} 
+                  allUsers={users} 
+                  onUpdateStatus={handleUpdatePayoutStatus}
+                  currentUser={initialUser}
+                />;
+      case 'admin-analytics':
+        return <Analytics 
+                  orders={orders} 
+                  users={users} 
+                  expenses={expenses} 
+                  payouts={payouts} 
+                />;
+      case 'admin-ai-analytics':
+         return <AIAnalytics orders={orders} expenses={expenses} />;
+      default:
+        return <AdminOrderList allOrders={orders} allUsers={users} />;
+    }
+  }
+  return null;
 }
