@@ -163,37 +163,18 @@ const OrderPhotos = React.memo<{ photos: string[]; size: number }>(({ photos, si
 });
 OrderPhotos.displayName = 'OrderPhotos';
 
-// Мемоизированная строка таблицы
-const OrderTableRow = React.memo<{
-  order: Order;
-  currentUser?: Omit<User, 'password_hash'>;
-  onUpdateStatus?: (orderId: string, newStatus: OrderStatus) => void;
-  useLargeLayout?: boolean;
-  photoSize: number;
-}>(({ order, currentUser, onUpdateStatus, useLargeLayout, photoSize }) => {
-  const getAvailableActions = React.useCallback((orderStatus: OrderStatus): OrderStatus[] => {
-    switch (orderStatus) {
-      case 'Добавлен':
-        return ['Готов', 'Отменен'];
-      case 'Готов':
-        return ['Отправлен', 'Отменен'];
-      case 'Отправлен':
-        return ['Возврат'];
-      default:
-        return [];
-    }
-  }, []);
-
-  const renderPrinterActions = React.useCallback((order: Order) => {
-    const actions = getAvailableActions(order.status);
-    if (!actions.length || !order.id || !onUpdateStatus) return null;
-
+// Выносим функцию renderActionsCell для использования в мобильной версии
+const createRenderActionsCell = (
+  currentUser: Omit<User, 'password_hash'> | undefined,
+  onUpdateStatus: ((orderId: string, newStatus: OrderStatus) => void) | undefined
+) => {
+  const renderPrinterActions = (order: Order) => {
     if (order.status === 'Добавлен') {
       return (
-        <div className="flex gap-2">
+        <div className="flex space-x-1">
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button size="icon" variant="success">
+              <Button size="icon" variant="default">
                 <Check className="h-4 w-4" />
                 <span className="sr-only">Готов</span>
               </Button>
@@ -207,30 +188,8 @@ const OrderTableRow = React.memo<{
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Закрыть</AlertDialogCancel>
-                <AlertDialogAction onClick={() => onUpdateStatus(order.id!, 'Готов')}>
+                <AlertDialogAction onClick={() => onUpdateStatus?.(order.id!, 'Готов')}>
                   Подтвердить
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button size="icon" variant="destructive">
-                <X className="h-4 w-4" />
-                <span className="sr-only">Отменить</span>
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Вы собираетесь отменить заказ #{order.orderNumber}. Это действие нельзя будет отменить.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Закрыть</AlertDialogCancel>
-                <AlertDialogAction onClick={() => onUpdateStatus(order.id!, 'Отменен')}>
-                  Подтвердить отмену
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -241,10 +200,10 @@ const OrderTableRow = React.memo<{
 
     if (order.status === 'Готов') {
       return (
-        <div className="flex gap-2">
+        <div className="flex space-x-1">
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button size="icon" variant="success">
+              <Button size="icon" variant="default">
                 <Send className="h-4 w-4" />
                 <span className="sr-only">Отправлен</span>
               </Button>
@@ -258,7 +217,7 @@ const OrderTableRow = React.memo<{
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Закрыть</AlertDialogCancel>
-                <AlertDialogAction onClick={() => onUpdateStatus(order.id!, 'Отправлен')}>
+                <AlertDialogAction onClick={() => onUpdateStatus?.(order.id!, 'Отправлен')}>
                   Подтвердить
                 </AlertDialogAction>
               </AlertDialogFooter>
@@ -280,7 +239,7 @@ const OrderTableRow = React.memo<{
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Закрыть</AlertDialogCancel>
-                <AlertDialogAction onClick={() => onUpdateStatus(order.id!, 'Отменен')}>
+                <AlertDialogAction onClick={() => onUpdateStatus?.(order.id!, 'Отменен')}>
                   Подтвердить отмену
                 </AlertDialogAction>
               </AlertDialogFooter>
@@ -308,7 +267,7 @@ const OrderTableRow = React.memo<{
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Закрыть</AlertDialogCancel>
-              <AlertDialogAction onClick={() => onUpdateStatus(order.id!, 'Возврат')}>
+              <AlertDialogAction onClick={() => onUpdateStatus?.(order.id!, 'Возврат')}>
                 Подтвердить возврат
               </AlertDialogAction>
             </AlertDialogFooter>
@@ -318,11 +277,58 @@ const OrderTableRow = React.memo<{
     }
 
     return null;
-  }, [getAvailableActions, onUpdateStatus]);
+  };
 
-  const renderSellerActions = React.useCallback((order: Order) => {
-    if (order.seller !== currentUser?.username || !order.id || !onUpdateStatus) {
-      return null;
+  const renderSellerActions = (order: Order) => {
+    if (order.status === 'Отправлен') {
+      return (
+        <div className="flex space-x-1">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button size="icon" variant="default">
+                <Check className="h-4 w-4" />
+                <span className="sr-only">Исполнен</span>
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Вы собираетесь изменить статус заказа #{order.orderNumber} на "Исполнен".
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Закрыть</AlertDialogCancel>
+                <AlertDialogAction onClick={() => onUpdateStatus?.(order.id!, 'Исполнен')}>
+                  Подтвердить
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button size="icon" variant="outline">
+                <XCircle className="h-4 w-4" />
+                <span className="sr-only">Возврат</span>
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Вы собираетесь оформить возврат для заказа #{order.orderNumber}.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Закрыть</AlertDialogCancel>
+                <AlertDialogAction onClick={() => onUpdateStatus?.(order.id!, 'Возврат')}>
+                  Подтвердить возврат
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      );
     }
 
     if (order.status === 'Добавлен' || order.status === 'Готов') {
@@ -343,12 +349,114 @@ const OrderTableRow = React.memo<{
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Закрыть</AlertDialogCancel>
-              <AlertDialogAction onClick={() => onUpdateStatus(order.id!, 'Отменен')}>
+              <AlertDialogAction onClick={() => onUpdateStatus?.(order.id!, 'Отменен')}>
                 Подтвердить отмену
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+      );
+    }
+
+    return null;
+  };
+
+  return (order: Order) => {
+    if (currentUser?.role === 'Принтовщик') {
+      return renderPrinterActions(order);
+    } else if (currentUser?.role === 'Продавец') {
+      return renderSellerActions(order);
+    }
+    return null;
+  };
+};
+
+// Компонент строки таблицы
+const OrderTableRow = React.memo<{
+  order: Order;
+  currentUser?: Omit<User, 'password_hash'>;
+  onUpdateStatus?: (orderId: string, newStatus: OrderStatus) => void;
+  useLargeLayout?: boolean;
+  photoSize: number;
+}>(({ order, currentUser, onUpdateStatus, useLargeLayout, photoSize }) => {
+  const renderPrinterActions = React.useCallback((order: Order) => {
+    if (order.status === 'Добавлен') {
+      return (
+        <div className="flex space-x-1">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button size="icon" variant="default">
+                <Check className="h-4 w-4" />
+                <span className="sr-only">Готов</span>
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Вы собираетесь изменить статус заказа #{order.orderNumber} на "Готов".
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Закрыть</AlertDialogCancel>
+                <AlertDialogAction onClick={() => onUpdateStatus?.(order.id!, 'Готов')}>
+                  Подтвердить
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      );
+    }
+
+    if (order.status === 'Готов') {
+      return (
+        <div className="flex space-x-1">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button size="icon" variant="default">
+                <Send className="h-4 w-4" />
+                <span className="sr-only">Отправлен</span>
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Вы собираетесь изменить статус заказа #{order.orderNumber} на "Отправлен".
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Закрыть</AlertDialogCancel>
+                <AlertDialogAction onClick={() => onUpdateStatus?.(order.id!, 'Отправлен')}>
+                  Подтвердить
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button size="icon" variant="destructive">
+                <X className="h-4 w-4" />
+                <span className="sr-only">Отменить</span>
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Вы собираетесь отменить заказ #{order.orderNumber}. Это действие нельзя будет отменить.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Закрыть</AlertDialogCancel>
+                <AlertDialogAction onClick={() => onUpdateStatus?.(order.id!, 'Отменен')}>
+                  Подтвердить отмену
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       );
     }
 
@@ -370,7 +478,7 @@ const OrderTableRow = React.memo<{
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Закрыть</AlertDialogCancel>
-              <AlertDialogAction onClick={() => onUpdateStatus(order.id!, 'Возврат')}>
+              <AlertDialogAction onClick={() => onUpdateStatus?.(order.id!, 'Возврат')}>
                 Подтвердить возврат
               </AlertDialogAction>
             </AlertDialogFooter>
@@ -380,7 +488,89 @@ const OrderTableRow = React.memo<{
     }
 
     return null;
-  }, [currentUser?.username, onUpdateStatus]);
+  }, [onUpdateStatus]);
+
+  const renderSellerActions = React.useCallback((order: Order) => {
+    if (order.status === 'Отправлен') {
+      return (
+        <div className="flex space-x-1">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button size="icon" variant="default">
+                <Check className="h-4 w-4" />
+                <span className="sr-only">Исполнен</span>
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Вы собираетесь изменить статус заказа #{order.orderNumber} на "Исполнен".
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Закрыть</AlertDialogCancel>
+                <AlertDialogAction onClick={() => onUpdateStatus?.(order.id!, 'Исполнен')}>
+                  Подтвердить
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button size="icon" variant="outline">
+                <XCircle className="h-4 w-4" />
+                <span className="sr-only">Возврат</span>
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Вы собираетесь оформить возврат для заказа #{order.orderNumber}.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Закрыть</AlertDialogCancel>
+                <AlertDialogAction onClick={() => onUpdateStatus?.(order.id!, 'Возврат')}>
+                  Подтвердить возврат
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      );
+    }
+
+    if (order.status === 'Добавлен' || order.status === 'Готов') {
+      return (
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button size="icon" variant="destructive">
+              <X className="h-4 w-4" />
+              <span className="sr-only">Отменить</span>
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Вы собираетесь отменить заказ #{order.orderNumber}. Это действие нельзя будет отменить.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Закрыть</AlertDialogCancel>
+              <AlertDialogAction onClick={() => onUpdateStatus?.(order.id!, 'Отменен')}>
+                Подтвердить отмену
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      );
+    }
+
+    return null;
+  }, [onUpdateStatus]);
 
   const renderActionsCell = React.useCallback((order: Order) => {
     if (currentUser?.role === 'Принтовщик') {
@@ -439,6 +629,27 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
   isLoading = false
 }) => {
   const photoSize = useLargeLayout ? 100 : 60;
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const [isMobile, setIsMobile] = React.useState(false);
+
+  // Определяем мобильное устройство
+  React.useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Сбрасываем страницу при изменении поиска
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
+  // Создаем функцию для рендеринга действий
+  const renderActionsCell = createRenderActionsCell(currentUser, onUpdateStatus);
 
   // Мемоизированная фильтрация заказов
   const filteredOrders = React.useMemo(() => {
@@ -448,6 +659,13 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
       order.shipmentNumber.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [orders, searchTerm]);
+
+  // Пагинация для мобильной версии
+  const ITEMS_PER_PAGE = 20;
+  const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const paginatedOrders = isMobile ? filteredOrders.slice(startIndex, endIndex) : filteredOrders;
 
   if (isLoading) {
     return (
@@ -472,6 +690,152 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
     );
   }
 
+  // Мобильная версия с карточками
+  if (isMobile) {
+    return (
+      <div className="space-y-4">
+        {showSearch && onSearchChange && (
+          <div className="flex items-center space-x-2">
+            <input
+              type="text"
+              placeholder="Поиск по номеру заказа или отправления..."
+              value={searchTerm}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            />
+          </div>
+        )}
+
+        {/* Информация о пагинации */}
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <span>
+            Показано {startIndex + 1}-{Math.min(endIndex, filteredOrders.length)} из {filteredOrders.length} заказов
+          </span>
+          <span>
+            Страница {currentPage} из {totalPages}
+          </span>
+        </div>
+
+        {/* Мобильные карточки заказов */}
+        <div className="space-y-3">
+          {paginatedOrders.map((order) => (
+            <Card key={order.id} className="p-4">
+              <div className="space-y-3">
+                {/* Заголовок карточки */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <span className="font-semibold text-lg">#{order.orderNumber}</span>
+                    <StatusBadge status={order.status} />
+                  </div>
+                  <span className="text-lg font-bold text-green-600">
+                    {order.price.toLocaleString('ru-RU')} ₽
+                  </span>
+                </div>
+
+                {/* Основная информация */}
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Отправление:</span>
+                    <div className="font-medium">{order.shipmentNumber}</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Товар:</span>
+                    <div className="font-medium">{order.productType}</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Размер:</span>
+                    <div className="font-medium">{order.size}</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Продавец:</span>
+                    <div className="font-medium">{order.seller}</div>
+                  </div>
+                </div>
+
+                {/* Фотографии */}
+                <div>
+                  <span className="text-muted-foreground text-sm">Фото:</span>
+                  <div className="mt-1">
+                    <OrderPhotos photos={order.photos || []} size={40} />
+                  </div>
+                </div>
+
+                {/* Комментарий */}
+                {order.comment && (
+                  <div>
+                    <span className="text-muted-foreground text-sm">Комментарий:</span>
+                    <div className="text-sm mt-1">{order.comment}</div>
+                  </div>
+                )}
+
+                {/* Дата */}
+                <div className="text-xs text-muted-foreground">
+                  {format(new Date(order.orderDate), 'dd.MM.yyyy HH:mm', { locale: ru })}
+                </div>
+
+                {/* Действия */}
+                <div className="flex justify-end pt-2 border-t">
+                  {renderActionsCell(order)}
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+
+        {/* Пагинация */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center space-x-2 pt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1}
+            >
+              Назад
+            </Button>
+            
+            <div className="flex items-center space-x-1">
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+                
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={currentPage === pageNum ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCurrentPage(pageNum)}
+                    className="w-8 h-8 p-0"
+                  >
+                    {pageNum}
+                  </Button>
+                );
+              })}
+            </div>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+              disabled={currentPage === totalPages}
+            >
+              Вперед
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Десктопная версия (без изменений)
   return (
     <div className="space-y-4">
       {showSearch && onSearchChange && (
@@ -517,7 +881,7 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredOrders.map((order) => (
+            {paginatedOrders.map((order) => (
               <OrderTableRow
                 key={order.id}
                 order={order}
