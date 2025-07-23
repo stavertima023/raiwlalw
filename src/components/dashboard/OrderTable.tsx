@@ -661,7 +661,7 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
   }, [orders, searchTerm]);
 
   // Пагинация для мобильной версии
-  const ITEMS_PER_PAGE = 20;
+  const ITEMS_PER_PAGE = 30;
   const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
@@ -756,7 +756,7 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
                 <div>
                   <span className="text-muted-foreground text-sm">Фото:</span>
                   <div className="mt-1">
-                    <OrderPhotos photos={order.photos || []} size={40} />
+                    <OrderPhotos photos={order.photos || []} size={60} />
                   </div>
                 </div>
 
@@ -768,9 +768,30 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
                   </div>
                 )}
 
-                {/* Дата */}
-                <div className="text-xs text-muted-foreground">
-                  {format(new Date(order.orderDate), 'dd.MM.yyyy HH:mm', { locale: ru })}
+                {/* Время изготовления (для готовых заказов) */}
+                {order.status === 'Готов' && order.ready_at && (
+                  <div>
+                    <span className="text-muted-foreground text-sm">Изготовлен:</span>
+                    <div className="text-sm font-medium mt-1 text-blue-600">
+                      {format(new Date(order.ready_at), 'dd.MM.yyyy HH:mm', { locale: ru })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Время изготовления (для принтовщика - показываем для всех статусов) */}
+                {currentUser?.role === 'Принтовщик' && order.ready_at && (
+                  <div>
+                    <span className="text-muted-foreground text-sm">Готовность:</span>
+                    <div className="text-sm font-medium mt-1 text-blue-600">
+                      {format(new Date(order.ready_at), 'dd.MM.yyyy HH:mm', { locale: ru })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Дата добавления */}
+                <div className="text-sm text-muted-foreground">
+                  <span>Добавлен: </span>
+                  <span className="font-medium">{format(new Date(order.orderDate), 'dd.MM.yyyy HH:mm', { locale: ru })}</span>
                 </div>
 
                 {/* Действия */}
