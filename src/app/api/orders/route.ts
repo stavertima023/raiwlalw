@@ -68,13 +68,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Пользователь не авторизован' }, { status: 401 });
     }
 
-    // Проверяем размер запроса (увеличен до 15MB)
+    // Проверяем размер запроса (уменьшен до 10MB)
     const contentLength = request.headers.get('content-length');
     if (contentLength) {
       const sizeInMB = parseInt(contentLength) / (1024 * 1024);
-      if (sizeInMB > 15) { // 15MB лимит
+      if (sizeInMB > 10) { // 10MB лимит (уменьшен с 15MB)
         return NextResponse.json({ 
-          message: 'Размер запроса слишком большой (максимум 15MB)', 
+          message: 'Размер запроса слишком большой (максимум 10MB)', 
           error: `Размер: ${sizeInMB.toFixed(2)}MB`
         }, { status: 413 });
       }
@@ -96,9 +96,9 @@ export async function POST(request: Request) {
       }, 0);
 
       const totalSizeInMB = totalPhotoSize / (1024 * 1024);
-      if (totalSizeInMB > 6) { // 6MB лимит для всех фотографий (уменьшен для предотвращения ошибок Kong)
+      if (totalSizeInMB > 4) { // 4MB лимит для всех фотографий (уменьшен с 6MB)
         return NextResponse.json({ 
-          message: 'Общий размер фотографий слишком большой (максимум 6MB)', 
+          message: 'Общий размер фотографий слишком большой (максимум 4MB)', 
           error: `Размер: ${totalSizeInMB.toFixed(2)}MB`,
           recommendation: 'Попробуйте уменьшить качество или количество фотографий'
         }, { status: 413 });
@@ -113,9 +113,9 @@ export async function POST(request: Request) {
             const photoSize = Math.ceil((base64Data.length * 3) / 4);
             const photoSizeInMB = photoSize / (1024 * 1024);
             
-            if (photoSizeInMB > 2) { // 2MB лимит для одной фотографии
+            if (photoSizeInMB > 1.5) { // 1.5MB лимит для одной фотографии (уменьшен с 2MB)
               return NextResponse.json({ 
-                message: `Фотография ${i + 1} слишком большая (максимум 2MB)`, 
+                message: `Фотография ${i + 1} слишком большая (максимум 1.5MB)`, 
                 error: `Размер: ${photoSizeInMB.toFixed(2)}MB`,
                 recommendation: 'Попробуйте сжать изображение перед загрузкой'
               }, { status: 413 });

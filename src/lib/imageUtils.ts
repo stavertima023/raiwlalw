@@ -13,7 +13,7 @@ export interface ImageProcessingResult {
  * Сжимает изображение до указанного качества и размера
  * Более агрессивное сжатие для предотвращения ошибок Kong
  */
-export const compressImage = (file: File, maxWidth: number = 800, quality: number = 0.6): Promise<File> => {
+export const compressImage = (file: File, maxWidth: number = 600, quality: number = 0.4): Promise<File> => {
   return new Promise((resolve, reject) => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -31,8 +31,8 @@ export const compressImage = (file: File, maxWidth: number = 800, quality: numbe
         }
 
         // Дополнительное уменьшение для очень больших изображений
-        if (file.size > 3 * 1024 * 1024) { // 3MB
-          const scale = 0.7;
+        if (file.size > 2 * 1024 * 1024) { // 2MB (уменьшено с 3MB)
+          const scale = 0.6; // Уменьшено с 0.7
           width *= scale;
           height *= scale;
         }
@@ -92,12 +92,12 @@ export const safeImageToDataURL = async (file: File): Promise<ImageProcessingRes
       };
     }
 
-    // Проверяем размер файла (максимум 8MB до сжатия)
-    const maxSize = 8 * 1024 * 1024; // 8MB
+    // Проверяем размер файла (максимум 6MB до сжатия - уменьшено с 8MB)
+    const maxSize = 6 * 1024 * 1024; // 6MB
     if (file.size > maxSize) {
       return {
         success: false,
-        error: `Файл "${file.name}" слишком большой (максимум 8MB)`
+        error: `Файл "${file.name}" слишком большой (максимум 6MB)`
       };
     }
 
@@ -105,20 +105,20 @@ export const safeImageToDataURL = async (file: File): Promise<ImageProcessingRes
     let processedFile = file;
     let compressionApplied = false;
     
-    if (file.size > 512 * 1024) { // 512KB - сжимаем файлы больше 512KB
+    if (file.size > 256 * 1024) { // 256KB - сжимаем файлы больше 256KB (уменьшено с 512KB)
       try {
-        let quality = 0.6;
-        let maxWidth = 800;
+        let quality = 0.4; // Уменьшено с 0.6
+        let maxWidth = 600; // Уменьшено с 800
         
         // Более агрессивное сжатие для больших файлов
-        if (file.size > 2 * 1024 * 1024) { // 2MB
-          quality = 0.5;
-          maxWidth = 600;
+        if (file.size > 1 * 1024 * 1024) { // 1MB (уменьшено с 2MB)
+          quality = 0.3; // Уменьшено с 0.5
+          maxWidth = 500;
         }
         
-        if (file.size > 4 * 1024 * 1024) { // 4MB
-          quality = 0.4;
-          maxWidth = 500;
+        if (file.size > 2 * 1024 * 1024) { // 2MB (уменьшено с 4MB)
+          quality = 0.25; // Уменьшено с 0.4
+          maxWidth = 400;
         }
         
         processedFile = await compressImage(file, maxWidth, quality);
@@ -186,9 +186,9 @@ export const safeImageToDataURL = async (file: File): Promise<ImageProcessingRes
             return;
           }
 
-          // Проверяем размер base64 данных (увеличенный лимит до 2MB)
+          // Проверяем размер base64 данных (уменьшенный лимит до 1.5MB)
           const base64Size = Math.ceil((base64Data.length * 3) / 4);
-          const maxBase64Size = 2 * 1024 * 1024; // 2MB
+          const maxBase64Size = 1.5 * 1024 * 1024; // 1.5MB (уменьшено с 2MB)
           
           if (base64Size > maxBase64Size) {
             // Если сжатие уже применялось, но размер все еще большой
@@ -289,7 +289,7 @@ export const validateImageDataUrls = (dataUrls: string[]): { valid: string[]; in
 
       // Проверяем размер base64 данных
       const base64SizeKB = (base64Data.length * 0.75) / 1024;
-      if (base64SizeKB > 1000) { // 1MB
+      if (base64SizeKB > 800) { // 800KB (уменьшено с 1000KB/1MB)
         invalid.push(dataUrl);
         continue;
       }

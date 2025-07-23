@@ -117,7 +117,7 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
         const totalSizeInMB = totalSize / (1024 * 1024);
         console.log(`Общий размер фотографий: ${totalSizeInMB.toFixed(2)}MB`);
         
-        if (totalSizeInMB > 6) { // 6MB лимит (уменьшен для предотвращения ошибок Kong)
+        if (totalSizeInMB > 4) { // 4MB лимит (уменьшен с 6MB для лучшей оптимизации)
           alert(`Внимание: Общий размер фотографий (${totalSizeInMB.toFixed(2)}MB) близок к лимиту. Некоторые фотографии могут быть автоматически сжаты.`);
         }
         
