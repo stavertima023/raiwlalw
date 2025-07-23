@@ -675,18 +675,60 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
     );
   }
 
+  // Общий компонент поиска
+  const SearchComponent = () => (
+    showSearch && onSearchChange ? (
+      <div className="flex items-center space-x-2">
+        <input
+          type="text"
+          placeholder="Поиск по номеру заказа или отправления..."
+          value={searchTerm}
+          onChange={(e) => onSearchChange(e.target.value)}
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        />
+        {searchTerm && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onSearchChange('')}
+            className="whitespace-nowrap"
+          >
+            Очистить
+          </Button>
+        )}
+      </div>
+    ) : null
+  );
+
+  // Компонент "заказы не найдены"
+  const NoOrdersComponent = () => (
+    <Card>
+      <CardContent className="flex flex-col items-center justify-center py-8">
+        <div className="text-center">
+          <h3 className="text-lg font-semibold mb-2">Заказы не найдены</h3>
+          <p className="text-muted-foreground mb-4">
+            {searchTerm ? 'Попробуйте изменить параметры поиска.' : 'Нет заказов для отображения.'}
+          </p>
+          {searchTerm && (
+            <Button
+              variant="outline"
+              onClick={() => onSearchChange?.('')}
+            >
+              Показать все заказы
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  // Если заказов нет, показываем поиск и сообщение
   if (filteredOrders.length === 0) {
     return (
-      <Card>
-        <CardContent className="flex flex-col items-center justify-center py-8">
-          <div className="text-center">
-            <h3 className="text-lg font-semibold mb-2">Заказы не найдены</h3>
-            <p className="text-muted-foreground">
-              {searchTerm ? 'Попробуйте изменить параметры поиска.' : 'Нет заказов для отображения.'}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="space-y-4">
+        <SearchComponent />
+        <NoOrdersComponent />
+      </div>
     );
   }
 
@@ -694,17 +736,7 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
   if (isMobile) {
     return (
       <div className="space-y-4">
-        {showSearch && onSearchChange && (
-          <div className="flex items-center space-x-2">
-            <input
-              type="text"
-              placeholder="Поиск по номеру заказа или отправления..."
-              value={searchTerm}
-              onChange={(e) => onSearchChange(e.target.value)}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            />
-          </div>
-        )}
+        <SearchComponent />
 
         {/* Информация о пагинации */}
         <div className="flex items-center justify-between text-sm text-muted-foreground">
@@ -859,17 +891,7 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
   // Десктопная версия (без изменений)
   return (
     <div className="space-y-4">
-      {showSearch && onSearchChange && (
-        <div className="flex items-center space-x-2">
-          <input
-            type="text"
-            placeholder="Поиск по номеру заказа или отправления..."
-            value={searchTerm}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-          />
-        </div>
-      )}
+      <SearchComponent />
       
       <div className="rounded-md border">
         <Table>
