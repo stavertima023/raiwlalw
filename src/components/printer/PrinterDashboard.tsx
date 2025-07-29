@@ -8,7 +8,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, AlertCircle, CheckCircle, Send, Check, Eye } from 'lucide-react';
+import { RefreshCw, AlertCircle, CheckCircle, Send, Check, X } from 'lucide-react';
 import { LoadingIndicator } from '@/components/ui/loading-indicator';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -65,54 +65,6 @@ const MobilePrinterView = React.memo<{
       setError('Не удалось обновить статус заказа');
     }
   }, [onUpdateStatus, toast]);
-
-  // Мемоизированный компонент для фото
-  const PhotoViewer = React.memo<{ photos: string[]; orderNumber: string }>(({ photos, orderNumber }) => (
-    <div className="flex gap-2 overflow-x-auto pb-2">
-      {photos.map((photo, index) => (
-        <Dialog key={index}>
-          <DialogTrigger asChild>
-            <div className="relative flex-shrink-0 cursor-pointer group">
-              <img
-                src={photo}
-                alt={`Фото ${index + 1}`}
-                className="w-16 h-16 object-cover rounded-md border transition-transform group-hover:scale-105"
-                loading="lazy"
-              />
-              {photos.length > 1 && index === 0 && (
-                <div className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  +{photos.length - 1}
-                </div>
-              )}
-              {/* Индикатор просмотра */}
-              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all flex items-center justify-center rounded-md">
-                <Eye className="h-4 w-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-              </div>
-            </div>
-          </DialogTrigger>
-          <DialogContent className="max-w-md p-2 sm:max-w-lg md:max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Фото заказа #{orderNumber}</DialogTitle>
-            </DialogHeader>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {photos.map((photo, photoIndex) => (
-                <div key={photoIndex} className="relative">
-                  <img
-                    src={photo}
-                    alt={`Фото ${photoIndex + 1}`}
-                    className="w-full h-auto rounded-md"
-                    loading="lazy"
-                  />
-                </div>
-              ))}
-            </div>
-          </DialogContent>
-        </Dialog>
-      ))}
-    </div>
-  ));
-
-  PhotoViewer.displayName = 'PhotoViewer';
 
   if (isLoading) {
     return (
@@ -187,7 +139,66 @@ const MobilePrinterView = React.memo<{
               
               {/* Фото заказа */}
               {order.photos && order.photos.length > 0 && (
-                <PhotoViewer photos={order.photos} orderNumber={order.orderNumber} />
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  {order.photos.map((photo, index) => (
+                    <Dialog key={index}>
+                      <DialogTrigger asChild>
+                        <div className="relative flex-shrink-0 cursor-pointer group">
+                          <img
+                            src={photo}
+                            alt={`Фото ${index + 1}`}
+                            className="w-16 h-16 object-cover rounded-md border transition-transform group-hover:scale-105"
+                            loading="lazy"
+                          />
+                          {order.photos.length > 1 && index === 0 && (
+                            <div className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                              +{order.photos.length - 1}
+                            </div>
+                          )}
+                          {/* Индикатор клика */}
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all flex items-center justify-center rounded-md">
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity text-white text-xs">
+                              Просмотр
+                            </div>
+                          </div>
+                        </div>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-md p-2 sm:max-w-lg md:max-w-2xl">
+                        <DialogHeader>
+                          <DialogTitle className="flex items-center justify-between">
+                            <span>Фото заказа #{order.orderNumber}</span>
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
+                          </DialogTitle>
+                        </DialogHeader>
+                        <div className="relative">
+                          <img
+                            src={photo}
+                            alt={`Фото ${index + 1}`}
+                            className="w-full h-auto rounded-md"
+                            loading="eager"
+                          />
+                          {/* Навигация по фото если их несколько */}
+                          {order.photos.length > 1 && (
+                            <div className="flex justify-center gap-2 mt-4">
+                              {order.photos.map((_, photoIndex) => (
+                                <div
+                                  key={photoIndex}
+                                  className={`w-2 h-2 rounded-full ${
+                                    photoIndex === index ? 'bg-blue-500' : 'bg-gray-300'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  ))}
+                </div>
               )}
               
               {/* Основная информация */}
@@ -286,13 +297,13 @@ export function PrinterDashboard({
   // Стабилизированная фильтрация с защитой от ошибок
   const filteredOrders = React.useMemo(() => {
     try {
-      return allOrders.filter(order => {
-        const statusMatch = filters.status === 'all' || order.status === filters.status;
-        const productTypeMatch = filters.productType === 'all' || order.productType === filters.productType;
+    return allOrders.filter(order => {
+      const statusMatch = filters.status === 'all' || order.status === filters.status;
+      const productTypeMatch = filters.productType === 'all' || order.productType === filters.productType;
         const orderNumberMatch = filters.orderNumber === '' || 
           order.orderNumber.toLowerCase().includes(filters.orderNumber.toLowerCase());
-        return statusMatch && productTypeMatch && orderNumberMatch;
-      });
+      return statusMatch && productTypeMatch && orderNumberMatch;
+    });
     } catch (err) {
       console.error('Ошибка фильтрации заказов:', err);
       setError('Ошибка при фильтрации заказов');
@@ -302,7 +313,7 @@ export function PrinterDashboard({
 
   const ordersForProduction = React.useMemo(() => {
     try {
-      return filteredOrders
+    return filteredOrders
         .filter(order => order.status === 'Добавлен')
         .sort((a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime());
         // Убираем .slice(0, isMobile ? 30 : 100) - ограничение теперь на уровне API
@@ -314,7 +325,7 @@ export function PrinterDashboard({
   
   const ordersForShipment = React.useMemo(() => {
     try {
-      return filteredOrders
+    return filteredOrders
         .filter(order => order.status === 'Готов')
         .sort((a, b) => {
           if (!a.ready_at && !b.ready_at) return 0;
@@ -444,8 +455,8 @@ export function PrinterDashboard({
         dataType="заказов"
         showCacheStatus={true}
       />
-
-      <Tabs defaultValue="production" className="w-full">
+      
+       <Tabs defaultValue="production" className="w-full">
         <TabsList className="grid w-full grid-cols-3 gap-1 p-1">
           <TabsTrigger value="production" className="text-xs px-2 py-1">
             <span className="hidden sm:inline">На изготовление</span>
@@ -471,7 +482,7 @@ export function PrinterDashboard({
             />
         </TabsContent>
         <TabsContent value="shipment">
-            <OrderTable 
+             <OrderTable 
                 orders={ordersForShipment} 
                 currentUser={currentUser} 
                 onUpdateStatus={onUpdateStatus}
@@ -479,7 +490,7 @@ export function PrinterDashboard({
             />
         </TabsContent>
         <TabsContent value="all">
-            <OrderTable 
+             <OrderTable 
                 orders={filteredOrders} 
                 currentUser={currentUser} 
                 onUpdateStatus={onUpdateStatus}

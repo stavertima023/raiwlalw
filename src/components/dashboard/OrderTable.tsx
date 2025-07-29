@@ -122,7 +122,7 @@ const OrderPhotos = React.memo<{ photos: string[]; size: number }>(({ photos, si
         <div key={index} className="relative">
           <Dialog>
             <DialogTrigger asChild>
-              <button className="block">
+              <button className="block group">
                 <Image
                   src={photo}
                   alt={`Фото ${index + 1}`}
@@ -130,12 +130,26 @@ const OrderPhotos = React.memo<{ photos: string[]; size: number }>(({ photos, si
                   height={size}
                   className="rounded object-cover cursor-pointer hover:opacity-80 transition-opacity"
                   style={{ width: size, height: size }}
+                  loading="lazy"
                 />
+                {/* Индикатор клика */}
+                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all flex items-center justify-center rounded">
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity text-white text-xs">
+                    Просмотр
+                  </div>
+                </div>
               </button>
             </DialogTrigger>
             <DialogContent className="max-w-[90vw] max-h-[90vh] p-2 sm:max-w-2xl md:max-w-4xl">
               <DialogHeader>
-                <DialogTitle>Фото {index + 1}</DialogTitle>
+                <DialogTitle className="flex items-center justify-between">
+                  <span>Фото {index + 1}</span>
+                  <DialogTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </DialogTrigger>
+                </DialogTitle>
               </DialogHeader>
               <div className="flex justify-center items-center">
                 <Image
@@ -144,8 +158,23 @@ const OrderPhotos = React.memo<{ photos: string[]; size: number }>(({ photos, si
                   width={800}
                   height={800}
                   className="rounded-md object-contain max-w-full max-h-[70vh]"
+                  loading="eager"
+                  priority={index === 0} // Приоритет только для первого фото
                 />
               </div>
+              {/* Навигация по фото если их несколько */}
+              {photos.length > 1 && (
+                <div className="flex justify-center gap-2 mt-4">
+                  {photos.map((_, photoIndex) => (
+                    <div
+                      key={photoIndex}
+                      className={`w-2 h-2 rounded-full ${
+                        photoIndex === index ? 'bg-blue-500' : 'bg-gray-300'
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
             </DialogContent>
           </Dialog>
         </div>
@@ -941,3 +970,4 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
   );
 });
 OrderTable.displayName = 'OrderTable';
+
