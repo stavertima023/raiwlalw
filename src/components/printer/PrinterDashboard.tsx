@@ -8,11 +8,18 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, AlertCircle, CheckCircle, Send, Check } from 'lucide-react';
+import { RefreshCw, AlertCircle, CheckCircle, Send, Check, Eye } from 'lucide-react';
 import { LoadingIndicator } from '@/components/ui/loading-indicator';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
 interface PrinterDashboardProps {
   currentUser: User;
@@ -58,6 +65,54 @@ const MobilePrinterView = React.memo<{
       setError('Не удалось обновить статус заказа');
     }
   }, [onUpdateStatus, toast]);
+
+  // Мемоизированный компонент для фото
+  const PhotoViewer = React.memo<{ photos: string[]; orderNumber: string }>(({ photos, orderNumber }) => (
+    <div className="flex gap-2 overflow-x-auto pb-2">
+      {photos.map((photo, index) => (
+        <Dialog key={index}>
+          <DialogTrigger asChild>
+            <div className="relative flex-shrink-0 cursor-pointer group">
+              <img
+                src={photo}
+                alt={`Фото ${index + 1}`}
+                className="w-16 h-16 object-cover rounded-md border transition-transform group-hover:scale-105"
+                loading="lazy"
+              />
+              {photos.length > 1 && index === 0 && (
+                <div className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  +{photos.length - 1}
+                </div>
+              )}
+              {/* Индикатор просмотра */}
+              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all flex items-center justify-center rounded-md">
+                <Eye className="h-4 w-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+            </div>
+          </DialogTrigger>
+          <DialogContent className="max-w-md p-2 sm:max-w-lg md:max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Фото заказа #{orderNumber}</DialogTitle>
+            </DialogHeader>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {photos.map((photo, photoIndex) => (
+                <div key={photoIndex} className="relative">
+                  <img
+                    src={photo}
+                    alt={`Фото ${photoIndex + 1}`}
+                    className="w-full h-auto rounded-md"
+                    loading="lazy"
+                  />
+                </div>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
+      ))}
+    </div>
+  ));
+
+  PhotoViewer.displayName = 'PhotoViewer';
 
   if (isLoading) {
     return (
@@ -132,23 +187,7 @@ const MobilePrinterView = React.memo<{
               
               {/* Фото заказа */}
               {order.photos && order.photos.length > 0 && (
-                <div className="flex gap-2 overflow-x-auto pb-2">
-                  {order.photos.map((photo, index) => (
-                    <div key={index} className="relative flex-shrink-0">
-                      <img
-                        src={photo}
-                        alt={`Фото ${index + 1}`}
-                        className="w-16 h-16 object-cover rounded-md border"
-                        loading="lazy"
-                      />
-                      {order.photos.length > 1 && index === 0 && (
-                        <div className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                          +{order.photos.length - 1}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                <PhotoViewer photos={order.photos} orderNumber={order.orderNumber} />
               )}
               
               {/* Основная информация */}
