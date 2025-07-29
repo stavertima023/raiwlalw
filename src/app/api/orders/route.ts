@@ -31,18 +31,25 @@ export async function GET(request: NextRequest) {
     const userAgent = request.headers.get('user-agent') || '';
     const mobile = isMobile(userAgent);
 
-    console.log(`📱 Запрос заказов с ${mobile ? 'мобильного' : 'десктопного'} устройства`);
+    console.log(`📱 Запрос заказов с ${mobile ? 'мобильного' : 'десктопного'} устройства для роли: ${user.role}`);
 
     // Оптимизированный запрос с выбором только нужных полей
     let query = supabaseAdmin
       .from('orders')
       .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment, ready_at')
-      .order('orderDate', { ascending: false })
-      .limit(mobile ? 100 : 500); // Ограничиваем для мобильных
+      .order('orderDate', { ascending: false }); // Сначала самые новые
 
     // Если пользователь продавец, фильтруем только его заказы
     if (user.role === 'Продавец') {
       query = query.eq('seller', user.username);
+    }
+    
+    // Ограничиваем количество заказов для принтовщика и продавца
+    if (user.role === 'Принтовщик' || user.role === 'Продавец') {
+      query = query.limit(200); // Максимум 200 самых новых заказов
+      console.log(`📊 Ограничиваем до 200 самых новых заказов для ${user.role}`);
+    } else {
+      console.log(`📊 Загружаем все заказы для ${user.role}`);
     }
     
     const { data, error } = await query;
@@ -57,7 +64,7 @@ export async function GET(request: NextRequest) {
       orderDate: new Date(item.orderDate)
     }));
 
-    console.log(`✅ Заказы получены: ${parsedData.length} шт.`);
+    console.log(`✅ Заказы получены: ${parsedData.length} шт. для ${user.role}`);
     return NextResponse.json(parsedData);
   } catch (error: any) {
     console.error('Ошибка API заказов:', error);

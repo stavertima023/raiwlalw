@@ -109,7 +109,7 @@ const MobilePrinterView = React.memo<{
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {orders.slice(0, 50).map((order) => ( // Ограничиваем для мобильных
+          {orders.map((order) => ( // Убираем .slice(0, 50) - ограничение теперь на уровне API
             <div key={order.id} className="border rounded-lg p-4 space-y-2">
               <div className="flex justify-between items-start">
                 <div>
@@ -226,13 +226,13 @@ export function PrinterDashboard({
     try {
       return filteredOrders
         .filter(order => order.status === 'Добавлен')
-        .sort((a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime())
-        .slice(0, isMobile ? 30 : 100); // Ограничиваем для мобильных
+        .sort((a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime());
+        // Убираем .slice(0, isMobile ? 30 : 100) - ограничение теперь на уровне API
     } catch (err) {
       console.error('Ошибка обработки заказов на производство:', err);
       return [];
     }
-  }, [filteredOrders, isMobile]);
+  }, [filteredOrders]);
   
   const ordersForShipment = React.useMemo(() => {
     try {
@@ -243,13 +243,13 @@ export function PrinterDashboard({
           if (!a.ready_at) return 1;
           if (!b.ready_at) return -1;
           return new Date(b.ready_at).getTime() - new Date(a.ready_at).getTime();
-        })
-        .slice(0, isMobile ? 30 : 100); // Ограничиваем для мобильных
+        });
+        // Убираем .slice(0, isMobile ? 30 : 100) - ограничение теперь на уровне API
     } catch (err) {
       console.error('Ошибка обработки заказов на отправку:', err);
       return [];
     }
-  }, [filteredOrders, isMobile]);
+  }, [filteredOrders]);
 
   // Обработка ошибок загрузки
   if (isLoading && allOrders.length === 0) {
@@ -334,7 +334,7 @@ export function PrinterDashboard({
           
           <TabsContent value="all">
             <MobilePrinterView
-              orders={filteredOrders.slice(0, 50)} // Ограничиваем для мобильных
+              orders={filteredOrders} // Убираем .slice(0, 50) - ограничение теперь на уровне API
               currentUser={currentUser}
               onUpdateStatus={onUpdateStatus}
               isLoading={isLoading}

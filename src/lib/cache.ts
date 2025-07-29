@@ -68,11 +68,11 @@ class CacheManager {
     if (!this.isAvailable) return;
 
     try {
-      // Для мобильных устройств уменьшаем размер данных
+      // Для мобильных устройств уменьшаем размер данных, но НЕ для заказов
       let optimizedData = data;
-      if (this.isMobileDevice && Array.isArray(data)) {
-        // Ограничиваем количество элементов для мобильных устройств
-        const maxItems = key === 'orders' ? 200 : 100;
+      if (this.isMobileDevice && Array.isArray(data) && key !== 'orders') {
+        // Ограничиваем количество элементов для мобильных устройств (кроме заказов)
+        const maxItems = 100;
         optimizedData = (data as any[]).slice(0, maxItems) as T;
       }
 
