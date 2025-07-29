@@ -23,11 +23,11 @@ const CACHE_VERSION = '1.1.0';
 
 // Время жизни кэша (в миллисекундах) - увеличены для стабильности
 const CACHE_TTL = {
-  ORDERS: 10 * 60 * 1000, // 10 минут (было 5)
-  EXPENSES: 15 * 60 * 1000, // 15 минут (было 10)
-  PAYOUTS: 10 * 60 * 1000, // 10 минут (было 5)
-  DEBTS: 5 * 60 * 1000, // 5 минут (было 2)
-  USERS: 60 * 60 * 1000, // 60 минут (было 30)
+  ORDERS: 30 * 60 * 1000, // 30 минут (было 10)
+  EXPENSES: 60 * 60 * 1000, // 60 минут (было 15)
+  PAYOUTS: 30 * 60 * 1000, // 30 минут (было 10)
+  DEBTS: 15 * 60 * 1000, // 15 минут (было 5)
+  USERS: 120 * 60 * 1000, // 120 минут (было 60)
 } as const;
 
 // Определяем мобильное устройство
@@ -68,13 +68,12 @@ class CacheManager {
     if (!this.isAvailable) return;
 
     try {
-      // Для мобильных устройств - более агрессивное ограничение
+      // Для мобильных устройств уменьшаем размер данных
       let optimizedData = data;
       if (this.isMobileDevice && Array.isArray(data)) {
-        // Ограничиваем размер массивов для мобильных
-        const maxItems = key === 'orders' ? 80 : 40; // Еще меньше для мобильных
-        optimizedData = data.slice(0, maxItems) as T;
-        console.log(`📱 Мобильная оптимизация: ${key} ограничен до ${maxItems} элементов`);
+        // Ограничиваем количество элементов для мобильных устройств
+        const maxItems = key === 'orders' ? 200 : 100;
+        optimizedData = (data as any[]).slice(0, maxItems) as T;
       }
 
       const cacheItem: CacheItem<T> = {
@@ -251,61 +250,53 @@ class CacheManager {
 export const cacheManager = new CacheManager();
 
 /**
- * Оптимизированный fetcher с улучшенной обработкой ошибок
+ * Оптимизированный fetcher с кэшированием и обработкой ошибок
  */
 export const optimizedFetcher = async (url: string) => {
-  const cacheKey = url.replace('/api/', '');
-  
-  // Проверяем доступность памяти
+  // Проверяем использование памяти
   if (!cacheManager.checkMemoryUsage()) {
-    console.warn('⚠️ Низкая производительность памяти, очищаем кэш');
+    console.log('🧹 Очищаем кэш из-за нехватки памяти');
     cacheManager.clear();
   }
 
-  // Пытаемся получить данные из кэша
-  const cachedData = cacheManager.get(cacheKey);
-  if (cachedData) {
-    console.log(`📦 Данные загружены из кэша: ${cacheKey}`);
-    return cachedData;
-  }
-
-  // Если кэша нет или он устарел, загружаем с сервера
-  console.log(`🌐 Загрузка данных с сервера: ${cacheKey}`);
-  
   try {
+    // Создаем AbortController для таймаута
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 секунд таймаут
 
-    const res = await fetch(url, {
+    const response = await fetch(url, {
+      method: 'GET',
       headers: {
-        'Cache-Control': 'max-age=60',
+        'Content-Type': 'application/json',
+        'Cache-Control': 'max-age=300', // 5 минут кэш на уровне браузера
       },
       signal: controller.signal,
     });
-    
+
     clearTimeout(timeoutId);
-    
-    if (!res.ok) {
-      const error = new Error(`HTTP ${res.status}: ${res.statusText}`);
-      throw error;
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
+
+    const data = await response.json();
     
-    const data = await res.json();
+    // Сохраняем в кэш только успешные ответы
+    const cacheKey = url.replace('/api/', '');
+    cacheManager.set(cacheKey, data);
     
-    // Сохраняем в кэш только если данные валидны
-    if (data && (Array.isArray(data) || typeof data === 'object')) {
-      cacheManager.set(cacheKey, data);
-    }
-    
+    console.log(`✅ Данные загружены и сохранены в кэш: ${cacheKey}`);
     return data;
   } catch (error) {
-    console.error(`❌ Ошибка загрузки ${cacheKey}:`, error);
+    console.error(`❌ Ошибка загрузки ${url}:`, error);
     
-    // Возвращаем кэшированные данные даже если они устарели
-    const staleData = cacheManager.get(cacheKey, CACHE_TTL.ORDERS * 2);
-    if (staleData) {
-      console.log(`🔄 Возвращаем устаревшие данные из кэша: ${cacheKey}`);
-      return staleData;
+    // Пытаемся вернуть данные из кэша при ошибке
+    const cacheKey = url.replace('/api/', '');
+    const cachedData = cacheManager.get(cacheKey);
+    
+    if (cachedData) {
+      console.log(`📦 Возвращаем данные из кэша: ${cacheKey}`);
+      return cachedData;
     }
     
     throw error;
@@ -318,7 +309,7 @@ export const optimizedFetcher = async (url: string) => {
 export const swrConfig = {
   revalidateOnFocus: false, // Не перезагружаем при фокусе
   revalidateOnReconnect: false, // НЕ перезагружаем при восстановлении соединения
-  dedupingInterval: isMobile() ? 120000 : 60000, // Увеличиваем еще больше для мобильных (2 мин)
+  dedupingInterval: isMobile() ? 120000 : 60000, // Увеличиваем для мобильных (2 мин vs 1 мин)
   errorRetryCount: isMobile() ? 0 : 1, // Отключаем повторы для мобильных
   errorRetryInterval: isMobile() ? 10000 : 5000, // Увеличиваем интервал для мобильных
   refreshInterval: 0, // ОТКЛЮЧАЕМ автообновление полностью
@@ -333,16 +324,11 @@ export const swrConfig = {
   // Добавляем дополнительные настройки для стабильности
   shouldRetryOnError: false, // Не повторяем при ошибках
   focusThrottleInterval: 0, // Отключаем throttle для фокуса
-  loadingTimeout: isMobile() ? 15000 : 10000, // Увеличиваем таймаут для мобильных
-  // Добавляем настройки для предотвращения лишних запросов
-  compare: (a: any, b: any) => {
-    // Сравниваем только ключевые поля для предотвращения лишних обновлений
-    if (!a || !b) return false;
-    if (Array.isArray(a) && Array.isArray(b)) {
-      return a.length === b.length;
-    }
-    return JSON.stringify(a) === JSON.stringify(b);
-  },
+  loadingTimeout: 15000, // Увеличиваем таймаут загрузки до 15 секунд
+  // Добавляем кэширование в памяти
+  provider: () => new Map(),
+  // Увеличиваем время жизни кэша в памяти
+  compare: (a: any, b: any) => JSON.stringify(a) === JSON.stringify(b),
 };
 
 /**

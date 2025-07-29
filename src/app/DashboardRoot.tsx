@@ -14,7 +14,6 @@ import { PayoutsList } from '@/components/admin/PayoutsList';
 import AIAnalytics from '@/components/admin/AIAnalytics';
 import { Analytics } from '@/components/admin/Analytics';
 import { optimizedFetcher, swrConfig, cacheManager, getCacheStatus } from '@/lib/cache';
-import { LoadingIndicator } from '@/components/ui/loading-indicator';
 
 type DashboardRootProps = {
   initialUser: Omit<User, 'password_hash'> | undefined;
@@ -105,7 +104,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
   }, [isInitialized]);
 
   // Оптимизированные запросы с улучшенной конфигурацией
-  const { data: orders = [], error: ordersError, isLoading: ordersLoading } = useSWR<Order[]>(
+  const { data: orders = [], error: ordersError, isLoading: ordersLoading, mutate: mutateOrders } = useSWR<Order[]>(
     isInitialized ? '/api/orders' : null, // Загружаем только после инициализации
     optimizedFetcher, 
     {
@@ -117,7 +116,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     }
   );
   
-  const { data: expenses = [], error: expensesError } = useSWR<Expense[]>(
+  const { data: expenses = [], error: expensesError, mutate: mutateExpenses } = useSWR<Expense[]>(
     (isInitialized && initialUser.role === 'Администратор') ? '/api/expenses' : null, 
     optimizedFetcher,
     {
@@ -128,7 +127,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     }
   );
 
-  const { data: payouts = [], error: payoutsError } = useSWR<PayoutWithOrders[]>(
+  const { data: payouts = [], error: payoutsError, mutate: mutatePayouts } = useSWR<PayoutWithOrders[]>(
     (isInitialized && (initialUser.role === 'Администратор' || initialUser.role === 'Продавец')) ? '/api/payouts' : null, 
     optimizedFetcher,
     {
@@ -139,7 +138,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     }
   );
 
-  const { data: debts = [], error: debtsError } = useSWR<Debt[]>(
+  const { data: debts = [], error: debtsError, mutate: mutateDebts } = useSWR<Debt[]>(
     (isInitialized && initialUser.role === 'Администратор') ? '/api/debts' : null, 
     optimizedFetcher,
     {
@@ -150,7 +149,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     }
   );
 
-  const { data: users = [], error: usersError } = useSWR<User[]>(
+  const { data: users = [], error: usersError, mutate: mutateUsers } = useSWR<User[]>(
     (isInitialized && initialUser.role === 'Администратор') ? '/api/users' : null, 
     optimizedFetcher,
     {
@@ -160,6 +159,37 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       revalidateOnMount: isInitialized,
     }
   );
+
+  // Функция для принудительного обновления всех данных
+  const handleRefreshAll = React.useCallback(async () => {
+    console.log('🔄 Принудительное обновление всех данных...');
+    
+    try {
+      // Очищаем кэш для принудительной загрузки
+      cacheManager.clear();
+      
+      // Обновляем все данные
+      await Promise.all([
+        mutateOrders(),
+        mutateExpenses(),
+        mutatePayouts(),
+        mutateDebts(),
+        mutateUsers(),
+      ]);
+      
+      toast({
+        title: 'Данные обновлены',
+        description: 'Все данные успешно загружены из базы данных',
+      });
+    } catch (error) {
+      console.error('Ошибка при обновлении данных:', error);
+      toast({
+        title: 'Ошибка обновления',
+        description: 'Не удалось обновить данные',
+        variant: 'destructive',
+      });
+    }
+  }, [mutateOrders, mutateExpenses, mutatePayouts, mutateDebts, mutateUsers, toast]);
 
   // Мемоизированные функции для предотвращения лишних ререндеров
   const handleAddOrder = React.useCallback(async (newOrderData: Omit<Order, 'id' | 'orderDate' | 'seller'>) => {
@@ -463,220 +493,62 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     return (
       <AppLayout currentUser={initialUser}>
         {(activeView: string) => {
-          // Показываем загрузку если данные еще не загружены
-          const isDataLoading = ordersLoading || !isInitialized;
-          
           switch (activeView) {
             case 'admin-orders':
               return (
-                <div className="space-y-6">
-                  <div>
-                    <h1 className="text-2xl font-bold">Управление заказами</h1>
-                    <p className="text-muted-foreground">
-                      Просмотр и управление всеми заказами в системе
-                    </p>
-                  </div>
-                  
-                  <LoadingIndicator 
-                    isLoading={isDataLoading}
-                    dataCount={orders.length}
-                    dataType="заказов"
-                    showCacheStatus={true}
-                  />
-                  
-                  {!isDataLoading && (
-                    <AdminOrderList 
-                      allOrders={orders} 
-                      allUsers={users}
-                    />
-                  )}
-                </div>
+                <AdminOrderList 
+                  allOrders={orders} 
+                  allUsers={users}
+                  isLoading={ordersLoading}
+                  onRefresh={handleRefreshAll}
+                />
               );
-              
             case 'admin-expenses':
               return (
-                <div className="space-y-6">
-                  <div>
-                    <h1 className="text-2xl font-bold">Управление расходами</h1>
-                    <p className="text-muted-foreground">
-                      Отслеживание и управление расходами компании
-                    </p>
-                  </div>
-                  
-                  <LoadingIndicator 
-                    isLoading={isDataLoading}
-                    dataCount={expenses.length}
-                    dataType="расходов"
-                    showCacheStatus={true}
-                  />
-                  
-                  {!isDataLoading && (
-                    <ExpensesList 
-                      allExpenses={expenses} 
-                      allUsers={users}
-                      onAddExpense={handleAddExpense}
-                      currentUser={initialUser}
-                      debts={debts}
-                      onDebtUpdate={handleDebtUpdate}
-                    />
-                  )}
-                </div>
+                <ExpensesList 
+                  allExpenses={expenses} 
+                  allUsers={users}
+                  onAddExpense={handleAddExpense}
+                  currentUser={initialUser}
+                  debts={debts}
+                  onDebtUpdate={handleDebtUpdate}
+                />
               );
-              
             case 'admin-payouts':
               return (
-                <div className="space-y-6">
-                  <div>
-                    <h1 className="text-2xl font-bold">Управление выплатами</h1>
-                    <p className="text-muted-foreground">
-                      Управление выплатами и выводами средств
-                    </p>
-                  </div>
-                  
-                  <LoadingIndicator 
-                    isLoading={isDataLoading}
-                    dataCount={payouts.length}
-                    dataType="выплат"
-                    showCacheStatus={true}
-                  />
-                  
-                  {!isDataLoading && (
-                    <PayoutsList 
-                      allPayouts={payouts} 
-                      allUsers={users}
-                      onUpdateStatus={handleUpdatePayoutStatus}
-                      currentUser={initialUser}
-                    />
-                  )}
-                </div>
+                <PayoutsList 
+                  allPayouts={payouts} 
+                  allUsers={users}
+                  onUpdateStatus={handleUpdatePayoutStatus}
+                  currentUser={initialUser}
+                  onRefresh={handleRefreshAll}
+                  isLoading={ordersLoading}
+                />
               );
-              
             case 'admin-analytics':
               return (
-                <div className="space-y-6">
-                  <div>
-                    <h1 className="text-2xl font-bold">Аналитика</h1>
-                    <p className="text-muted-foreground">
-                      Статистика и аналитика по заказам и расходам
-                    </p>
-                  </div>
-                  
-                  <LoadingIndicator 
-                    isLoading={isDataLoading}
-                    dataCount={orders.length + expenses.length}
-                    dataType="данных"
-                    showCacheStatus={true}
-                  />
-                  
-                  {!isDataLoading && (
-                    <Analytics 
-                      orders={orders} 
-                      expenses={expenses} 
-                      payouts={payouts}
-                      users={users}
-                    />
-                  )}
-                </div>
+                <Analytics 
+                  orders={orders} 
+                  expenses={expenses} 
+                  payouts={payouts}
+                  users={users}
+                />
               );
-              
             case 'admin-ai-analytics':
               return (
-                <div className="space-y-6">
-                  <div>
-                    <h1 className="text-2xl font-bold">AI Аналитика</h1>
-                    <p className="text-muted-foreground">
-                      Искусственный интеллект для анализа данных
-                    </p>
-                  </div>
-                  
-                  <LoadingIndicator 
-                    isLoading={isDataLoading}
-                    dataCount={orders.length + expenses.length}
-                    dataType="данных"
-                    showCacheStatus={true}
-                  />
-                  
-                  {!isDataLoading && (
-                    <AIAnalytics 
-                      orders={orders} 
-                      expenses={expenses}
-                    />
-                  )}
-                </div>
+                <AIAnalytics 
+                  orders={orders} 
+                  expenses={expenses}
+                />
               );
-              
             default:
               return (
-                <div className="space-y-6">
-                  <div>
-                    <h1 className="text-2xl font-bold">Панель администратора</h1>
-                    <p className="text-muted-foreground">
-                      Управление заказами, расходами и аналитика
-                    </p>
-                  </div>
-                  
-                  <LoadingIndicator 
-                    isLoading={isDataLoading}
-                    dataCount={orders.length + expenses.length + payouts.length}
-                    dataType="элементов"
-                    showCacheStatus={true}
-                  />
-                  
-                  {!isDataLoading && (
-                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Заказы</CardTitle>
-                          <CardDescription>
-                            Всего заказов: {orders.length}
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <AdminOrderList 
-                            allOrders={orders} 
-                            allUsers={users}
-                          />
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Расходы</CardTitle>
-                          <CardDescription>
-                            Всего расходов: {expenses.length}
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <ExpensesList 
-                            allExpenses={expenses} 
-                            allUsers={users}
-                            onAddExpense={handleAddExpense}
-                            currentUser={initialUser}
-                            debts={debts}
-                            onDebtUpdate={handleDebtUpdate}
-                          />
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Выплаты</CardTitle>
-                          <CardDescription>
-                            Всего выплат: {payouts.length}
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <PayoutsList 
-                            allPayouts={payouts} 
-                            allUsers={users}
-                            onUpdateStatus={handleUpdatePayoutStatus}
-                            currentUser={initialUser}
-                          />
-                        </CardContent>
-                      </Card>
-                    </div>
-                  )}
-                </div>
+                <AdminOrderList 
+                  allOrders={orders} 
+                  allUsers={users}
+                  isLoading={ordersLoading}
+                  onRefresh={handleRefreshAll}
+                />
               );
           }
         }}

@@ -26,10 +26,14 @@ import type { Order, OrderStatus, ProductType, SortDescriptor, User } from '@/li
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import AdminOrderFilters from './AdminOrderFilters';
+import { LoadingIndicator } from '@/components/ui/loading-indicator';
+import { RefreshCw } from 'lucide-react';
 
 interface AdminOrderListProps {
   allOrders: Order[];
   allUsers: User[];
+  isLoading?: boolean;
+  onRefresh?: () => void;
 }
 
 const statusConfig: Record<
@@ -57,7 +61,12 @@ const StatusBadge: React.FC<{ status: OrderStatus }> = ({ status }) => {
   );
 };
 
-export const AdminOrderList: React.FC<AdminOrderListProps> = ({ allOrders, allUsers }) => {
+export const AdminOrderList: React.FC<AdminOrderListProps> = ({ 
+  allOrders, 
+  allUsers, 
+  isLoading = false,
+  onRefresh 
+}) => {
   const [filters, setFilters] = React.useState({
     status: 'all' as OrderStatus | 'all',
     productType: 'all' as ProductType | 'all',
@@ -131,11 +140,35 @@ export const AdminOrderList: React.FC<AdminOrderListProps> = ({ allOrders, allUs
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold">Управление заказами</h1>
+          <p className="text-muted-foreground">
+            Просмотр, фильтрация и сортировка всех заказов в системе.
+          </p>
+        </div>
+        {onRefresh && (
+          <Button onClick={onRefresh} variant="outline" disabled={isLoading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            Обновить
+          </Button>
+        )}
+      </div>
+
+      {/* Индикатор загрузки */}
+      <LoadingIndicator 
+        isLoading={isLoading}
+        dataCount={allOrders.length}
+        dataType="заказов"
+        showCacheStatus={true}
+      />
+
       <AdminOrderFilters 
         onFilterChange={setFilters}
         currentFilters={filters}
         allUsers={allUsers}
       />
+      
       <Card>
         <CardHeader>
           <CardTitle>Список всех заказов</CardTitle>
@@ -180,51 +213,53 @@ export const AdminOrderList: React.FC<AdminOrderListProps> = ({ allOrders, allUs
                     <TableCell className="text-right whitespace-nowrap">
                       {order.price.toLocaleString('ru-RU')} ₽
                     </TableCell>
-                     <TableCell className="text-right whitespace-nowrap">
-                      {order.cost ? `${order.cost.toLocaleString('ru-RU')} ₽` : '–'}
+                    <TableCell className="text-right whitespace-nowrap">
+                      {order.cost ? order.cost.toLocaleString('ru-RU') : '–'} ₽
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        {order.photos && order.photos.length > 0 ? (
-                          order.photos.map((photo, index) => (
-                            <Dialog key={index}>
-                              <DialogTrigger asChild>
-                                <button>
+                      {order.photos && order.photos.length > 0 ? (
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <button className="relative group">
+                              <Image
+                                src={order.photos[0]}
+                                alt="Фото заказа"
+                                width={40}
+                                height={40}
+                                className="rounded-md object-cover cursor-pointer"
+                                data-ai-hint="order photo"
+                              />
+                              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all flex items-center justify-center">
+                                <div className="opacity-0 group-hover:opacity-100 transition-opacity text-white text-xs">
+                                  {order.photos.length > 1 && `+${order.photos.length - 1}`}
+                                </div>
+                              </div>
+                            </button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-md p-2 sm:max-w-lg md:max-w-2xl">
+                            <DialogHeader>
+                              <DialogTitle>Фото заказа #{order.orderNumber}</DialogTitle>
+                            </DialogHeader>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              {order.photos.map((photo, index) => (
+                                <div key={index} className="relative">
                                   <Image
                                     src={photo}
                                     alt={`Фото ${index + 1}`}
-                                    width={40}
-                                    height={40}
-                                    className="rounded-md object-cover cursor-pointer"
-                                    data-ai-hint="product photo"
-                                  />
-                                </button>
-                              </DialogTrigger>
-                              <DialogContent className="max-w-md p-2 sm:max-w-lg md:max-w-2xl">
-                                <DialogHeader>
-                                  <DialogTitle>Фото заказа #{order.orderNumber}</DialogTitle>
-                                </DialogHeader>
-                                <div className="flex justify-center">
-                                  <Image
-                                    src={photo}
-                                    alt={`Фото ${index + 1}`}
-                                    width={800}
-                                    height={800}
-                                    className="rounded-md object-contain max-h-[80vh]"
-                                    data-ai-hint="product photo"
+                                    width={400}
+                                    height={400}
+                                    className="w-full h-auto rounded-md"
                                   />
                                 </div>
-                              </DialogContent>
-                            </Dialog>
-                          ))
-                        ) : (
-                          <div className="rounded-md bg-muted flex items-center justify-center text-muted-foreground text-xs h-10 w-10">
-                            Нет
-                          </div>
-                        )}
-                      </div>
+                              ))}
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      ) : (
+                        <span className="text-muted-foreground">Нет фото</span>
+                      )}
                     </TableCell>
-                    <TableCell className="min-w-[150px] max-w-[300px] whitespace-pre-wrap break-words">
+                    <TableCell className="max-w-[200px] truncate">
                       {order.comment || '–'}
                     </TableCell>
                   </TableRow>
@@ -232,7 +267,7 @@ export const AdminOrderList: React.FC<AdminOrderListProps> = ({ allOrders, allUs
               ) : (
                 <TableRow>
                   <TableCell colSpan={11} className="h-24 text-center">
-                    Нет заказов для отображения по заданным фильтрам.
+                    {isLoading ? 'Загрузка заказов...' : 'Заказы не найдены.'}
                   </TableCell>
                 </TableRow>
               )}

@@ -27,16 +27,19 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Eye, Package, TrendingUp, Calculator } from 'lucide-react';
+import { Eye, Package, TrendingUp, Calculator, RefreshCw } from 'lucide-react';
 import type { Payout, PayoutStatus, User, PayoutWithOrders } from '@/lib/types';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import { LoadingIndicator } from '@/components/ui/loading-indicator';
 
 interface PayoutsListProps {
   allPayouts: PayoutWithOrders[];
   allUsers: User[];
   onUpdateStatus: (payoutId: string, newStatus: PayoutStatus) => void;
   currentUser: Omit<User, 'password_hash'>;
+  onRefresh?: () => void;
+  isLoading?: boolean;
 }
 
 const statusConfig: Record<
@@ -195,7 +198,9 @@ export const PayoutsList: React.FC<PayoutsListProps> = ({
   allPayouts, 
   allUsers, 
   onUpdateStatus,
-  currentUser 
+  currentUser,
+  onRefresh,
+  isLoading = false
 }) => {
   const [filters, setFilters] = React.useState({
     status: 'all' as PayoutStatus | 'all',
@@ -233,7 +238,21 @@ export const PayoutsList: React.FC<PayoutsListProps> = ({
             Управление выплатами и выводами средств с подробной статистикой
           </p>
         </div>
+        {onRefresh && (
+          <Button onClick={onRefresh} variant="outline" disabled={isLoading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            Обновить
+          </Button>
+        )}
       </div>
+
+      {/* Индикатор загрузки */}
+      <LoadingIndicator 
+        isLoading={isLoading}
+        dataCount={allPayouts.length}
+        dataType="выплат"
+        showCacheStatus={true}
+      />
 
       {/* Фильтры */}
       <Card>
