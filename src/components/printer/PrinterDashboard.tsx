@@ -4,11 +4,14 @@
 import * as React from 'react';
 import type { Order, User, OrderStatus, ProductType } from '@/lib/types';
 import { OrderTable } from '@/components/dashboard/OrderTable';
-import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from '@/components/ui/badge';
 import Filters from '@/components/dashboard/Filters';
 import { LoadingIndicator } from '@/components/ui/loading-indicator';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface PrinterDashboardProps {
   currentUser: User;
@@ -29,20 +32,25 @@ export function PrinterDashboard({
     orderNumber: '',
   });
 
+  // Мемоизируем фильтрацию для производительности
   const filteredOrders = React.useMemo(() => {
+    if (!allOrders || allOrders.length === 0) return [];
+    
     return allOrders.filter(order => {
       const statusMatch = filters.status === 'all' || order.status === filters.status;
       const productTypeMatch = filters.productType === 'all' || order.productType === filters.productType;
-      const orderNumberMatch = filters.orderNumber === '' || order.orderNumber.toLowerCase().includes(filters.orderNumber.toLowerCase());
+      const orderNumberMatch = filters.orderNumber === '' || 
+        order.orderNumber.toLowerCase().includes(filters.orderNumber.toLowerCase());
       return statusMatch && productTypeMatch && orderNumberMatch;
     });
   }, [allOrders, filters]);
 
+  // Мемоизируем заказы для производства
   const ordersForProduction = React.useMemo(() => {
-    return filteredOrders
-      .filter(order => order.status === 'Добавлен');
+    return filteredOrders.filter(order => order.status === 'Добавлен');
   }, [filteredOrders]);
   
+  // Мемоизируем заказы для отправки с сортировкой
   const ordersForShipment = React.useMemo(() => {
     return filteredOrders
       .filter(order => order.status === 'Готов')
@@ -55,10 +63,30 @@ export function PrinterDashboard({
       });
   }, [filteredOrders]);
 
+  // Обработчик ошибок
+  const [hasError, setHasError] = React.useState(false);
+  const [errorMessage, setErrorMessage] = React.useState('');
+
+  React.useEffect(() => {
+    if (allOrders.length === 0 && !isLoading) {
+      setHasError(true);
+      setErrorMessage('Не удалось загрузить заказы. Проверьте подключение к интернету.');
+    } else {
+      setHasError(false);
+      setErrorMessage('');
+    }
+  }, [allOrders.length, isLoading]);
+
+  const handleRefresh = () => {
+    setHasError(false);
+    setErrorMessage('');
+    // Здесь можно добавить принудительное обновление данных
+    window.location.reload();
+  };
 
   return (
     <div className="space-y-6">
-       <Card>
+      <Card>
         <CardHeader>
           <CardTitle>Рабочая область Принтовщика</CardTitle>
           <CardDescription>
@@ -75,51 +103,114 @@ export function PrinterDashboard({
         showCacheStatus={true}
       />
 
+      {/* Обработка ошибок */}
+      {hasError && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="flex items-center justify-between">
+            <span>{errorMessage}</span>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleRefresh}
+              className="ml-2"
+            >
+              <RefreshCw className="h-4 w-4 mr-1" />
+              Обновить
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Фильтры */}
       <Filters onFilterChange={setFilters} currentFilters={filters} />
       
-       <Tabs defaultValue="production" className="w-full">
+      {/* Вкладки с заказами */}
+      <Tabs defaultValue="production" className="w-full">
         <TabsList className="grid w-full grid-cols-3 gap-1 p-1">
           <TabsTrigger value="production" className="text-xs px-2 py-1">
             <span className="hidden sm:inline">На изготовление</span>
             <span className="sm:hidden">Изготовление</span>
-            <Badge variant="secondary" className="ml-1 text-xs">{ordersForProduction.length}</Badge>
+            <Badge variant="secondary" className="ml-1 text-xs">
+              {ordersForProduction.length}
+            </Badge>
           </TabsTrigger>
           <TabsTrigger value="shipment" className="text-xs px-2 py-1">
             <span className="hidden sm:inline">На отправку</span>
             <span className="sm:hidden">Отправка</span>
-            <Badge variant="secondary" className="ml-1 text-xs">{ordersForShipment.length}</Badge>
+            <Badge variant="secondary" className="ml-1 text-xs">
+              {ordersForShipment.length}
+            </Badge>
           </TabsTrigger>
           <TabsTrigger value="all" className="text-xs px-2 py-1">
             Все заказы
-            <Badge variant="secondary" className="ml-1 text-xs">{filteredOrders.length}</Badge>
+            <Badge variant="secondary" className="ml-1 text-xs">
+              {filteredOrders.length}
+            </Badge>
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="production">
+        
+        <TabsContent value="production" className="mt-4">
+          {!isLoading && !hasError && (
             <OrderTable 
-                orders={ordersForProduction} 
-                currentUser={currentUser} 
-                onUpdateStatus={onUpdateStatus}
-                useLargeLayout={true}
-                isLoading={isLoading}
+              orders={ordersForProduction} 
+              currentUser={currentUser} 
+              onUpdateStatus={onUpdateStatus}
+              isLoading={isLoading}
             />
+          )}
+          {!isLoading && hasError && (
+            <Card>
+              <CardContent className="flex items-center justify-center py-8">
+                <div className="text-center">
+                  <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-muted-foreground">Не удалось загрузить заказы</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
-        <TabsContent value="shipment">
-             <OrderTable 
-                orders={ordersForShipment} 
-                currentUser={currentUser} 
-                onUpdateStatus={onUpdateStatus}
-                useLargeLayout={true}
-                isLoading={isLoading}
+        
+        <TabsContent value="shipment" className="mt-4">
+          {!isLoading && !hasError && (
+            <OrderTable 
+              orders={ordersForShipment} 
+              currentUser={currentUser} 
+              onUpdateStatus={onUpdateStatus}
+              isLoading={isLoading}
             />
+          )}
+          {!isLoading && hasError && (
+            <Card>
+              <CardContent className="flex items-center justify-center py-8">
+                <div className="text-center">
+                  <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-muted-foreground">Не удалось загрузить заказы</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
-        <TabsContent value="all">
-             <OrderTable 
-                orders={filteredOrders} 
-                currentUser={currentUser} 
-                onUpdateStatus={onUpdateStatus}
-                useLargeLayout={true}
-                isLoading={isLoading}
+        
+        <TabsContent value="all" className="mt-4">
+          {!isLoading && !hasError && (
+            <OrderTable 
+              orders={filteredOrders} 
+              currentUser={currentUser} 
+              onUpdateStatus={onUpdateStatus}
+              isLoading={isLoading}
             />
+          )}
+          {!isLoading && hasError && (
+            <Card>
+              <CardContent className="flex items-center justify-center py-8">
+                <div className="text-center">
+                  <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-muted-foreground">Не удалось загрузить заказы</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </div>
