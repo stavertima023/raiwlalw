@@ -30,18 +30,10 @@ export async function GET(request: NextRequest) {
     // Получаем User-Agent для определения мобильного устройства
     const userAgent = request.headers.get('user-agent') || '';
     const mobile = isMobile(userAgent);
-    
+
     console.log(`📱 Запрос заказов с ${mobile ? 'мобильного' : 'десктопного'} устройства для роли: ${user.role}`);
 
-    // Получаем параметры пагинации
-    const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '25');
-    const offset = (page - 1) * limit;
-
-    console.log(`📊 Пагинация - Страница: ${page}, Лимит: ${limit}, Смещение: ${offset}`);
-
-    // Базовый запрос
+    // Оптимизированный запрос с выбором только нужных полей
     let query = supabaseAdmin
       .from('orders')
       .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment, ready_at')
@@ -52,60 +44,32 @@ export async function GET(request: NextRequest) {
       query = query.eq('seller', user.username);
     }
     
-    // Применяем лимиты в зависимости от роли
+    // Ограничиваем количество заказов для принтовщика и продавца
     if (user.role === 'Принтовщик' || user.role === 'Продавец') {
-      // Для принтовщика и продавца - только 200 последних заказов с пагинацией
-      query = query.limit(200);
+      query = query.limit(200); // Максимум 200 самых новых заказов
       console.log(`📊 Ограничиваем до 200 самых новых заказов для ${user.role}`);
     } else {
       console.log(`📊 Загружаем все заказы для ${user.role} (без ограничений)`);
     }
-
-    // Применяем пагинацию
-    query = query.range(offset, offset + limit - 1);
-
-    const { data: orders, error, count } = await query;
+    
+    const { data, error } = await query;
 
     if (error) {
       console.error(`❌ Ошибка запроса заказов для ${user.role}:`, error);
       throw error;
     }
 
-    // Получаем общее количество заказов для пагинации
-    let totalCount = 0;
-    if (user.role === 'Администратор') {
-      const { count: adminCount } = await supabaseAdmin
-        .from('orders')
-        .select('*', { count: 'exact', head: true });
-      totalCount = adminCount || 0;
-    } else {
-      // Для принтовщика и продавца - максимум 200
-      totalCount = Math.min(200, count || 0);
-    }
-
     // Парсим даты и возвращаем данные
-    const parsedData = orders.map(item => ({
+    const parsedData = data.map(item => ({
       ...item, 
       orderDate: new Date(item.orderDate)
     }));
 
-    console.log(`✅ Заказы получены: ${parsedData.length} шт. из ${totalCount} для ${user.role}, Страница: ${page}`);
-
-    return NextResponse.json({
-      orders: parsedData,
-      pagination: {
-        page,
-        limit,
-        total: totalCount,
-        totalPages: Math.ceil(totalCount / limit),
-        hasNext: page * limit < totalCount,
-        hasPrev: page > 1
-      }
-    });
-
+    console.log(`✅ Заказы получены: ${parsedData.length} шт. для ${user.role}`);
+    return NextResponse.json(parsedData);
   } catch (error: any) {
     console.error('Ошибка API заказов:', error);
-    return NextResponse.json({
+    return NextResponse.json({ 
       message: 'Ошибка загрузки заказов', 
       error: error.message 
     }, { status: 500 });
