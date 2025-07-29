@@ -25,6 +25,39 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
   }
 
   const { toast } = useToast();
+  const [errorCount, setErrorCount] = React.useState(0);
+  const [lastErrorTime, setLastErrorTime] = React.useState(0);
+
+  // Предотвращаем множественные ошибки
+  const handleError = React.useCallback((error: Error, type: string) => {
+    const now = Date.now();
+    if (now - lastErrorTime < 5000) { // Не показываем ошибки чаще чем раз в 5 секунд
+      return;
+    }
+    
+    setLastErrorTime(now);
+    setErrorCount(prev => prev + 1);
+    
+    console.error(`Ошибка загрузки ${type}:`, error);
+    
+    // Показываем toast только для первой ошибки
+    if (errorCount === 0) {
+      toast({ 
+        title: `Ошибка загрузки ${type}`, 
+        description: 'Проверьте подключение к интернету и попробуйте снова', 
+        variant: 'destructive' 
+      });
+    }
+  }, [toast, errorCount, lastErrorTime]);
+
+  // Сбрасываем счетчик ошибок при успешной загрузке
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setErrorCount(0);
+    }, 30000); // Сбрасываем через 30 секунд
+
+    return () => clearTimeout(timer);
+  }, []);
 
   // Показываем статус кэша в консоли для отладки
   React.useEffect(() => {
@@ -39,6 +72,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     {
       ...swrConfig,
       fallbackData: cacheManager.get('orders') || [],
+      onError: (error) => handleError(error, 'заказов'),
     }
   );
   
@@ -48,6 +82,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     {
       ...swrConfig,
       fallbackData: cacheManager.get('expenses') || [],
+      onError: (error) => handleError(error, 'расходов'),
     }
   );
 
@@ -57,6 +92,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     {
       ...swrConfig,
       fallbackData: cacheManager.get('payouts') || [],
+      onError: (error) => handleError(error, 'выводов'),
     }
   );
 
@@ -66,6 +102,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     {
       ...swrConfig,
       fallbackData: cacheManager.get('debts') || [],
+      onError: (error) => handleError(error, 'долгов'),
     }
   );
 
@@ -75,363 +112,460 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     {
       ...swrConfig,
       fallbackData: cacheManager.get('users') || [],
+      onError: (error) => handleError(error, 'пользователей'),
     }
   );
 
-  // Обработка ошибок с улучшенными сообщениями
-  React.useEffect(() => {
-    if (ordersError) {
-      console.error('Ошибка загрузки заказов:', ordersError);
-      toast({ 
-        title: 'Ошибка загрузки заказов', 
-        description: 'Проверьте подключение к интернету и попробуйте снова', 
-        variant: 'destructive' 
-      });
-    }
-    if (expensesError) {
-      console.error('Ошибка загрузки расходов:', expensesError);
-      toast({ 
-        title: 'Ошибка загрузки расходов', 
-        description: expensesError.message, 
-        variant: 'destructive' 
-      });
-    }
-    if (payoutsError) {
-      console.error('Ошибка загрузки выводов:', payoutsError);
-      toast({ 
-        title: 'Ошибка загрузки выводов', 
-        description: payoutsError.message, 
-        variant: 'destructive' 
-      });
-    }
-    if (debtsError) {
-      console.error('Ошибка загрузки долгов:', debtsError);
-      toast({ 
-        title: 'Ошибка загрузки долгов', 
-        description: debtsError.message, 
-        variant: 'destructive' 
-      });
-    }
-    if (usersError) {
-      console.error('Ошибка загрузки пользователей:', usersError);
-      toast({ 
-        title: 'Ошибка загрузки пользователей', 
-        description: usersError.message, 
-        variant: 'destructive' 
-      });
-    }
-  }, [ordersError, expensesError, payoutsError, debtsError, usersError, toast]);
-
-  // Показываем уведомление о загрузке из кэша
-  React.useEffect(() => {
-    if (!ordersLoading && orders.length > 0) {
-      const lastUpdate = cacheManager.getLastUpdate();
-      const timeSinceUpdate = Date.now() - lastUpdate;
-      
-      if (timeSinceUpdate < 60000) { // Меньше минуты
-        toast({ 
-          title: 'Данные загружены', 
-          description: 'Используются кэшированные данные для быстрой работы', 
-          duration: 2000
-        });
-      }
-    }
-  }, [ordersLoading, orders.length, toast]);
-
-  // Оптимистичное добавление заказа с кэшированием
-  const handleAddOrder = async (newOrderData: Omit<Order, 'id' | 'orderDate' | 'seller'>) => {
-    // Создаем временный заказ для оптимистичного обновления
-    const tempOrder: Order = {
-      id: `temp-${Date.now()}`,
-      orderDate: new Date(),
-      seller: initialUser.username,
-      ...newOrderData,
-    };
-
-    // Оптимистично обновляем UI и кэш
-    mutate('/api/orders', (currentOrders: Order[] = []) => [tempOrder, ...currentOrders], false);
-    cacheManager.set('orders', [tempOrder, ...orders]);
-
+  // Мемоизированные функции для предотвращения лишних ререндеров
+  const handleAddOrder = React.useCallback(async (newOrderData: Omit<Order, 'id' | 'orderDate' | 'seller'>) => {
     try {
       const response = await fetch('/api/orders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newOrderData),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...newOrderData,
+          seller: initialUser.username,
+        }),
       });
-      
-      const responseData = await response.json();
-      
+
       if (!response.ok) {
-        // Откатываем оптимистичное обновление при ошибке
-        mutate('/api/orders');
-        cacheManager.set('orders', orders);
-        
-        let errorMessage = responseData.message || 'Произошла ошибка';
-        
-        if (responseData.errors) {
-          const errorDetails = responseData.errors.map((e: any) => {
-            const field = e.path.join('.');
-            const message = e.message;
-            // Переводим названия полей на русский
-            const fieldNames: { [key: string]: string } = {
-              'orderNumber': 'Номер заказа',
-              'shipmentNumber': 'Номер отправления',
-              'productType': 'Тип товара',
-              'size': 'Размер',
-              'price': 'Цена',
-              'comment': 'Комментарий',
-              'photos': 'Фотографии'
-            };
-            const fieldName = fieldNames[field] || field;
-            return `${fieldName}: ${message}`;
-          }).join(', ');
-          errorMessage += `: ${errorDetails}`;
-        } else if (responseData.error) {
-          errorMessage += `: ${responseData.error}`;
-        }
-        
-        throw new Error(errorMessage);
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Ошибка добавления заказа');
       }
+
+      const newOrder = await response.json();
       
-      // Обновляем данные с сервера и кэш
-      mutate('/api/orders');
-      toast({ title: 'Заказ успешно добавлен' });
-    } catch (error: any) {
-      toast({ 
-        title: 'Ошибка добавления заказа', 
-        description: error.message,
-        variant: 'destructive' 
+      // Оптимистичное обновление
+      mutate('/api/orders', (currentOrders: Order[] = []) => [newOrder, ...currentOrders], false);
+      
+      // Обновляем кэш
+      const currentOrders = (cacheManager.get('orders') as Order[]) || [];
+      cacheManager.set('orders', [newOrder, ...currentOrders]);
+      
+      toast({
+        title: 'Заказ добавлен',
+        description: `Заказ #${newOrder.orderNumber} успешно создан`,
+      });
+    } catch (error) {
+      console.error('Ошибка добавления заказа:', error);
+      toast({
+        title: 'Ошибка добавления заказа',
+        description: error instanceof Error ? error.message : 'Неизвестная ошибка',
+        variant: 'destructive',
       });
     }
-  };
-  
-  // Оптимистичное обновление статуса заказа с кэшированием
-  const handleUpdateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
-    // Оптимистично обновляем UI и кэш
-    const updatedOrders = orders.map(order => 
-      order.id === orderId ? { ...order, status: newStatus } : order
-    );
-    
-    mutate('/api/orders', updatedOrders, false);
-    cacheManager.set('orders', updatedOrders);
+  }, [initialUser.username, toast]);
 
+  const handleUpdateOrderStatus = React.useCallback(async (orderId: string, newStatus: OrderStatus) => {
     try {
       const response = await fetch(`/api/orders/${orderId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ status: newStatus }),
       });
-      
+
       if (!response.ok) {
-        const err = await response.json();
-        // Откатываем при ошибке
-        mutate('/api/orders');
-        cacheManager.set('orders', orders);
-        throw new Error(err.message || 'Server error');
+        throw new Error('Ошибка обновления статуса');
       }
+
+      const updatedOrder = await response.json();
       
-      // Обновляем данные с сервера
-      mutate('/api/orders');
-      toast({ 
-        title: 'Статус заказа обновлен', 
-        description: `Заказ получил новый статус: "${newStatus}".` 
+      // Оптимистичное обновление
+      mutate('/api/orders', (currentOrders: Order[] = []) => 
+        currentOrders.map(order => 
+          order.id === orderId ? { ...order, status: newStatus, ready_at: updatedOrder.ready_at } : order
+        ), false
+      );
+      
+      // Обновляем кэш
+      const currentOrders = (cacheManager.get('orders') as Order[]) || [];
+      const updatedOrders = currentOrders.map((order: Order) => 
+        order.id === orderId ? { ...order, status: newStatus, ready_at: updatedOrder.ready_at } : order
+      );
+      cacheManager.set('orders', updatedOrders);
+      
+      toast({
+        title: 'Статус обновлен',
+        description: `Статус заказа изменен на "${newStatus}"`,
       });
-    } catch (error: any) {
-      toast({ 
-        title: 'Ошибка обновления статуса', 
-        description: error.message, 
-        variant: 'destructive' 
+    } catch (error) {
+      console.error('Ошибка обновления статуса:', error);
+      toast({
+        title: 'Ошибка обновления статуса',
+        description: 'Не удалось обновить статус заказа',
+        variant: 'destructive',
       });
     }
-  };
-  
-  // Оптимизированное добавление расхода
-  const handleAddExpense = async (newExpenseData: Omit<Expense, 'id' | 'date'>) => {
+  }, [toast]);
+
+  const handleAddExpense = React.useCallback(async (newExpenseData: Omit<Expense, 'id' | 'date'>) => {
     try {
       const response = await fetch('/api/expenses', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify(newExpenseData),
       });
-      
+
       if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.message || 'Server error');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Ошибка добавления расхода');
       }
+
+      const newExpense = await response.json();
       
-      // Обновляем данные
-      mutate('/api/expenses');
-      mutate('/api/debts');
-      toast({ title: 'Расход успешно добавлен' });
-    } catch (error: any) {
-      toast({ 
-        title: 'Ошибка добавления расхода', 
-        description: error.message, 
-        variant: 'destructive' 
+      // Оптимистичное обновление
+      mutate('/api/expenses', (currentExpenses: Expense[] = []) => [newExpense, ...currentExpenses], false);
+      
+      // Обновляем кэш
+      const currentExpenses = (cacheManager.get('expenses') as Expense[]) || [];
+      cacheManager.set('expenses', [newExpense, ...currentExpenses]);
+      
+      toast({
+        title: 'Расход добавлен',
+        description: `Расход на ${newExpense.amount} ₽ успешно добавлен`,
+      });
+    } catch (error) {
+      console.error('Ошибка добавления расхода:', error);
+      toast({
+        title: 'Ошибка добавления расхода',
+        description: error instanceof Error ? error.message : 'Неизвестная ошибка',
+        variant: 'destructive',
       });
     }
-  }
+  }, [toast]);
 
-  const handleDebtUpdate = () => {
+  const handleDebtUpdate = React.useCallback(() => {
     mutate('/api/debts');
-  };
+  }, []);
 
-  const handleUpdatePayoutStatus = async (payoutId: string, newStatus: PayoutStatus) => {
+  const handleUpdatePayoutStatus = React.useCallback(async (payoutId: string, newStatus: PayoutStatus) => {
     try {
       const response = await fetch(`/api/payouts/${payoutId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ status: newStatus }),
       });
+
       if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.message || 'Server error');
+        throw new Error('Ошибка обновления статуса выплаты');
       }
-      mutate('/api/payouts');
-      toast({ title: 'Статус вывода обновлен' });
-    } catch (error: any) {
-      toast({ 
-        title: 'Ошибка обновления статуса', 
-        description: error.message, 
-        variant: 'destructive' 
+
+      const updatedPayout = await response.json();
+      
+      // Оптимистичное обновление
+      mutate('/api/payouts', (currentPayouts: Payout[] = []) => 
+        currentPayouts.map(payout => 
+          payout.id === payoutId ? { ...payout, status: newStatus } : payout
+        ), false
+      );
+      
+      // Обновляем кэш
+      const currentPayouts = (cacheManager.get('payouts') as Payout[]) || [];
+      const updatedPayouts = currentPayouts.map((payout: Payout) => 
+        payout.id === payoutId ? { ...payout, status: newStatus } : payout
+      );
+      cacheManager.set('payouts', updatedPayouts);
+      
+      toast({
+        title: 'Статус выплаты обновлен',
+        description: `Статус выплаты изменен на "${newStatus}"`,
+      });
+    } catch (error) {
+      console.error('Ошибка обновления статуса выплаты:', error);
+      toast({
+        title: 'Ошибка обновления статуса',
+        description: 'Не удалось обновить статус выплаты',
+        variant: 'destructive',
       });
     }
-  }
+  }, [toast]);
 
-  const handleCancelOrder = (orderNumber: string) => {
-    const order = findOrder(orderNumber);
-    if (order?.id) handleUpdateOrderStatus(order.id, 'Отменен');
-  };
-  
-  const handleReturnOrder = (orderNumber: string) => {
-    const order = findOrder(orderNumber);
-    if (order?.id) handleUpdateOrderStatus(order.id, 'Возврат');
-  };
+  const handleCancelOrder = React.useCallback((orderNumber: string) => {
+    const order = orders.find(o => o.orderNumber === orderNumber);
+    if (order?.id) {
+      handleUpdateOrderStatus(order.id, 'Отменен');
+    }
+  }, [orders, handleUpdateOrderStatus]);
 
-  const handlePayout = async (orderNumbers: string[]) => {
+  const handleReturnOrder = React.useCallback((orderNumber: string) => {
+    const order = orders.find(o => o.orderNumber === orderNumber);
+    if (order?.id) {
+      handleUpdateOrderStatus(order.id, 'Возврат');
+    }
+  }, [orders, handleUpdateOrderStatus]);
+
+  const handlePayout = React.useCallback(async (orderNumbers: string[]) => {
     try {
-      const selectedOrders = findOrders(orderNumbers);
-      const totalAmount = selectedOrders.reduce((sum, order) => sum + order.price, 0);
-      
-      const payoutData = {
-        orderNumbers,
-        amount: totalAmount,
-        orderCount: selectedOrders.length,
-        seller: initialUser.username,
-        comment: `Выплата по заказам: ${orderNumbers.join(', ')}`,
-      };
-
       const response = await fetch('/api/payouts', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payoutData),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          orderNumbers,
+          seller: initialUser.username,
+        }),
       });
 
       if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.message || 'Ошибка создания выплаты');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Ошибка создания выплаты');
       }
 
-      // Обновляем данные
-      mutate('/api/orders');
-      mutate('/api/payouts');
+      const newPayout = await response.json();
       
-      toast({ 
-        title: 'Выплата создана', 
-        description: `Создана выплата на сумму ${totalAmount.toLocaleString('ru-RU')} ₽ по ${selectedOrders.length} заказ(ам). Заказы отмечены как "Исполнен".` 
+      // Оптимистичное обновление
+      mutate('/api/payouts', (currentPayouts: Payout[] = []) => [newPayout, ...currentPayouts], false);
+      
+      // Обновляем кэш
+      const currentPayouts = (cacheManager.get('payouts') as Payout[]) || [];
+      cacheManager.set('payouts', [newPayout, ...currentPayouts]);
+      
+      toast({
+        title: 'Выплата создана',
+        description: `Выплата на ${newPayout.amount} ₽ успешно создана`,
       });
-    } catch (error: any) {
-      toast({ 
-        title: 'Ошибка создания выплаты', 
-        description: error.message, 
-        variant: 'destructive' 
+    } catch (error) {
+      console.error('Ошибка создания выплаты:', error);
+      toast({
+        title: 'Ошибка создания выплаты',
+        description: error instanceof Error ? error.message : 'Неизвестная ошибка',
+        variant: 'destructive',
       });
     }
-  };
+  }, [initialUser.username, toast]);
 
-  // Мемоизированные функции поиска
-  const findOrder = React.useCallback((orderNumber: string): Order | undefined => {
-    return orders.find((order: Order) => order.orderNumber === orderNumber);
-  }, [orders]);
-  
-  const findOrders = React.useCallback((orderNumbers: string[]): Order[] => {
-    return orders.filter((order: Order) => orderNumbers.includes(order.orderNumber));
+  // Вспомогательные функции
+  const findOrder = React.useCallback((orderNumber: string) => {
+    return orders.find(order => order.orderNumber === orderNumber);
   }, [orders]);
 
-  const PlaceholderComponent = ({ title, description }: { title: string, description: string }) => (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <p>Этот раздел находится в разработке. Полный функционал будет добавлен в следующих итерациях.</p>
-      </CardContent>
-    </Card>
-  )
+  const findOrders = React.useCallback((orderNumbers: string[]) => {
+    return orders.filter(order => orderNumbers.includes(order.orderNumber));
+  }, [orders]);
+
+  // Компонент-заглушка для загрузки
+  const PlaceholderComponent = React.memo(({ title, description }: { title: string, description: string }) => (
+    <div className="flex items-center justify-center min-h-[400px]">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>{title}</CardTitle>
+          <CardDescription>{description}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  ));
+
+  // Рендеринг в зависимости от роли пользователя
+  if (initialUser.role === 'Продавец') {
+    return (
+      <AppLayout currentUser={initialUser}>
+        {(activeView: string) => (
+          <Dashboard
+            user={initialUser}
+            orders={orders}
+            isLoading={ordersLoading}
+            onAddOrder={handleAddOrder}
+            onCancelOrder={handleCancelOrder}
+            onReturnOrder={handleReturnOrder}
+            onPayout={handlePayout}
+            onUpdateStatus={handleUpdateOrderStatus}
+            findOrder={findOrder}
+            findOrders={findOrders}
+          />
+        )}
+      </AppLayout>
+    );
+  }
+
+  if (initialUser.role === 'Принтовщик') {
+    return (
+      <AppLayout currentUser={initialUser}>
+        {(activeView: string) => (
+          <PrinterDashboard
+            currentUser={initialUser}
+            allOrders={orders}
+            onUpdateStatus={handleUpdateOrderStatus}
+            isLoading={ordersLoading}
+          />
+        )}
+      </AppLayout>
+    );
+  }
+
+  if (initialUser.role === 'Администратор') {
+    return (
+      <AppLayout currentUser={initialUser}>
+        {(activeView: string) => {
+          switch (activeView) {
+            case 'admin-orders':
+              return (
+                <AdminOrderList 
+                  allOrders={orders} 
+                  allUsers={users}
+                />
+              );
+            case 'admin-expenses':
+              return (
+                <ExpensesList 
+                  allExpenses={expenses} 
+                  allUsers={users}
+                  onAddExpense={handleAddExpense}
+                  currentUser={initialUser}
+                  debts={debts}
+                  onDebtUpdate={handleDebtUpdate}
+                />
+              );
+            case 'admin-payouts':
+              return (
+                <PayoutsList 
+                  allPayouts={payouts} 
+                  allUsers={users}
+                  onUpdateStatus={handleUpdatePayoutStatus}
+                  currentUser={initialUser}
+                />
+              );
+            case 'admin-analytics':
+              return (
+                <Analytics 
+                  orders={orders} 
+                  expenses={expenses} 
+                  payouts={payouts}
+                  users={users}
+                />
+              );
+            case 'admin-ai-analytics':
+              return (
+                <AIAnalytics 
+                  orders={orders} 
+                  expenses={expenses}
+                />
+              );
+            default:
+              return (
+                <div className="space-y-6">
+                  <div>
+                    <h1 className="text-2xl font-bold">Панель администратора</h1>
+                    <p className="text-muted-foreground">
+                      Управление заказами, расходами и аналитика
+                    </p>
+                  </div>
+
+                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Заказы</CardTitle>
+                        <CardDescription>
+                          Всего заказов: {orders.length}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <AdminOrderList 
+                          allOrders={orders} 
+                          allUsers={users}
+                        />
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Расходы</CardTitle>
+                        <CardDescription>
+                          Всего расходов: {expenses.length}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <ExpensesList 
+                          allExpenses={expenses} 
+                          allUsers={users}
+                          onAddExpense={handleAddExpense}
+                          currentUser={initialUser}
+                          debts={debts}
+                          onDebtUpdate={handleDebtUpdate}
+                        />
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Выплаты</CardTitle>
+                        <CardDescription>
+                          Всего выплат: {payouts.length}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <PayoutsList 
+                          allPayouts={payouts} 
+                          allUsers={users}
+                          onUpdateStatus={handleUpdatePayoutStatus}
+                          currentUser={initialUser}
+                        />
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <div className="grid gap-6 md:grid-cols-2">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Аналитика</CardTitle>
+                        <CardDescription>
+                          Статистика и аналитика
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <Analytics 
+                          orders={orders} 
+                          expenses={expenses} 
+                          payouts={payouts}
+                          users={users}
+                        />
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>AI Аналитика</CardTitle>
+                        <CardDescription>
+                          Искусственный интеллект для анализа данных
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <AIAnalytics 
+                          orders={orders} 
+                          expenses={expenses}
+                        />
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+              );
+          }
+        }}
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout currentUser={initialUser}>
-      {(activeView: string) => {
-        if (initialUser.role === 'Продавец') {
-           return <Dashboard 
-            user={initialUser} 
-            orders={orders}
-            isLoading={ordersLoading}
-            onAddOrder={handleAddOrder} 
-            onCancelOrder={handleCancelOrder}
-            onReturnOrder={handleReturnOrder}
-            findOrder={findOrder}
-            findOrders={findOrders}
-            onPayout={handlePayout}
-            onUpdateStatus={handleUpdateOrderStatus}
-          />
-        }
-        if (initialUser.role === 'Принтовщик') {
-          return (
-             <PrinterDashboard
-                currentUser={initialUser}
-                onUpdateStatus={handleUpdateOrderStatus}
-                allOrders={orders}
-                isLoading={ordersLoading}
-              />
-          )
-        }
-        if (initialUser.role === 'Администратор') {
-          switch (activeView) {
-            case 'admin-orders':
-              return <AdminOrderList allOrders={orders} allUsers={users} />;
-            case 'admin-expenses':
-              return <ExpensesList 
-                        allExpenses={expenses} 
-                        allUsers={users} 
-                        onAddExpense={handleAddExpense}
-                        currentUser={initialUser}
-                        debts={debts}
-                        onDebtUpdate={handleDebtUpdate}
-                      />;
-            case 'admin-payouts':
-              return <PayoutsList 
-                        allPayouts={payouts} 
-                        allUsers={users} 
-                        onUpdateStatus={handleUpdatePayoutStatus}
-                        currentUser={initialUser}
-                      />;
-            case 'admin-analytics':
-              return <Analytics 
-                        orders={orders} 
-                        users={users} 
-                        expenses={expenses} 
-                        payouts={payouts} 
-                      />;
-            case 'admin-ai-analytics':
-               return <AIAnalytics orders={orders} expenses={expenses} />;
-            default:
-              return <AdminOrderList allOrders={orders} allUsers={users} />;
-          }
-        }
-        return null;
-      }}
+      {(activeView: string) => (
+        <PlaceholderComponent 
+          title="Неизвестная роль" 
+          description="Ваша роль не поддерживается в системе" 
+        />
+      )}
     </AppLayout>
   );
 }

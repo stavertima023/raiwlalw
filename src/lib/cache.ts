@@ -3,6 +3,7 @@ import * as React from 'react';
 /**
  * Система кэширования для оптимизации загрузки данных
  * Обеспечивает быструю загрузку и сохранение данных между сессиями
+ * Оптимизирована для мобильных устройств
  */
 
 // Ключи для localStorage
@@ -14,52 +15,72 @@ const CACHE_KEYS = {
   USERS: 'users_cache',
   LAST_UPDATE: 'last_update',
   CACHE_VERSION: 'cache_version',
+  MOBILE_OPTIMIZED: 'mobile_optimized',
 } as const;
 
 // Версия кэша для инвалидации при обновлениях
-const CACHE_VERSION = '1.0.0';
+const CACHE_VERSION = '1.1.0';
 
-// Время жизни кэша (в миллисекундах)
+// Время жизни кэша (в миллисекундах) - увеличены для стабильности
 const CACHE_TTL = {
-  ORDERS: 5 * 60 * 1000, // 5 минут
-  EXPENSES: 10 * 60 * 1000, // 10 минут
-  PAYOUTS: 5 * 60 * 1000, // 5 минут
-  DEBTS: 2 * 60 * 1000, // 2 минуты
-  USERS: 30 * 60 * 1000, // 30 минут
+  ORDERS: 10 * 60 * 1000, // 10 минут (было 5)
+  EXPENSES: 15 * 60 * 1000, // 15 минут (было 10)
+  PAYOUTS: 10 * 60 * 1000, // 10 минут (было 5)
+  DEBTS: 5 * 60 * 1000, // 5 минут (было 2)
+  USERS: 60 * 60 * 1000, // 60 минут (было 30)
 } as const;
+
+// Определяем мобильное устройство
+const isMobile = () => {
+  if (typeof window === 'undefined') return false;
+  return window.innerWidth < 768 || /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+};
 
 interface CacheItem<T> {
   data: T;
   timestamp: number;
   version: string;
+  mobileOptimized?: boolean;
 }
 
 interface CacheMetadata {
   lastUpdate: number;
   version: string;
+  mobileOptimized?: boolean;
 }
 
 /**
- * Класс для управления кэшем
+ * Класс для управления кэшем с мобильной оптимизацией
  */
 class CacheManager {
   public isAvailable: boolean;
+  private isMobileDevice: boolean;
 
   constructor() {
     this.isAvailable = typeof window !== 'undefined' && 'localStorage' in window;
+    this.isMobileDevice = isMobile();
   }
 
   /**
-   * Сохраняет данные в кэш
+   * Сохраняет данные в кэш с мобильной оптимизацией
    */
   set<T>(key: string, data: T, ttl: number = CACHE_TTL.ORDERS): void {
     if (!this.isAvailable) return;
 
     try {
+      // Для мобильных устройств уменьшаем размер данных
+      let optimizedData = data;
+      if (this.isMobileDevice && Array.isArray(data)) {
+        // Ограничиваем количество элементов для мобильных устройств
+        const maxItems = key === 'orders' ? 200 : 100;
+        optimizedData = (data as any[]).slice(0, maxItems) as T;
+      }
+
       const cacheItem: CacheItem<T> = {
-        data,
+        data: optimizedData,
         timestamp: Date.now(),
         version: CACHE_VERSION,
+        mobileOptimized: this.isMobileDevice,
       };
 
       localStorage.setItem(key, JSON.stringify(cacheItem));
@@ -68,11 +89,13 @@ class CacheManager {
       this.updateMetadata();
     } catch (error) {
       console.warn('Ошибка сохранения в кэш:', error);
+      // При ошибке очищаем кэш для освобождения памяти
+      this.clear();
     }
   }
 
   /**
-   * Получает данные из кэша
+   * Получает данные из кэша с проверкой мобильной оптимизации
    */
   get<T>(key: string, ttl: number = CACHE_TTL.ORDERS): T | null {
     if (!this.isAvailable) return null;
@@ -85,6 +108,12 @@ class CacheManager {
       
       // Проверяем версию кэша
       if (cacheItem.version !== CACHE_VERSION) {
+        this.remove(key);
+        return null;
+      }
+
+      // Проверяем совместимость мобильной оптимизации
+      if (cacheItem.mobileOptimized !== this.isMobileDevice) {
         this.remove(key);
         return null;
       }
@@ -105,7 +134,7 @@ class CacheManager {
   }
 
   /**
-   * Удаляет данные из кэша
+   * Удаляет элемент из кэша
    */
   remove(key: string): void {
     if (!this.isAvailable) return;
@@ -125,7 +154,9 @@ class CacheManager {
 
     try {
       Object.values(CACHE_KEYS).forEach(key => {
-        localStorage.removeItem(key);
+        if (key !== CACHE_KEYS.LAST_UPDATE && key !== CACHE_KEYS.CACHE_VERSION) {
+          localStorage.removeItem(key);
+        }
       });
     } catch (error) {
       console.warn('Ошибка очистки кэша:', error);
@@ -142,12 +173,11 @@ class CacheManager {
       const metadata: CacheMetadata = {
         lastUpdate: Date.now(),
         version: CACHE_VERSION,
+        mobileOptimized: this.isMobileDevice,
       };
-
       localStorage.setItem(CACHE_KEYS.LAST_UPDATE, JSON.stringify(metadata));
-      localStorage.setItem(CACHE_KEYS.CACHE_VERSION, CACHE_VERSION);
     } catch (error) {
-      console.warn('Ошибка обновления метаданных кэша:', error);
+      console.warn('Ошибка обновления метаданных:', error);
     }
   }
 
@@ -163,8 +193,10 @@ class CacheManager {
 
       const cacheItem: CacheItem<any> = JSON.parse(cached);
       
-      // Проверяем версию
-      if (cacheItem.version !== CACHE_VERSION) return true;
+      // Проверяем версию и мобильную оптимизацию
+      if (cacheItem.version !== CACHE_VERSION || cacheItem.mobileOptimized !== this.isMobileDevice) {
+        return true;
+      }
 
       // Проверяем время жизни
       return Date.now() - cacheItem.timestamp > ttl;
@@ -184,22 +216,51 @@ class CacheManager {
       if (!metadata) return 0;
 
       const parsed: CacheMetadata = JSON.parse(metadata);
-      return parsed.lastUpdate;
+      return parsed.lastUpdate || 0;
     } catch (error) {
       return 0;
     }
   }
+
+  /**
+   * Проверяет доступность памяти
+   */
+  checkMemoryUsage(): boolean {
+    if (!this.isAvailable || typeof performance === 'undefined') return true;
+
+    try {
+      // Простая проверка производительности
+      const start = performance.now();
+      const testData = new Array(1000).fill('test');
+      localStorage.setItem('memory_test', JSON.stringify(testData));
+      localStorage.removeItem('memory_test');
+      const end = performance.now();
+
+      // Если операция занимает больше 50мс, считаем что память переполнена
+      return (end - start) < 50;
+    } catch (error) {
+      // При ошибке очищаем кэш
+      this.clear();
+      return false;
+    }
+  }
 }
 
-// Создаем глобальный экземпляр кэш-менеджера
+// Создаем экземпляр кэш-менеджера
 export const cacheManager = new CacheManager();
 
 /**
- * Оптимизированный fetcher с кэшированием
+ * Оптимизированный fetcher с улучшенной обработкой ошибок
  */
 export const optimizedFetcher = async (url: string) => {
   const cacheKey = url.replace('/api/', '');
   
+  // Проверяем доступность памяти
+  if (!cacheManager.checkMemoryUsage()) {
+    console.warn('⚠️ Низкая производительность памяти, очищаем кэш');
+    cacheManager.clear();
+  }
+
   // Пытаемся получить данные из кэша
   const cachedData = cacheManager.get(cacheKey);
   if (cachedData) {
@@ -210,41 +271,64 @@ export const optimizedFetcher = async (url: string) => {
   // Если кэша нет или он устарел, загружаем с сервера
   console.log(`🌐 Загрузка данных с сервера: ${cacheKey}`);
   
-  const res = await fetch(url, {
-    headers: {
-      'Cache-Control': 'max-age=30',
-    },
-  });
-  
-  if (!res.ok) {
-    const error = new Error('Произошла ошибка при загрузке данных');
-    const info = await res.json();
-    (error as any).info = info;
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 секунд таймаут
+
+    const res = await fetch(url, {
+      headers: {
+        'Cache-Control': 'max-age=60',
+      },
+      signal: controller.signal,
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!res.ok) {
+      const error = new Error(`HTTP ${res.status}: ${res.statusText}`);
+      throw error;
+    }
+    
+    const data = await res.json();
+    
+    // Сохраняем в кэш только если данные валидны
+    if (data && (Array.isArray(data) || typeof data === 'object')) {
+      cacheManager.set(cacheKey, data);
+    }
+    
+    return data;
+  } catch (error) {
+    console.error(`❌ Ошибка загрузки ${cacheKey}:`, error);
+    
+    // Возвращаем кэшированные данные даже если они устарели
+    const staleData = cacheManager.get(cacheKey, CACHE_TTL.ORDERS * 2);
+    if (staleData) {
+      console.log(`🔄 Возвращаем устаревшие данные из кэша: ${cacheKey}`);
+      return staleData;
+    }
+    
     throw error;
   }
-  
-  const data = await res.json();
-  
-  // Сохраняем в кэш
-  cacheManager.set(cacheKey, data);
-  
-  return data;
 };
 
 /**
- * Конфигурация SWR для максимальной производительности
+ * Конфигурация SWR для максимальной стабильности на мобильных устройствах
  */
 export const swrConfig = {
   revalidateOnFocus: false, // Не перезагружаем при фокусе
   revalidateOnReconnect: true, // Перезагружаем при восстановлении соединения
-  dedupingInterval: 10000, // Дедупликация запросов в течение 10 секунд
-  errorRetryCount: 2, // Повторяем ошибки только 2 раза
-  errorRetryInterval: 1000, // Интервал между повторами
-  refreshInterval: 30000, // Автообновление каждые 30 секунд
+  dedupingInterval: isMobile() ? 30000 : 10000, // Увеличиваем для мобильных
+  errorRetryCount: isMobile() ? 1 : 2, // Уменьшаем повторы для мобильных
+  errorRetryInterval: isMobile() ? 2000 : 1000, // Увеличиваем интервал для мобильных
+  refreshInterval: isMobile() ? 60000 : 30000, // Увеличиваем интервал для мобильных
   refreshWhenHidden: false, // Не обновляем когда вкладка неактивна
   refreshWhenOffline: false, // Не обновляем когда нет интернета
-  revalidateIfStale: true, // Перезагружаем если данные устарели
+  revalidateIfStale: false, // Не перезагружаем устаревшие данные автоматически
   revalidateOnMount: true, // Перезагружаем при монтировании
+  keepPreviousData: true, // Сохраняем предыдущие данные при обновлении
+  onError: (error: Error) => {
+    console.error('SWR Error:', error);
+  },
 };
 
 /**
@@ -266,6 +350,8 @@ export const getCacheStatus = () => {
     lastUpdate: cacheManager.getLastUpdate(),
     isAvailable: cacheManager.isAvailable,
     version: CACHE_VERSION,
+    isMobile: isMobile(),
+    memoryOk: cacheManager.checkMemoryUsage(),
   };
 };
 
@@ -303,7 +389,7 @@ export const useCache = <T>(key: string, fetcher: () => Promise<T>, ttl?: number
     };
 
     loadData();
-  }, [key, ttl]);
+  }, [key, ttl, fetcher]);
 
   return { data, loading, error };
 }; 

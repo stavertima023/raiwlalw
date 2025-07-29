@@ -170,24 +170,24 @@ const createRenderActionsCell = (
 ) => {
   const renderPrinterActions = (order: Order) => {
     if (order.status === 'Добавлен') {
-      return (
+        return (
         <div className="flex space-x-1">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
+                 <AlertDialog>
+                  <AlertDialogTrigger asChild>
               <Button size="icon" variant="default">
-                <Check className="h-4 w-4" />
-                <span className="sr-only">Готов</span>
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Вы собираетесь изменить статус заказа #{order.orderNumber} на "Готов".
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Закрыть</AlertDialogCancel>
+                      <Check className="h-4 w-4" />
+                      <span className="sr-only">Готов</span>
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Вы собираетесь изменить статус заказа #{order.orderNumber} на "Готов".
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Закрыть</AlertDialogCancel>
                 <AlertDialogAction onClick={() => onUpdateStatus?.(order.id!, 'Готов')}>
                   Подтвердить
                 </AlertDialogAction>
@@ -218,34 +218,34 @@ const createRenderActionsCell = (
               <AlertDialogFooter>
                 <AlertDialogCancel>Закрыть</AlertDialogCancel>
                 <AlertDialogAction onClick={() => onUpdateStatus?.(order.id!, 'Отправлен')}>
-                  Подтвердить
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button size="icon" variant="destructive">
-                <X className="h-4 w-4" />
-                <span className="sr-only">Отменить</span>
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Вы собираетесь отменить заказ #{order.orderNumber}. Это действие нельзя будет отменить.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Закрыть</AlertDialogCancel>
+                        Подтвердить
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+                 <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button size="icon" variant="destructive">
+                      <X className="h-4 w-4" />
+                      <span className="sr-only">Отменить</span>
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Вы собираетесь отменить заказ #{order.orderNumber}. Это действие нельзя будет отменить.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Закрыть</AlertDialogCancel>
                 <AlertDialogAction onClick={() => onUpdateStatus?.(order.id!, 'Отменен')}>
-                  Подтвердить отмену
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
+                        Подтвердить отмену
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+            </div>
       );
     }
 
@@ -410,53 +410,53 @@ const OrderTableRow = React.memo<{
     }
 
     if (order.status === 'Готов') {
-      return (
+        return (
         <div className="flex space-x-1">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
+                 <AlertDialog>
+                  <AlertDialogTrigger asChild>
               <Button size="icon" variant="default">
-                <Send className="h-4 w-4" />
-                <span className="sr-only">Отправлен</span>
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Вы собираетесь изменить статус заказа #{order.orderNumber} на "Отправлен".
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Закрыть</AlertDialogCancel>
+                      <Send className="h-4 w-4" />
+                      <span className="sr-only">Отправлен</span>
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Вы собираетесь изменить статус заказа #{order.orderNumber} на "Отправлен".
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Закрыть</AlertDialogCancel>
                 <AlertDialogAction onClick={() => onUpdateStatus?.(order.id!, 'Отправлен')}>
-                  Подтвердить
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button size="icon" variant="destructive">
-                <X className="h-4 w-4" />
-                <span className="sr-only">Отменить</span>
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Вы собираетесь отменить заказ #{order.orderNumber}. Это действие нельзя будет отменить.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Закрыть</AlertDialogCancel>
+                        Подтвердить
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+                 <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button size="icon" variant="destructive">
+                      <X className="h-4 w-4" />
+                      <span className="sr-only">Отменить</span>
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Вы собираетесь отменить заказ #{order.orderNumber}. Это действие нельзя будет отменить.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Закрыть</AlertDialogCancel>
                 <AlertDialogAction onClick={() => onUpdateStatus?.(order.id!, 'Отменен')}>
-                  Подтвердить отмену
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
+                        Подтвердить отмену
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+            </div>
       );
     }
 
@@ -543,7 +543,7 @@ const OrderTableRow = React.memo<{
     }
 
     if (order.status === 'Добавлен' || order.status === 'Готов') {
-      return (
+    return (
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button size="icon" variant="destructive">
