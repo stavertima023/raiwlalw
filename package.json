@@ -9,7 +9,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check-railway": "node scripts/check-railway-connection.js"
   },
   "dependencies": {
     "@genkit-ai/googleai": "^1.13.0",
