@@ -43,6 +43,48 @@ export async function GET() {
       date: new Date(item.date)
     }));
 
+    // Если это администратор, получаем подробную информацию о заказах
+    if (user.role === 'Администратор') {
+      const payoutsWithOrders = await Promise.all(
+        parsedData.map(async (payout) => {
+          try {
+            // Получаем заказы для этой выплаты
+            const { data: orders, error: ordersError } = await supabaseAdmin!
+              .from('orders')
+              .select('*')
+              .in('orderNumber', payout.orderNumbers);
+
+            if (ordersError) {
+              console.error('Ошибка получения заказов для выплаты:', ordersError);
+              return payout;
+            }
+
+            // Рассчитываем статистику по типам товаров
+            const productTypeStats = orders.reduce((acc, order) => {
+              acc[order.productType] = (acc[order.productType] || 0) + 1;
+              return acc;
+            }, {} as Record<string, number>);
+
+            // Рассчитываем средний чек
+            const totalAmount = orders.reduce((sum, order) => sum + order.price, 0);
+            const averageCheck = orders.length > 0 ? totalAmount / orders.length : 0;
+
+            return {
+              ...payout,
+              orders,
+              productTypeStats,
+              averageCheck,
+            };
+          } catch (error) {
+            console.error('Ошибка обработки выплаты:', error);
+            return payout;
+          }
+        })
+      );
+
+      return NextResponse.json(payoutsWithOrders);
+    }
+
     return NextResponse.json(parsedData);
   } catch (error: any) {
     console.error('GET /api/payouts error:', error);

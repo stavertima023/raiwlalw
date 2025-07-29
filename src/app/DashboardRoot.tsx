@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import useSWR, { mutate } from 'swr';
-import { Order, OrderStatus, User, Expense, Payout, PayoutStatus, Debt } from '@/lib/types';
+import { Order, OrderStatus, User, Expense, Payout, PayoutStatus, Debt, PayoutWithOrders } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Dashboard } from '@/components/dashboard/Dashboard';
@@ -127,7 +127,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     }
   );
 
-  const { data: payouts = [], error: payoutsError } = useSWR<Payout[]>(
+  const { data: payouts = [], error: payoutsError } = useSWR<PayoutWithOrders[]>(
     (isInitialized && (initialUser.role === 'Администратор' || initialUser.role === 'Продавец')) ? '/api/payouts' : null, 
     optimizedFetcher,
     {

@@ -138,6 +138,13 @@ export const PayoutSchema = z.object({
 
 export type Payout = z.infer<typeof PayoutSchema>;
 
+// Расширенный тип для выплат с информацией о заказах
+export interface PayoutWithOrders extends Payout {
+  orders?: Order[];
+  productTypeStats?: Record<string, number>;
+  averageCheck?: number;
+}
+
 // Типы для системы долгов
 export const DebtSchema = z.object({
   id: z.string(),
