@@ -27,6 +27,10 @@ const nextConfig: NextConfig = {
       },
     ]
   },
+  // Увеличиваем лимиты для API routes
+  experimental: {
+    serverComponentsExternalPackages: ['@supabase/supabase-js'],
+  },
   // Конфигурация для увеличения лимитов
   webpack: (config, { isServer }) => {
     if (isServer) {
@@ -48,10 +52,6 @@ const nextConfig: NextConfig = {
           {
             key: 'Content-Type',
             value: 'application/json',
-          },
-          {
-            key: 'X-Railway-Project',
-            value: 'orderflow-factory',
           },
         ],
       },

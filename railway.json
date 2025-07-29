@@ -14,8 +14,7 @@
     "production": {
       "variables": {
         "NODE_ENV": "production",
-        "NEXT_TELEMETRY_DISABLED": "1",
-        "PORT": "3000"
+        "NEXT_TELEMETRY_DISABLED": "1"
       }
     }
   }
