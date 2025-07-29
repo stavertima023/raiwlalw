@@ -3,6 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { ThemeProvider } from '@/components/layout/ThemeProvider';
 import { StabilityMonitor } from '@/components/ui/stability-monitor';
+import { MobileStability } from '@/components/ui/mobile-stability';
 
 export const metadata: Metadata = {
   title: 'OrderFlow Factory',
@@ -11,16 +12,12 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="ru" suppressHydrationWarning>
+    <html lang="ru">
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-        {/* Предотвращаем перезагрузки на мобильных устройствах */}
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -29,19 +26,25 @@ export default function RootLayout({
         <meta name="application-name" content="OrderFlow Factory" />
         <meta name="msapplication-TileColor" content="#000000" />
         <meta name="theme-color" content="#000000" />
+        {/* Дополнительные мета-теги для стабильности */}
+        <meta name="format-detection" content="telephone=no" />
+        <meta name="apple-touch-fullscreen" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
       <body>
-        <StabilityMonitor>
+        <MobileStability>
           <ThemeProvider
-              attribute="class"
-              defaultTheme="system"
-              enableSystem
-              disableTransitionOnChange
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
           >
+            <StabilityMonitor>
               {children}
-              <Toaster />
+            </StabilityMonitor>
+            <Toaster />
           </ThemeProvider>
-        </StabilityMonitor>
+        </MobileStability>
       </body>
     </html>
   );

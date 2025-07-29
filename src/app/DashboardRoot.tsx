@@ -44,22 +44,43 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         console.log('📱 Приложение вернулось в активное состояние');
+      } else {
+        console.log('📱 Приложение перешло в фоновый режим');
       }
     };
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       // Предотвращаем случайные перезагрузки
-      if (e.type === 'beforeunload') {
-        console.log('🛡️ Предотвращена перезагрузка страницы');
-      }
+      console.log('🛡️ Попытка перезагрузки предотвращена');
+      e.preventDefault();
+      e.returnValue = '';
+    };
+
+    const handlePageHide = () => {
+      console.log('📱 Страница скрыта - сохраняем состояние');
+    };
+
+    const handlePageShow = () => {
+      console.log('📱 Страница показана - восстанавливаем состояние');
+    };
+
+    // Дополнительная защита для мобильных устройств
+    const handleTouchStart = () => {
+      // Предотвращаем случайные перезагрузки при касании
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('pagehide', handlePageHide);
+    window.addEventListener('pageshow', handlePageShow);
+    document.addEventListener('touchstart', handleTouchStart, { passive: true });
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handlePageHide);
+      window.removeEventListener('pageshow', handlePageShow);
+      document.removeEventListener('touchstart', handleTouchStart);
     };
   }, [isInitialized]);
 

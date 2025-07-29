@@ -7,8 +7,12 @@ import { OrderTable } from '@/components/dashboard/OrderTable';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from '@/components/ui/badge';
-import Filters from '@/components/dashboard/Filters';
+import { Button } from '@/components/ui/button';
+import { RefreshCw, AlertCircle, CheckCircle, Send, Check } from 'lucide-react';
 import { LoadingIndicator } from '@/components/ui/loading-indicator';
+import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
+import { ru } from 'date-fns/locale';
 
 interface PrinterDashboardProps {
   currentUser: User;
@@ -16,6 +20,161 @@ interface PrinterDashboardProps {
   allOrders: Order[];
   isLoading?: boolean;
 }
+
+// Мобильная версия компонента для стабильности
+const MobilePrinterView = React.memo<{
+  orders: Order[];
+  currentUser: User;
+  onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void;
+  isLoading: boolean;
+  title: string;
+  description: string;
+}>(({ orders, currentUser, onUpdateStatus, isLoading, title, description }) => {
+  const { toast } = useToast();
+  const [error, setError] = React.useState<string | null>(null);
+
+  // Защита от ошибок
+  React.useEffect(() => {
+    if (error) {
+      toast({
+        title: 'Ошибка загрузки',
+        description: error,
+        variant: 'destructive',
+      });
+      setError(null);
+    }
+  }, [error, toast]);
+
+  // Обработка ошибок обновления статуса
+  const handleStatusUpdate = React.useCallback(async (orderId: string, newStatus: OrderStatus) => {
+    try {
+      await onUpdateStatus(orderId, newStatus);
+      toast({
+        title: 'Статус обновлен',
+        description: 'Заказ успешно обновлен',
+      });
+    } catch (err) {
+      console.error('Ошибка обновления статуса:', err);
+      setError('Не удалось обновить статус заказа');
+    }
+  }, [onUpdateStatus, toast]);
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+            {title}
+          </CardTitle>
+          <CardDescription>{description}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="animate-pulse">
+                <div className="h-20 bg-gray-200 rounded-md"></div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (orders.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
+            {title}
+          </CardTitle>
+          <CardDescription>{description}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-muted-foreground">
+            Нет заказов для отображения
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {orders.slice(0, 50).map((order) => ( // Ограничиваем для мобильных
+            <div key={order.id} className="border rounded-lg p-4 space-y-2">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="font-medium">#{order.orderNumber}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {format(order.orderDate, 'd MMM yyyy, HH:mm', { locale: ru })}
+                  </p>
+                </div>
+                <Badge variant={order.status === 'Готов' ? 'outline' : 'default'}>
+                  {order.status}
+                </Badge>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Тип:</span>
+                  <span className="ml-1 font-medium">{order.productType}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Размер:</span>
+                  <span className="ml-1 font-medium">{order.size}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Цена:</span>
+                  <span className="ml-1 font-medium">{order.price.toLocaleString('ru-RU')} ₽</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Продавец:</span>
+                  <span className="ml-1 font-medium">{order.seller}</span>
+                </div>
+              </div>
+
+              {/* Действия для принтовщика */}
+              <div className="flex gap-2 pt-2">
+                {order.status === 'Добавлен' && (
+                  <Button
+                    size="sm"
+                    onClick={() => handleStatusUpdate(order.id!, 'Готов')}
+                    className="flex-1"
+                  >
+                    <Check className="h-4 w-4 mr-1" />
+                    Готов
+                  </Button>
+                )}
+                {order.status === 'Готов' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleStatusUpdate(order.id!, 'Отправлен')}
+                    className="flex-1"
+                  >
+                    <Send className="h-4 w-4 mr-1" />
+                    Отправить
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+});
+
+MobilePrinterView.displayName = 'MobilePrinterView';
 
 export function PrinterDashboard({
   currentUser,
@@ -29,32 +188,68 @@ export function PrinterDashboard({
     orderNumber: '',
   });
 
+  // Защита от ошибок и стабилизация
+  const [error, setError] = React.useState<string | null>(null);
+  const [isMobile, setIsMobile] = React.useState(false);
+
+  // Определяем мобильное устройство
+  React.useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768 || 
+        /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      setIsMobile(mobile);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Стабилизированная фильтрация с защитой от ошибок
   const filteredOrders = React.useMemo(() => {
-    return allOrders.filter(order => {
-      const statusMatch = filters.status === 'all' || order.status === filters.status;
-      const productTypeMatch = filters.productType === 'all' || order.productType === filters.productType;
-      const orderNumberMatch = filters.orderNumber === '' || order.orderNumber.toLowerCase().includes(filters.orderNumber.toLowerCase());
-      return statusMatch && productTypeMatch && orderNumberMatch;
-    });
+    try {
+      return allOrders.filter(order => {
+        const statusMatch = filters.status === 'all' || order.status === filters.status;
+        const productTypeMatch = filters.productType === 'all' || order.productType === filters.productType;
+        const orderNumberMatch = filters.orderNumber === '' || 
+          order.orderNumber.toLowerCase().includes(filters.orderNumber.toLowerCase());
+        return statusMatch && productTypeMatch && orderNumberMatch;
+      });
+    } catch (err) {
+      console.error('Ошибка фильтрации заказов:', err);
+      setError('Ошибка при фильтрации заказов');
+      return [];
+    }
   }, [allOrders, filters]);
 
   const ordersForProduction = React.useMemo(() => {
-    return filteredOrders
-      .filter(order => order.status === 'Добавлен')
-      .sort((a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime()); // Сначала старые
-  }, [filteredOrders]);
+    try {
+      return filteredOrders
+        .filter(order => order.status === 'Добавлен')
+        .sort((a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime())
+        .slice(0, isMobile ? 30 : 100); // Ограничиваем для мобильных
+    } catch (err) {
+      console.error('Ошибка обработки заказов на производство:', err);
+      return [];
+    }
+  }, [filteredOrders, isMobile]);
   
   const ordersForShipment = React.useMemo(() => {
-    return filteredOrders
-      .filter(order => order.status === 'Готов')
-      .sort((a, b) => {
-        // Сортировка по времени готовности (сначала самые новые)
-        if (!a.ready_at && !b.ready_at) return 0;
-        if (!a.ready_at) return 1;
-        if (!b.ready_at) return -1;
-        return new Date(b.ready_at).getTime() - new Date(a.ready_at).getTime();
-      });
-  }, [filteredOrders]);
+    try {
+      return filteredOrders
+        .filter(order => order.status === 'Готов')
+        .sort((a, b) => {
+          if (!a.ready_at && !b.ready_at) return 0;
+          if (!a.ready_at) return 1;
+          if (!b.ready_at) return -1;
+          return new Date(b.ready_at).getTime() - new Date(a.ready_at).getTime();
+        })
+        .slice(0, isMobile ? 30 : 100); // Ограничиваем для мобильных
+    } catch (err) {
+      console.error('Ошибка обработки заказов на отправку:', err);
+      return [];
+    }
+  }, [filteredOrders, isMobile]);
 
   // Обработка ошибок загрузки
   if (isLoading && allOrders.length === 0) {
@@ -77,6 +272,82 @@ export function PrinterDashboard({
     );
   }
 
+  // Мобильная версия - упрощенная и стабильная
+  if (isMobile) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Рабочая область Принтовщика</CardTitle>
+            <CardDescription>
+              Здесь отображаются заказы, требующие вашего внимания.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+
+        {/* Индикатор загрузки */}
+        <LoadingIndicator 
+          isLoading={isLoading}
+          dataCount={allOrders.length}
+          dataType="заказов"
+          showCacheStatus={true}
+        />
+
+        {/* Мобильные вкладки */}
+        <Tabs defaultValue="production" className="w-full">
+          <TabsList className="grid w-full grid-cols-3 gap-1 p-1">
+            <TabsTrigger value="production" className="text-xs px-2 py-1">
+              Изготовление
+              <Badge variant="secondary" className="ml-1 text-xs">{ordersForProduction.length}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="shipment" className="text-xs px-2 py-1">
+              Отправка
+              <Badge variant="secondary" className="ml-1 text-xs">{ordersForShipment.length}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="all" className="text-xs px-2 py-1">
+              Все
+              <Badge variant="secondary" className="ml-1 text-xs">{filteredOrders.length}</Badge>
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="production">
+            <MobilePrinterView
+              orders={ordersForProduction}
+              currentUser={currentUser}
+              onUpdateStatus={onUpdateStatus}
+              isLoading={isLoading}
+              title="Заказы на изготовление"
+              description="Заказы, требующие изготовления"
+            />
+          </TabsContent>
+          
+          <TabsContent value="shipment">
+            <MobilePrinterView
+              orders={ordersForShipment}
+              currentUser={currentUser}
+              onUpdateStatus={onUpdateStatus}
+              isLoading={isLoading}
+              title="Заказы на отправку"
+              description="Готовые заказы для отправки"
+            />
+          </TabsContent>
+          
+          <TabsContent value="all">
+            <MobilePrinterView
+              orders={filteredOrders.slice(0, 50)} // Ограничиваем для мобильных
+              currentUser={currentUser}
+              onUpdateStatus={onUpdateStatus}
+              isLoading={isLoading}
+              title="Все заказы"
+              description="Все заказы в системе"
+            />
+          </TabsContent>
+        </Tabs>
+      </div>
+    );
+  }
+
+  // Десктопная версия - стандартная
   return (
     <div className="space-y-6">
        <Card>
@@ -96,9 +367,7 @@ export function PrinterDashboard({
         showCacheStatus={true}
       />
 
-      <Filters onFilterChange={setFilters} currentFilters={filters} />
-      
-       <Tabs defaultValue="production" className="w-full">
+      <Tabs defaultValue="production" className="w-full">
         <TabsList className="grid w-full grid-cols-3 gap-1 p-1">
           <TabsTrigger value="production" className="text-xs px-2 py-1">
             <span className="hidden sm:inline">На изготовление</span>

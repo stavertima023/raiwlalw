@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { supabaseAdmin } from '@/lib/supabaseClient';
 import { OrderSchema } from '@/lib/types';
@@ -8,13 +8,18 @@ import { cleanImageArray } from '@/lib/imageUtils';
 export const maxDuration = 90; // 90 секунд
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+// Определяем мобильное устройство
+const isMobile = (userAgent: string) => {
+  return /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+};
+
+export async function GET(request: NextRequest) {
   try {
     // Check supabaseAdmin availability
     if (!supabaseAdmin) {
       return NextResponse.json({ message: 'Сервис недоступен' }, { status: 503 });
     }
-    
+
     const session = await getSession();
     const { user } = session;
 
@@ -22,11 +27,18 @@ export async function GET() {
       return NextResponse.json({ message: 'Пользователь не авторизован' }, { status: 401 });
     }
 
+    // Получаем User-Agent для определения мобильного устройства
+    const userAgent = request.headers.get('user-agent') || '';
+    const mobile = isMobile(userAgent);
+
+    console.log(`📱 Запрос заказов с ${mobile ? 'мобильного' : 'десктопного'} устройства`);
+
     // Оптимизированный запрос с выбором только нужных полей
     let query = supabaseAdmin
       .from('orders')
       .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment, ready_at')
-      .order('orderDate', { ascending: false });
+      .order('orderDate', { ascending: false })
+      .limit(mobile ? 100 : 500); // Ограничиваем для мобильных
 
     // Если пользователь продавец, фильтруем только его заказы
     if (user.role === 'Продавец') {
@@ -45,8 +57,10 @@ export async function GET() {
       orderDate: new Date(item.orderDate)
     }));
 
+    console.log(`✅ Заказы получены: ${parsedData.length} шт.`);
     return NextResponse.json(parsedData);
   } catch (error: any) {
+    console.error('Ошибка API заказов:', error);
     return NextResponse.json({ 
       message: 'Ошибка загрузки заказов', 
       error: error.message 

@@ -21,20 +21,20 @@ const CACHE_KEYS = {
 // Версия кэша для инвалидации при обновлениях
 const CACHE_VERSION = '1.1.0';
 
-// Время жизни кэша (в миллисекундах) - увеличены для стабильности
-const CACHE_TTL = {
-  ORDERS: 30 * 60 * 1000, // 30 минут (было 10)
-  EXPENSES: 60 * 60 * 1000, // 60 минут (было 15)
-  PAYOUTS: 30 * 60 * 1000, // 30 минут (было 10)
-  DEBTS: 15 * 60 * 1000, // 15 минут (было 5)
-  USERS: 120 * 60 * 1000, // 120 минут (было 60)
-} as const;
-
 // Определяем мобильное устройство
 const isMobile = () => {
   if (typeof window === 'undefined') return false;
   return window.innerWidth < 768 || /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 };
+
+// Время жизни кэша (в миллисекундах) - увеличены для стабильности
+const CACHE_TTL = {
+  ORDERS: isMobile() ? 60 * 60 * 1000 : 30 * 60 * 1000, // 60 мин для мобильных, 30 для десктопа
+  EXPENSES: isMobile() ? 120 * 60 * 1000 : 60 * 60 * 1000, // 120 мин для мобильных, 60 для десктопа
+  PAYOUTS: isMobile() ? 60 * 60 * 1000 : 30 * 60 * 1000, // 60 мин для мобильных, 30 для десктопа
+  DEBTS: isMobile() ? 30 * 60 * 1000 : 15 * 60 * 1000, // 30 мин для мобильных, 15 для десктопа
+  USERS: isMobile() ? 240 * 60 * 1000 : 120 * 60 * 1000, // 240 мин для мобильных, 120 для десктопа
+} as const;
 
 interface CacheItem<T> {
   data: T;
@@ -309,9 +309,9 @@ export const optimizedFetcher = async (url: string) => {
 export const swrConfig = {
   revalidateOnFocus: false, // Не перезагружаем при фокусе
   revalidateOnReconnect: false, // НЕ перезагружаем при восстановлении соединения
-  dedupingInterval: isMobile() ? 120000 : 60000, // Увеличиваем для мобильных (2 мин vs 1 мин)
+  dedupingInterval: isMobile() ? 300000 : 120000, // 5 мин для мобильных, 2 мин для десктопа
   errorRetryCount: isMobile() ? 0 : 1, // Отключаем повторы для мобильных
-  errorRetryInterval: isMobile() ? 10000 : 5000, // Увеличиваем интервал для мобильных
+  errorRetryInterval: isMobile() ? 30000 : 10000, // 30с для мобильных, 10с для десктопа
   refreshInterval: 0, // ОТКЛЮЧАЕМ автообновление полностью
   refreshWhenHidden: false, // Не обновляем когда вкладка неактивна
   refreshWhenOffline: false, // Не обновляем когда нет интернета
@@ -324,11 +324,14 @@ export const swrConfig = {
   // Добавляем дополнительные настройки для стабильности
   shouldRetryOnError: false, // Не повторяем при ошибках
   focusThrottleInterval: 0, // Отключаем throttle для фокуса
-  loadingTimeout: 15000, // Увеличиваем таймаут загрузки до 15 секунд
+  loadingTimeout: isMobile() ? 20000 : 15000, // 20с для мобильных, 15с для десктопа
   // Добавляем кэширование в памяти
   provider: () => new Map(),
   // Увеличиваем время жизни кэша в памяти
   compare: (a: any, b: any) => JSON.stringify(a) === JSON.stringify(b),
+  // Дополнительные настройки для мобильных
+  suspense: isMobile(), // Включаем suspense для мобильных
+  fallback: isMobile() ? {} : undefined, // Fallback для мобильных
 };
 
 /**
