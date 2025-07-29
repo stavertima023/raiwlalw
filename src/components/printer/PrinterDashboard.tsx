@@ -163,13 +163,13 @@ const MobilePrinterView = React.memo<{
                           </div>
                         </div>
                       </DialogTrigger>
-                      <DialogContent className="max-w-md p-2 sm:max-w-lg md:max-w-2xl">
+                      <DialogContent className="max-w-[95vw] max-h-[80vh] p-4 sm:max-w-2xl md:max-w-3xl" onPointerDownOutside={(e) => e.preventDefault()}>
                         <DialogHeader>
                           <DialogTitle className="flex items-center justify-between">
                             <span>Фото заказа #{order.orderNumber}</span>
                             <DialogTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                                <X className="h-4 w-4" />
+                              <Button variant="outline" size="sm" className="h-8 w-8 p-0 border-2 hover:bg-red-50 hover:border-red-300">
+                                <X className="h-4 w-4 text-red-600" />
                               </Button>
                             </DialogTrigger>
                           </DialogTitle>
@@ -178,7 +178,7 @@ const MobilePrinterView = React.memo<{
                           <img
                             src={photo}
                             alt={`Фото ${index + 1}`}
-                            className="w-full h-auto rounded-md"
+                            className="w-full h-auto rounded-md max-h-[60vh] object-contain"
                             loading="eager"
                           />
                           {/* Навигация по фото если их несколько */}
