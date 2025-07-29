@@ -123,6 +123,9 @@ const MobilePrinterView = React.memo<{
                 <div>
                   <h3 className="font-medium">#{order.orderNumber}</h3>
                   <p className="text-sm text-muted-foreground">
+                    Отправление: {order.shipmentNumber}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
                     {format(order.orderDate, 'd MMM yyyy, HH:mm', { locale: ru })}
                   </p>
                   {/* Дата изготовления для готовых заказов */}
