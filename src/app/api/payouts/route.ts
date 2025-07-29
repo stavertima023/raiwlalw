@@ -72,18 +72,25 @@ export async function POST(request: Request) {
     }
 
     const json = await request.json();
+    console.log('📊 Получены данные для создания выплаты:', json);
+    
     const { orderNumbers, ...otherData } = json;
 
     // If user is a seller, verify they own all the orders
     if (user.role === 'Продавец' && orderNumbers && orderNumbers.length > 0) {
+      console.log('🔍 Проверяем заказы для продавца:', orderNumbers);
+      
       const { data: orders, error: ordersError } = await supabaseAdmin
         .from('orders')
         .select('orderNumber, seller, status')
         .in('orderNumber', orderNumbers);
 
       if (ordersError) {
+        console.error('❌ Ошибка при получении заказов:', ordersError);
         throw ordersError;
       }
+
+      console.log('📋 Найденные заказы:', orders);
 
       // Check if all orders belong to the seller and are eligible for payout
       const invalidOrders = orders.filter(order => 
@@ -92,6 +99,7 @@ export async function POST(request: Request) {
       );
 
       if (invalidOrders.length > 0) {
+        console.log('❌ Найдены невалидные заказы:', invalidOrders);
         return NextResponse.json({ 
           message: 'Вы можете создавать выплаты только для своих заказов со статусом "Готов" или "Отправлен"',
           invalidOrders: invalidOrders.map(o => o.orderNumber)
@@ -105,8 +113,10 @@ export async function POST(request: Request) {
         .in('orderNumber', orderNumbers);
 
       if (updateError) {
-        console.error('Error updating order status:', updateError);
+        console.error('❌ Ошибка обновления статуса заказов:', updateError);
         // Don't fail the payout creation, just log the error
+      } else {
+        console.log('✅ Статус заказов обновлен на "Исполнен"');
       }
     }
     
@@ -118,8 +128,11 @@ export async function POST(request: Request) {
       status: 'pending', // All payouts start as pending
     };
     
+    console.log('📝 Данные выплаты для валидации:', payoutData);
+    
     // Validate data with Zod schema
     const validatedPayout = PayoutSchema.omit({ id: true }).parse(payoutData);
+    console.log('✅ Данные прошли валидацию:', validatedPayout);
 
     const { data, error } = await supabaseAdmin
       .from('payouts')
@@ -128,19 +141,22 @@ export async function POST(request: Request) {
       .single();
 
     if (error) {
+      console.error('❌ Ошибка при создании выплаты в БД:', error);
       throw error;
     }
 
+    console.log('✅ Выплата успешно создана:', data);
     return NextResponse.json(data, { status: 201 });
   } catch (error: any) {
     if (error.name === 'ZodError') {
+      console.error('❌ Ошибка валидации Zod:', error.errors);
       return NextResponse.json({ 
         message: 'Ошибка валидации данных', 
         errors: error.errors 
       }, { status: 400 });
     }
     
-    console.error('POST /api/payouts error:', error);
+    console.error('❌ POST /api/payouts error:', error);
     return NextResponse.json({ 
       message: 'Ошибка создания вывода', 
       error: error.message 

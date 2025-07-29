@@ -348,6 +348,10 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
 
   const handlePayout = React.useCallback(async (orderNumbers: string[]) => {
     try {
+      // Находим заказы для расчета суммы
+      const payoutOrders = orders.filter(order => orderNumbers.includes(order.orderNumber));
+      const totalAmount = payoutOrders.reduce((sum, order) => sum + order.price, 0);
+      
       const response = await fetch('/api/payouts', {
         method: 'POST',
         headers: {
@@ -356,12 +360,16 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
         body: JSON.stringify({
           orderNumbers,
           seller: initialUser.username,
+          amount: totalAmount,
+          orderCount: orderNumbers.length,
+          status: 'pending',
+          comment: '',
         }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Ошибка создания выплаты');
+        throw new Error(errorData.error || errorData.message || 'Ошибка создания выплаты');
       }
 
       const newPayout = await response.json();
@@ -375,7 +383,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       
       toast({
         title: 'Выплата создана',
-        description: `Выплата на ${newPayout.amount} ₽ успешно создана`,
+        description: `Выплата на ${totalAmount.toLocaleString('ru-RU')} ₽ успешно создана`,
       });
     } catch (error) {
       console.error('Ошибка создания выплаты:', error);
@@ -385,7 +393,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
         variant: 'destructive',
       });
     }
-  }, [initialUser.username, toast]);
+  }, [initialUser.username, orders, toast]);
 
   // Вспомогательные функции
   const findOrder = React.useCallback((orderNumber: string) => {
