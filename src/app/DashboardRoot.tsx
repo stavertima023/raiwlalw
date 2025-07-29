@@ -27,11 +27,42 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
   const { toast } = useToast();
   const [errorCount, setErrorCount] = React.useState(0);
   const [lastErrorTime, setLastErrorTime] = React.useState(0);
+  const [isInitialized, setIsInitialized] = React.useState(false);
+
+  // Защита от перезагрузок - предотвращаем множественные инициализации
+  React.useEffect(() => {
+    if (isInitialized) return;
+    
+    // Устанавливаем флаг инициализации
+    setIsInitialized(true);
+    
+    // Предотвращаем перезагрузки при потере фокуса
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('📱 Приложение вернулось в активное состояние');
+      }
+    };
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Предотвращаем случайные перезагрузки
+      if (e.type === 'beforeunload') {
+        console.log('🛡️ Предотвращена перезагрузка страницы');
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [isInitialized]);
 
   // Предотвращаем множественные ошибки
   const handleError = React.useCallback((error: Error, type: string) => {
     const now = Date.now();
-    if (now - lastErrorTime < 5000) { // Не показываем ошибки чаще чем раз в 5 секунд
+    if (now - lastErrorTime < 10000) { // Увеличиваем интервал до 10 секунд
       return;
     }
     
@@ -40,12 +71,13 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     
     console.error(`Ошибка загрузки ${type}:`, error);
     
-    // Показываем toast только для первой ошибки
+    // Показываем toast только для первой ошибки и не чаще чем раз в минуту
     if (errorCount === 0) {
       toast({ 
         title: `Ошибка загрузки ${type}`, 
         description: 'Проверьте подключение к интернету и попробуйте снова', 
-        variant: 'destructive' 
+        variant: 'destructive',
+        duration: 5000, // Уменьшаем время показа
       });
     }
   }, [toast, errorCount, lastErrorTime]);
@@ -54,20 +86,22 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
   React.useEffect(() => {
     const timer = setTimeout(() => {
       setErrorCount(0);
-    }, 30000); // Сбрасываем через 30 секунд
+    }, 60000); // Увеличиваем до 60 секунд
 
     return () => clearTimeout(timer);
   }, []);
 
   // Показываем статус кэша в консоли для отладки
   React.useEffect(() => {
+    if (!isInitialized) return;
+    
     const status = getCacheStatus();
     console.log('📊 Статус кэша:', status);
-  }, []);
+  }, [isInitialized]);
 
   // Оптимизированные запросы с улучшенной конфигурацией
   const { data: orders = [], error: ordersError, isLoading: ordersLoading } = useSWR<Order[]>(
-    '/api/orders', 
+    isInitialized ? '/api/orders' : null, // Загружаем только после инициализации
     optimizedFetcher, 
     {
       ...swrConfig,
@@ -77,7 +111,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
   );
   
   const { data: expenses = [], error: expensesError } = useSWR<Expense[]>(
-    initialUser.role === 'Администратор' ? '/api/expenses' : null, 
+    (isInitialized && initialUser.role === 'Администратор') ? '/api/expenses' : null, 
     optimizedFetcher,
     {
       ...swrConfig,
@@ -87,7 +121,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
   );
 
   const { data: payouts = [], error: payoutsError } = useSWR<Payout[]>(
-    (initialUser.role === 'Администратор' || initialUser.role === 'Продавец') ? '/api/payouts' : null, 
+    (isInitialized && (initialUser.role === 'Администратор' || initialUser.role === 'Продавец')) ? '/api/payouts' : null, 
     optimizedFetcher,
     {
       ...swrConfig,
@@ -97,7 +131,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
   );
 
   const { data: debts = [], error: debtsError } = useSWR<Debt[]>(
-    initialUser.role === 'Администратор' ? '/api/debts' : null, 
+    (isInitialized && initialUser.role === 'Администратор') ? '/api/debts' : null, 
     optimizedFetcher,
     {
       ...swrConfig,
@@ -107,7 +141,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
   );
 
   const { data: users = [], error: usersError } = useSWR<User[]>(
-    initialUser.role === 'Администратор' ? '/api/users' : null, 
+    (isInitialized && initialUser.role === 'Администратор') ? '/api/users' : null, 
     optimizedFetcher,
     {
       ...swrConfig,

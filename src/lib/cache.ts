@@ -316,19 +316,23 @@ export const optimizedFetcher = async (url: string) => {
  */
 export const swrConfig = {
   revalidateOnFocus: false, // Не перезагружаем при фокусе
-  revalidateOnReconnect: true, // Перезагружаем при восстановлении соединения
-  dedupingInterval: isMobile() ? 30000 : 10000, // Увеличиваем для мобильных
-  errorRetryCount: isMobile() ? 1 : 2, // Уменьшаем повторы для мобильных
-  errorRetryInterval: isMobile() ? 2000 : 1000, // Увеличиваем интервал для мобильных
-  refreshInterval: isMobile() ? 60000 : 30000, // Увеличиваем интервал для мобильных
+  revalidateOnReconnect: false, // НЕ перезагружаем при восстановлении соединения
+  dedupingInterval: isMobile() ? 60000 : 30000, // Увеличиваем для мобильных
+  errorRetryCount: isMobile() ? 0 : 1, // Отключаем повторы для мобильных
+  errorRetryInterval: isMobile() ? 5000 : 2000, // Увеличиваем интервал для мобильных
+  refreshInterval: 0, // ОТКЛЮЧАЕМ автообновление полностью
   refreshWhenHidden: false, // Не обновляем когда вкладка неактивна
   refreshWhenOffline: false, // Не обновляем когда нет интернета
   revalidateIfStale: false, // Не перезагружаем устаревшие данные автоматически
-  revalidateOnMount: true, // Перезагружаем при монтировании
+  revalidateOnMount: false, // НЕ перезагружаем при монтировании
   keepPreviousData: true, // Сохраняем предыдущие данные при обновлении
   onError: (error: Error) => {
     console.error('SWR Error:', error);
   },
+  // Добавляем дополнительные настройки для стабильности
+  shouldRetryOnError: false, // Не повторяем при ошибках
+  focusThrottleInterval: 0, // Отключаем throttle для фокуса
+  loadingTimeout: 10000, // Таймаут загрузки 10 секунд
 };
 
 /**
