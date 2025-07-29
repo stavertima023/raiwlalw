@@ -324,7 +324,7 @@ export const swrConfig = {
   refreshWhenHidden: false, // Не обновляем когда вкладка неактивна
   refreshWhenOffline: false, // Не обновляем когда нет интернета
   revalidateIfStale: false, // Не перезагружаем устаревшие данные автоматически
-  revalidateOnMount: false, // НЕ перезагружаем при монтировании
+  revalidateOnMount: true, // РАЗРЕШАЕМ загрузку при монтировании
   keepPreviousData: true, // Сохраняем предыдущие данные при обновлении
   onError: (error: Error) => {
     console.error('SWR Error:', error);

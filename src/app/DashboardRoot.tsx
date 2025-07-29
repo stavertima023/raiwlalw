@@ -36,6 +36,10 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     // Устанавливаем флаг инициализации
     setIsInitialized(true);
     
+    // Очищаем старый кэш для принудительной загрузки свежих данных
+    console.log('🔄 Очищаем старый кэш для загрузки свежих данных');
+    cacheManager.clear();
+    
     // Предотвращаем перезагрузки при потере фокуса
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
@@ -107,6 +111,8 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       ...swrConfig,
       fallbackData: cacheManager.get('orders') || [],
       onError: (error) => handleError(error, 'заказов'),
+      // Принудительно загружаем данные при первом запуске
+      revalidateOnMount: isInitialized,
     }
   );
   
@@ -117,6 +123,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       ...swrConfig,
       fallbackData: cacheManager.get('expenses') || [],
       onError: (error) => handleError(error, 'расходов'),
+      revalidateOnMount: isInitialized,
     }
   );
 
@@ -127,6 +134,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       ...swrConfig,
       fallbackData: cacheManager.get('payouts') || [],
       onError: (error) => handleError(error, 'выводов'),
+      revalidateOnMount: isInitialized,
     }
   );
 
@@ -137,6 +145,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       ...swrConfig,
       fallbackData: cacheManager.get('debts') || [],
       onError: (error) => handleError(error, 'долгов'),
+      revalidateOnMount: isInitialized,
     }
   );
 
@@ -147,6 +156,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       ...swrConfig,
       fallbackData: cacheManager.get('users') || [],
       onError: (error) => handleError(error, 'пользователей'),
+      revalidateOnMount: isInitialized,
     }
   );
 
