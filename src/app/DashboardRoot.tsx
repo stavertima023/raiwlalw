@@ -14,6 +14,7 @@ import { PayoutsList } from '@/components/admin/PayoutsList';
 import AIAnalytics from '@/components/admin/AIAnalytics';
 import { Analytics } from '@/components/admin/Analytics';
 import { optimizedFetcher, swrConfig, cacheManager, getCacheStatus } from '@/lib/cache';
+import { useState } from 'react';
 
 type DashboardRootProps = {
   initialUser: Omit<User, 'password_hash'> | undefined;
@@ -28,6 +29,17 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
   const [errorCount, setErrorCount] = React.useState(0);
   const [lastErrorTime, setLastErrorTime] = React.useState(0);
   const [isInitialized, setIsInitialized] = React.useState(false);
+
+  // Состояние для пагинации заказов
+  const [ordersPage, setOrdersPage] = useState(1);
+  const [ordersPagination, setOrdersPagination] = useState({
+    page: 1,
+    limit: 25,
+    total: 0,
+    totalPages: 0,
+    hasNext: false,
+    hasPrev: false
+  });
 
   // Защита от перезагрузок - предотвращаем множественные инициализации
   React.useEffect(() => {
@@ -125,23 +137,27 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
   }, [isInitialized]);
 
   // Оптимизированные запросы с улучшенной конфигурацией
-  const { data: orders = [], error: ordersError, isLoading: ordersLoading, mutate: mutateOrders } = useSWR<Order[]>(
-    isInitialized ? '/api/orders' : null, // Загружаем только после инициализации
-    optimizedFetcher, 
+  const { data: ordersData, error: ordersError, mutate: mutateOrders } = useSWR(
+    isInitialized ? `/api/orders?page=${ordersPage}&limit=25` : null,
+    optimizedFetcher,
     {
       ...swrConfig,
-      fallbackData: cacheManager.get('orders') || [],
+      revalidateOnMount: isInitialized,
+      onSuccess: (data) => {
+        console.log('✅ Заказы загружены:', data?.orders?.length || 0, 'шт.');
+        if (data?.pagination) {
+          setOrdersPagination(data.pagination);
+        }
+      },
       onError: (error) => {
         console.error('❌ Ошибка загрузки заказов:', error);
         handleError(error, 'заказов');
-      },
-      onSuccess: (data) => {
-        console.log(`✅ Заказы загружены успешно: ${data.length} шт. для ${initialUser.role}`);
-      },
-      // Принудительно загружаем данные при первом запуске
-      revalidateOnMount: isInitialized,
+      }
     }
   );
+
+  // Извлекаем заказы из ответа API
+  const orders = ordersData?.orders || [];
   
   const { data: expenses = [], error: expensesError, mutate: mutateExpenses } = useSWR<Expense[]>(
     (isInitialized && initialUser.role === 'Администратор') ? '/api/expenses' : null, 
@@ -187,36 +203,37 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     }
   );
 
-  // Функция для принудительного обновления всех данных
+  // Обработчик смены страницы
+  const handlePageChange = (newPage: number) => {
+    setOrdersPage(newPage);
+  };
+
+  // Обработчик обновления всех данных
   const handleRefreshAll = React.useCallback(async () => {
-    console.log('🔄 Принудительное обновление всех данных...');
-    
     try {
-      // Очищаем кэш для принудительной загрузки
+      // Очищаем кэш
       cacheManager.clear();
       
-      // Обновляем все данные
+      // Перезагружаем все данные
       await Promise.all([
         mutateOrders(),
         mutateExpenses(),
         mutatePayouts(),
-        mutateDebts(),
-        mutateUsers(),
       ]);
       
       toast({
         title: 'Данные обновлены',
-        description: 'Все данные успешно загружены из базы данных',
+        description: 'Все данные успешно обновлены',
       });
     } catch (error) {
-      console.error('Ошибка при обновлении данных:', error);
+      console.error('Ошибка обновления данных:', error);
       toast({
-        title: 'Ошибка обновления',
+        title: 'Ошибка',
         description: 'Не удалось обновить данные',
         variant: 'destructive',
       });
     }
-  }, [mutateOrders, mutateExpenses, mutatePayouts, mutateDebts, mutateUsers, toast]);
+  }, [mutateOrders, mutateExpenses, mutatePayouts, toast]);
 
   // Мемоизированные функции для предотвращения лишних ререндеров
   const handleAddOrder = React.useCallback(async (newOrderData: Omit<Order, 'id' | 'orderDate' | 'seller'>) => {
@@ -485,16 +502,13 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       <AppLayout currentUser={initialUser}>
         {(activeView: string) => (
           <Dashboard
-            user={initialUser}
+            currentUser={initialUser}
             orders={orders}
-            isLoading={ordersLoading}
+            isLoading={ordersError}
             onAddOrder={handleAddOrder}
-            onCancelOrder={handleCancelOrder}
-            onReturnOrder={handleReturnOrder}
-            onPayout={handlePayout}
             onUpdateStatus={handleUpdateOrderStatus}
-            findOrder={findOrder}
-            findOrders={findOrders}
+            pagination={ordersPagination}
+            onPageChange={handlePageChange}
           />
         )}
       </AppLayout>
@@ -509,7 +523,9 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
             currentUser={initialUser}
             allOrders={orders}
             onUpdateStatus={handleUpdateOrderStatus}
-            isLoading={ordersLoading}
+            isLoading={ordersError}
+            pagination={ordersPagination}
+            onPageChange={handlePageChange}
           />
         )}
       </AppLayout>
@@ -526,7 +542,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
                 <AdminOrderList 
                   allOrders={orders} 
                   allUsers={users}
-                  isLoading={ordersLoading}
+                  isLoading={ordersError}
                   onRefresh={handleRefreshAll}
                 />
               );
@@ -549,7 +565,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
                   onUpdateStatus={handleUpdatePayoutStatus}
                   currentUser={initialUser}
                   onRefresh={handleRefreshAll}
-                  isLoading={ordersLoading}
+                  isLoading={ordersError}
                 />
               );
             case 'admin-analytics':
@@ -573,7 +589,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
                 <AdminOrderList 
                   allOrders={orders} 
                   allUsers={users}
-                  isLoading={ordersLoading}
+                  isLoading={ordersError}
                   onRefresh={handleRefreshAll}
                 />
               );

@@ -1,145 +1,136 @@
 
 'use client';
 
-import * as React from 'react';
-import { Order, OrderStatus, User } from '@/lib/types';
+import React, { useState, useMemo } from 'react';
+import { Order, User } from '@/lib/types';
 import { OrderTable } from './OrderTable';
-import { PayoutDialog } from './PayoutDialog';
-import { ReturnOrderDialog } from './ReturnOrderDialog';
-import { CancelOrderDialog } from './CancelOrderDialog';
 import { AddOrderDialog } from './AddOrderDialog';
-import { Button } from '@/components/ui/button';
 import { LoadingIndicator } from '@/components/ui/loading-indicator';
+import { Button } from '@/components/ui/button';
+import { Pagination } from '@/components/ui/pagination';
+import { Plus } from 'lucide-react';
 
 interface DashboardProps {
-  user: Omit<User, 'password_hash'>;
+  currentUser: User;
   orders: Order[];
   isLoading?: boolean;
-  onAddOrder: (order: Omit<Order, 'id' | 'orderDate' | 'seller'>) => void;
-  onCancelOrder: (orderNumber: string) => void;
-  onReturnOrder: (orderNumber: string) => void;
-  onPayout: (orderNumbers: string[]) => void;
-  onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void;
-  findOrder: (orderNumber: string) => Order | undefined;
-  findOrders: (orderNumbers: string[]) => Order[];
+  onAddOrder: (order: Omit<Order, 'id'>) => void;
+  onUpdateStatus?: (orderId: string, newStatus: string) => void;
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+  onPageChange?: (page: number) => void;
 }
 
 export function Dashboard({
-  user,
+  currentUser,
   orders,
   isLoading = false,
   onAddOrder,
-  onCancelOrder,
-  onReturnOrder,
-  onPayout,
   onUpdateStatus,
-  findOrder,
-  findOrders,
+  pagination,
+  onPageChange
 }: DashboardProps) {
-  const [selectedOrders, setSelectedOrders] = React.useState<string[]>([]);
-  const [searchTerm, setSearchTerm] = React.useState('');
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
-  // Filter orders based on search term
-  const filteredOrders = React.useMemo(() => {
+  // Фильтрация заказов по поисковому запросу
+  const filteredOrders = useMemo(() => {
     if (!searchTerm.trim()) return orders;
+    
+    const term = searchTerm.toLowerCase();
     return orders.filter(order => 
-      order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase())
+      order.orderNumber.toLowerCase().includes(term) ||
+      order.seller.toLowerCase().includes(term) ||
+      order.productType.toLowerCase().includes(term)
     );
   }, [orders, searchTerm]);
 
+  const handleCreatePayout = () => {
+    // Логика создания выплаты
+    console.log('Создание выплаты для продавца:', currentUser.username);
+  };
+
   return (
-    <div className="flex flex-col gap-4 md:gap-6">
-      <div>
-        <h1 className="text-xl md:text-2xl font-bold">Панель продавца</h1>
-        <p className="text-muted-foreground">
-          Управление заказами и отслеживание статусов
-        </p>
-      </div>
-
-      {/* Индикатор загрузки */}
-      <LoadingIndicator 
-        isLoading={isLoading}
-        dataCount={orders.length}
-        dataType="заказов"
-        showCacheStatus={true}
-      />
-
-      {/* Мобильная версия - вертикальный список */}
-      <div className="md:hidden">
-        <div className="space-y-4">
-          <AddOrderDialog onAddOrder={onAddOrder} buttonClassName="w-full" />
-          <CancelOrderDialog 
-            onConfirmCancel={onCancelOrder}
-            findOrder={findOrder}
-          >
-            <Button variant="destructive" className="w-full">
-              Отмена заказа
-            </Button>
-          </CancelOrderDialog>
-          <PayoutDialog 
-            findOrders={findOrders}
-            onConfirmPayout={onPayout}
-            currentUser={user}
-          >
-            <Button variant="default" className="w-full">
-              Создать выплату
-            </Button>
-          </PayoutDialog>
-          <ReturnOrderDialog 
-            onConfirmReturn={onReturnOrder}
-            findOrder={findOrder}
-          >
-            <Button variant="outline" className="w-full">
-              Возврат заказа
-            </Button>
-          </ReturnOrderDialog>
+    <div className="space-y-6">
+      {/* Заголовок и кнопки */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Заказы</h1>
+          <p className="text-muted-foreground">
+            Управление заказами для {currentUser.username}
+          </p>
         </div>
-      </div>
-
-      {/* Десктопная версия - сетка */}
-      <div className="hidden md:block">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-4 border rounded-lg">
-            <div className="space-y-2">
-              <AddOrderDialog onAddOrder={onAddOrder} buttonClassName="w-full" />
-              <CancelOrderDialog 
-                onConfirmCancel={onCancelOrder}
-                findOrder={findOrder}
+        
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          {/* Поиск */}
+          <input
+            type="text"
+            placeholder="Поиск по номеру заказа, продавцу..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="px-3 py-2 border rounded-md text-sm"
+          />
+          
+          {/* Кнопки действий */}
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setIsAddDialogOpen(true)}
+              className="flex items-center gap-2"
+              variant="success"
+            >
+              <Plus className="h-4 w-4" />
+              Добавить заказ
+            </Button>
+            
+            {currentUser.role === 'Продавец' && (
+              <Button
+                onClick={handleCreatePayout}
+                variant="outline"
+                className="flex items-center gap-2"
               >
-                <Button variant="destructive" className="w-full">
-                  Отмена заказа
-                </Button>
-              </CancelOrderDialog>
-              <PayoutDialog 
-                findOrders={findOrders}
-                onConfirmPayout={onPayout}
-                currentUser={user}
-              >
-                <Button variant="default" className="w-full">
-                  Создать выплату
-                </Button>
-              </PayoutDialog>
-              <ReturnOrderDialog 
-                onConfirmReturn={onReturnOrder}
-                findOrder={findOrder}
-              >
-                <Button variant="outline" className="w-full">
-                  Возврат заказа
-                </Button>
-              </ReturnOrderDialog>
-            </div>
+                Создать выплату
+              </Button>
+            )}
           </div>
         </div>
       </div>
 
-      <OrderTable 
+      {/* Индикатор загрузки */}
+      <LoadingIndicator isLoading={isLoading} />
+
+      {/* Таблица заказов */}
+      <OrderTable
         orders={filteredOrders}
-        currentUser={user}
+        currentUser={currentUser}
         onUpdateStatus={onUpdateStatus}
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-        showSearch={true}
         isLoading={isLoading}
+      />
+
+      {/* Пагинация */}
+      {pagination && onPageChange && (
+        <Pagination
+          currentPage={pagination.page}
+          totalPages={pagination.totalPages}
+          onPageChange={onPageChange}
+          hasNext={pagination.hasNext}
+          hasPrev={pagination.hasPrev}
+          total={pagination.total}
+          limit={pagination.limit}
+        />
+      )}
+
+      {/* Диалог добавления заказа */}
+      <AddOrderDialog
+        open={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
+        onSubmit={onAddOrder}
+        currentUser={currentUser}
       />
     </div>
   );
