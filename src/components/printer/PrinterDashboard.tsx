@@ -109,20 +109,49 @@ const MobilePrinterView = React.memo<{
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {orders.map((order) => ( // Убираем .slice(0, 50) - ограничение теперь на уровне API
-            <div key={order.id} className="border rounded-lg p-4 space-y-2">
+          {orders.map((order) => (
+            <div key={order.id} className="border rounded-lg p-4 space-y-3">
+              {/* Заголовок с номером и статусом */}
               <div className="flex justify-between items-start">
                 <div>
                   <h3 className="font-medium">#{order.orderNumber}</h3>
                   <p className="text-sm text-muted-foreground">
                     {format(order.orderDate, 'd MMM yyyy, HH:mm', { locale: ru })}
                   </p>
+                  {/* Дата изготовления для готовых заказов */}
+                  {order.status === 'Готов' && order.ready_at && (
+                    <p className="text-xs text-blue-600">
+                      Изготовлен: {format(new Date(order.ready_at), 'd MMM yyyy, HH:mm', { locale: ru })}
+                    </p>
+                  )}
                 </div>
                 <Badge variant={order.status === 'Готов' ? 'outline' : 'default'}>
                   {order.status}
                 </Badge>
               </div>
               
+              {/* Фото заказа */}
+              {order.photos && order.photos.length > 0 && (
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  {order.photos.map((photo, index) => (
+                    <div key={index} className="relative flex-shrink-0">
+                      <img
+                        src={photo}
+                        alt={`Фото ${index + 1}`}
+                        className="w-16 h-16 object-cover rounded-md border"
+                        loading="lazy"
+                      />
+                      {order.photos.length > 1 && index === 0 && (
+                        <div className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                          +{order.photos.length - 1}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {/* Основная информация */}
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>
                   <span className="text-muted-foreground">Тип:</span>
@@ -141,6 +170,16 @@ const MobilePrinterView = React.memo<{
                   <span className="ml-1 font-medium">{order.seller}</span>
                 </div>
               </div>
+
+              {/* Комментарий */}
+              {order.comment && (
+                <div className="text-sm">
+                  <span className="text-muted-foreground">Комментарий:</span>
+                  <p className="mt-1 text-gray-700 bg-gray-50 p-2 rounded">
+                    {order.comment}
+                  </p>
+                </div>
+              )}
 
               {/* Действия для принтовщика */}
               <div className="flex gap-2 pt-2">

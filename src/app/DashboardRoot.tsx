@@ -131,7 +131,13 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     {
       ...swrConfig,
       fallbackData: cacheManager.get('orders') || [],
-      onError: (error) => handleError(error, 'заказов'),
+      onError: (error) => {
+        console.error('❌ Ошибка загрузки заказов:', error);
+        handleError(error, 'заказов');
+      },
+      onSuccess: (data) => {
+        console.log(`✅ Заказы загружены успешно: ${data.length} шт. для ${initialUser.role}`);
+      },
       // Принудительно загружаем данные при первом запуске
       revalidateOnMount: isInitialized,
     }

@@ -49,12 +49,13 @@ export async function GET(request: NextRequest) {
       query = query.limit(200); // Максимум 200 самых новых заказов
       console.log(`📊 Ограничиваем до 200 самых новых заказов для ${user.role}`);
     } else {
-      console.log(`📊 Загружаем все заказы для ${user.role}`);
+      console.log(`📊 Загружаем все заказы для ${user.role} (без ограничений)`);
     }
     
     const { data, error } = await query;
 
     if (error) {
+      console.error(`❌ Ошибка запроса заказов для ${user.role}:`, error);
       throw error;
     }
 
