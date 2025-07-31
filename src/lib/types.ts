@@ -27,19 +27,19 @@ export const SizeEnum = z.enum(['S', 'M', 'L', 'XL']);
 export type Size = z.infer<typeof SizeEnum>;
 
 export const OrderSchema = z.object({
-  id: z.string(),
-  orderDate: z.date(),
-  orderNumber: z.string(),
+  id: z.string().optional(),
+  orderDate: z.union([z.date(), z.string().transform((str) => new Date(str))]),
+  orderNumber: z.string().min(1, 'Номер заказа обязателен'),
   shipmentNumber: z.string().optional(),
-  status: z.enum(['Добавлен', 'Готов', 'Отправлен', 'Исполнен', 'Отменен', 'Возврат']),
-  productType: z.string(),
-  size: z.string(),
-  seller: z.string(),
-  price: z.number(),
-  cost: z.number(),
-  photos: z.array(z.string()).optional(), // Теперь опционально, так как загружается отдельно
-  comment: z.string().optional(),
-  ready_at: z.date().optional(),
+  status: z.enum(['Добавлен', 'Готов', 'Отправлен', 'Исполнен', 'Отменен', 'Возврат']).default('Добавлен'),
+  productType: z.string().min(1, 'Тип товара обязателен'),
+  size: z.string().min(1, 'Размер обязателен'),
+  seller: z.string().min(1, 'Продавец обязателен'),
+  price: z.coerce.number().positive('Цена должна быть положительной'),
+  cost: z.coerce.number().positive('Себестоимость должна быть положительной').optional(),
+  photos: z.array(z.string()).optional().default([]),
+  comment: z.string().optional().default(''),
+  ready_at: z.union([z.date(), z.string().transform((str) => new Date(str))]).optional(),
 });
 
 export type Order = z.infer<typeof OrderSchema>;

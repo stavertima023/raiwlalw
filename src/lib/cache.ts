@@ -373,8 +373,8 @@ export const optimizedFetcher = async (url: string) => {
     const data = await response.json();
     const cacheKey = url.replace('/api/', '');
     
-    // Не кэшируем фотографии и payouts из-за большого размера
-    if (cacheKey !== 'payouts' && !url.includes('/photos')) {
+    // Не кэшируем фотографии, payouts и orders из-за большого размера
+    if (cacheKey !== 'payouts' && cacheKey !== 'orders' && !url.includes('/photos')) {
       try {
         cacheManager.set(cacheKey, data);
         console.log(`✅ Данные загружены и сохранены в кэш: ${cacheKey}`);
