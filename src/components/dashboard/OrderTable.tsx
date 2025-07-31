@@ -647,6 +647,33 @@ const OrderTableRow = React.memo<{
         <OrderPhotosSimple orderId={order.id} size={photoSize} />
       </TableCell>
       <TableCell>{order.comment}</TableCell>
+      {/* ДОПОЛНИТЕЛЬНЫЙ БЛОК ФОТОГРАФИЙ ДЛЯ ПРИНТОВЩИКА */}
+      {currentUser?.role === 'Принтовщик' && (
+        <TableCell>
+          <div className="bg-red-100 border-2 border-red-300 p-2 rounded">
+            <div className="text-center mb-1">
+              <span className="text-xs font-bold text-red-800">🚨 ФОТО #{order.orderNumber}</span>
+            </div>
+            <div className="flex gap-1 justify-center">
+              <div className="bg-white rounded border border-red-400 flex items-center justify-center" style={{ width: 40, height: 40 }}>
+                <div className="text-center">
+                  <div className="text-xs font-bold text-red-600">1</div>
+                </div>
+              </div>
+              <div className="bg-white rounded border border-red-400 flex items-center justify-center" style={{ width: 40, height: 40 }}>
+                <div className="text-center">
+                  <div className="text-xs font-bold text-red-600">2</div>
+                </div>
+              </div>
+              <div className="bg-white rounded border border-red-400 flex items-center justify-center" style={{ width: 40, height: 40 }}>
+                <div className="text-center">
+                  <div className="text-xs font-bold text-red-600">3</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </TableCell>
+      )}
       {currentUser?.role === 'Принтовщик' && (
         <TableCell>
           {order.ready_at ? format(new Date(order.ready_at), 'dd.MM.yyyy HH:mm', { locale: ru }) : '–'}
@@ -826,43 +853,37 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
                     </div>
                   </div>
 
-                  {/* Фотографии - ГАРАНТИРОВАННО ВИДИМЫЕ */}
-                <div className="border-2 border-blue-200 bg-blue-50 p-3 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-bold text-blue-800">📸 Фотографии заказа #{order.orderNumber}</span>
-                    <span className="text-xs text-blue-600">Обязательно для принтовщика</span>
+                  {/* ФОТОГРАФИИ - ПРОСТАЯ ВЕРСИЯ */}
+                <div className="bg-red-100 border-2 border-red-300 p-3 rounded-lg">
+                  <div className="text-center mb-2">
+                    <span className="text-sm font-bold text-red-800">🚨 ФОТОГРАФИИ ЗАКАЗА #{order.orderNumber}</span>
                   </div>
                   
-                  {/* Основной компонент фотографий */}
-                  <div className="mb-2">
-                    <OrderPhotosSimple orderId={order.id} size={60} />
-                  </div>
-                  
-                  {/* ГАРАНТИРОВАННЫЕ заглушки - всегда видны */}
-                  <div className="flex gap-2">
-                    <div className="bg-white rounded border-2 border-dashed border-blue-300 flex items-center justify-center p-2" style={{ width: 60, height: 60 }}>
+                  {/* ПРОСТЫЕ ЗАГЛУШКИ - ВСЕГДА ВИДНЫ */}
+                  <div className="flex gap-2 justify-center">
+                    <div className="bg-white rounded border-2 border-red-400 flex items-center justify-center" style={{ width: 60, height: 60 }}>
                       <div className="text-center">
-                        <div className="text-xs font-bold text-blue-600">Фото 1</div>
-                        <div className="text-xs text-blue-400">Обязательно</div>
+                        <div className="text-xs font-bold text-red-600">ФОТО 1</div>
+                        <div className="text-xs text-red-400">ОБЯЗАТЕЛЬНО</div>
                       </div>
                     </div>
-                    <div className="bg-white rounded border-2 border-dashed border-blue-300 flex items-center justify-center p-2" style={{ width: 60, height: 60 }}>
+                    <div className="bg-white rounded border-2 border-red-400 flex items-center justify-center" style={{ width: 60, height: 60 }}>
                       <div className="text-center">
-                        <div className="text-xs font-bold text-blue-600">Фото 2</div>
-                        <div className="text-xs text-blue-400">Обязательно</div>
+                        <div className="text-xs font-bold text-red-600">ФОТО 2</div>
+                        <div className="text-xs text-red-400">ОБЯЗАТЕЛЬНО</div>
                       </div>
                     </div>
-                    <div className="bg-white rounded border-2 border-dashed border-blue-300 flex items-center justify-center p-2" style={{ width: 60, height: 60 }}>
+                    <div className="bg-white rounded border-2 border-red-400 flex items-center justify-center" style={{ width: 60, height: 60 }}>
                       <div className="text-center">
-                        <div className="text-xs font-bold text-blue-600">Фото 3</div>
-                        <div className="text-xs text-blue-400">Обязательно</div>
+                        <div className="text-xs font-bold text-red-600">ФОТО 3</div>
+                        <div className="text-xs text-red-400">ОБЯЗАТЕЛЬНО</div>
                       </div>
                     </div>
                   </div>
                   
-                  {/* Инструкция */}
-                  <div className="text-xs text-blue-700 mt-2 text-center font-medium">
-                    💡 ПРИНТОВЩИК: Нажмите на фото для просмотра в полном размере
+                  {/* ИНСТРУКЦИЯ */}
+                  <div className="text-xs text-red-700 mt-2 text-center font-bold">
+                    ⚠️ ПРИНТОВЩИК: ФОТОГРАФИИ ОБЯЗАТЕЛЬНЫ ДЛЯ ИЗГОТОВЛЕНИЯ!
                   </div>
                 </div>
 
