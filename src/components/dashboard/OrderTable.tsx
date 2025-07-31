@@ -98,95 +98,8 @@ const StatusBadge = React.memo<{ status: OrderStatus; useLargeLayout?: boolean }
 });
 StatusBadge.displayName = 'StatusBadge';
 
-// Мемоизированный компонент фотографий с ленивой загрузкой
-const OrderPhotosLazy = React.memo<{ orderId: string; size: number }>(({ orderId, size }) => {
-  const [photos, setPhotos] = React.useState<string[]>([]);
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [hasLoaded, setHasLoaded] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-
-  const loadPhotos = React.useCallback(async () => {
-    if (hasLoaded) return;
-    
-    console.log(`📸 Загружаем фотографии для заказа: ${orderId}`);
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const response = await fetch(`/api/orders/${orderId}/photos`);
-      console.log(`📸 Ответ API для заказа ${orderId}:`, response.status, response.statusText);
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log(`📸 Получены фотографии для заказа ${orderId}:`, data.photos?.length || 0);
-        setPhotos(data.photos || []);
-        setHasLoaded(true);
-      } else {
-        const errorText = await response.text();
-        console.warn(`❌ Не удалось загрузить фотографии для заказа ${orderId}:`, response.status, errorText);
-        setError(`Ошибка ${response.status}`);
-        setPhotos([]);
-        setHasLoaded(true);
-      }
-    } catch (error) {
-      console.error(`❌ Ошибка загрузки фотографий для заказа ${orderId}:`, error);
-      setError('Ошибка сети');
-      setPhotos([]);
-      setHasLoaded(true);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [orderId, hasLoaded]);
-
-  // Загружаем фотографии при первом рендере
-  React.useEffect(() => {
-    loadPhotos();
-  }, [loadPhotos]);
-
-  // Показываем загрузку
-  if (isLoading) {
-    return (
-      <div className="flex gap-1">
-        {[1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className="bg-muted rounded border-2 border-dashed border-muted-foreground/25 flex items-center justify-center"
-            style={{ width: size, height: size }}
-          >
-            <LoadingSpinner size="sm" />
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  // Показываем ошибку
-  if (error) {
-    return (
-      <div className="flex gap-1">
-        {[1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className="bg-red-50 rounded border-2 border-dashed border-red-200 flex items-center justify-center"
-            style={{ width: size, height: size }}
-          >
-            <button 
-              onClick={() => {
-                setHasLoaded(false);
-                setError(null);
-                loadPhotos();
-              }}
-              className="text-xs text-red-500 hover:text-red-700"
-            >
-              Повторить
-            </button>
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  // Показываем пустые места если фотографий нет
+// Простой компонент фотографий (как у продавцов)
+const OrderPhotosSimple = React.memo<{ photos: string[]; size: number }>(({ photos, size }) => {
   if (!photos || photos.length === 0) {
     return (
       <div className="flex gap-1">
@@ -203,7 +116,6 @@ const OrderPhotosLazy = React.memo<{ orderId: string; size: number }>(({ orderId
     );
   }
 
-  // Показываем фотографии
   return (
     <div className="flex gap-1">
       {photos.map((photo, index) => (
@@ -219,9 +131,6 @@ const OrderPhotosLazy = React.memo<{ orderId: string; size: number }>(({ orderId
                   className="rounded object-cover cursor-pointer hover:opacity-80 transition-opacity"
                   style={{ width: size, height: size }}
                   loading="lazy"
-                  onError={(e) => {
-                    console.error(`❌ Ошибка загрузки изображения ${index + 1} для заказа ${orderId}:`, e);
-                  }}
                 />
                 {/* Индикатор клика */}
                 <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all flex items-center justify-center rounded">
@@ -281,7 +190,7 @@ const OrderPhotosLazy = React.memo<{ orderId: string; size: number }>(({ orderId
     </div>
   );
 });
-OrderPhotosLazy.displayName = 'OrderPhotosLazy';
+OrderPhotosSimple.displayName = 'OrderPhotosSimple';
 
 // Выносим функцию renderActionsCell для использования в мобильной версии
 const createRenderActionsCell = (
@@ -704,7 +613,7 @@ const OrderTableRow = React.memo<{
   return (
     <TableRow key={order.id}>
       <TableCell className="font-medium">{order.orderNumber}</TableCell>
-      <TableCell>{order.shipmentNumber}</TableCell>
+      <TableCell>{order.shipmentNumber || '–'}</TableCell>
       <TableCell>
         <StatusBadge status={order.status} useLargeLayout={useLargeLayout} />
       </TableCell>
@@ -723,7 +632,7 @@ const OrderTableRow = React.memo<{
         </>
       )}
       <TableCell>
-        <OrderPhotosLazy orderId={order.id} size={photoSize} />
+        <OrderPhotosSimple photos={order.photos || []} size={photoSize} />
       </TableCell>
       <TableCell>{order.comment}</TableCell>
       {currentUser?.role === 'Принтовщик' && (
@@ -776,7 +685,7 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
     if (!searchTerm.trim()) return orders;
     return orders.filter(order => 
       order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.shipmentNumber.toLowerCase().includes(searchTerm.toLowerCase())
+      (order.shipmentNumber?.toLowerCase() || '').includes(searchTerm.toLowerCase())
     );
   }, [orders, searchTerm]);
 
@@ -888,7 +797,7 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div>
                     <span className="text-muted-foreground">Отправление:</span>
-                    <div className="font-medium">{order.shipmentNumber}</div>
+                    <div className="font-medium">{order.shipmentNumber || '–'}</div>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Товар:</span>
@@ -908,7 +817,7 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
                 <div>
                   <span className="text-muted-foreground text-sm">Фото:</span>
                   <div className="mt-1">
-                    <OrderPhotosLazy orderId={order.id} size={60} />
+                    <OrderPhotosSimple photos={order.photos || []} size={60} />
                   </div>
                 </div>
 
