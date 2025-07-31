@@ -98,111 +98,190 @@ const StatusBadge = React.memo<{ status: OrderStatus; useLargeLayout?: boolean }
 });
 StatusBadge.displayName = 'StatusBadge';
 
-// Простой и надежный компонент фотографий
-const OrderPhotosSimple = React.memo<{ orderId: string; size: number }>(({ orderId, size }) => {
+// Мемоизированный компонент фотографий с ленивой загрузкой
+const OrderPhotosLazy = React.memo<{ orderId: string; size: number }>(({ orderId, size }) => {
   const [photos, setPhotos] = React.useState<string[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [hasLoaded, setHasLoaded] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  // Простая загрузка фотографий
-  React.useEffect(() => {
-    const loadPhotos = async () => {
-      if (!orderId) {
-        setError('Нет ID заказа');
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        // Пробуем загрузить фотографии
-        const response = await fetch(`/api/orders/${orderId}/photos`);
-        
-        if (response.ok) {
-          const data = await response.json();
-          setPhotos(data.photos || []);
-        } else {
-          // Если API не работает, показываем заглушки
-          setPhotos([]);
-        }
-      } catch (error) {
-        // При любой ошибке показываем заглушки
+  const loadPhotos = React.useCallback(async () => {
+    if (hasLoaded) return;
+    
+    console.log(`📸 Загружаем фотографии для заказа: ${orderId}`);
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(`/api/orders/${orderId}/photos`);
+      console.log(`📸 Ответ API для заказа ${orderId}:`, response.status, response.statusText);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`📸 Получены фотографии для заказа ${orderId}:`, data.photos?.length || 0);
+        setPhotos(data.photos || []);
+        setHasLoaded(true);
+      } else {
+        const errorText = await response.text();
+        console.warn(`❌ Не удалось загрузить фотографии для заказа ${orderId}:`, response.status, errorText);
+        setError(`Ошибка ${response.status}`);
         setPhotos([]);
-      } finally {
-        setIsLoading(false);
+        setHasLoaded(true);
       }
-    };
+    } catch (error) {
+      console.error(`❌ Ошибка загрузки фотографий для заказа ${orderId}:`, error);
+      setError('Ошибка сети');
+      setPhotos([]);
+      setHasLoaded(true);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [orderId, hasLoaded]);
 
+  // Загружаем фотографии при первом рендере
+  React.useEffect(() => {
     loadPhotos();
-  }, [orderId]);
+  }, [loadPhotos]);
 
-  // Всегда показываем 3 места для фотографий
-  return (
-    <div className="flex gap-1">
-      {[1, 2, 3].map((i) => {
-        const photo = photos[i - 1];
-        
-        if (isLoading) {
-          return (
-            <div
-              key={i}
-              className="bg-blue-50 rounded border-2 border-dashed border-blue-200 flex items-center justify-center"
-              style={{ width: size, height: size }}
-            >
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-            </div>
-          );
-        }
-
-        if (photo) {
-          return (
-            <div key={i} className="relative">
-              <Dialog>
-                <DialogTrigger asChild>
-                  <button className="block">
-                    <Image
-                      src={photo}
-                      alt={`Фото ${i}`}
-                      width={size}
-                      height={size}
-                      className="rounded object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                      style={{ width: size, height: size }}
-                    />
-                  </button>
-                </DialogTrigger>
-                <DialogContent className="max-w-[95vw] max-h-[80vh] p-4">
-                  <DialogHeader>
-                    <DialogTitle>Фото {i}</DialogTitle>
-                  </DialogHeader>
-                  <div className="flex justify-center">
-                    <Image
-                      src={photo}
-                      alt={`Фото ${i}`}
-                      width={800}
-                      height={800}
-                      className="rounded-md object-contain max-w-full max-h-[60vh]"
-                    />
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-          );
-        }
-
-        // Заглушка для отсутствующего фото
-        return (
+  // Показываем загрузку
+  if (isLoading) {
+    return (
+      <div className="flex gap-1">
+        {[1, 2, 3].map((i) => (
           <div
             key={i}
-            className="bg-gray-50 rounded border-2 border-dashed border-gray-300 flex items-center justify-center"
+            className="bg-muted rounded border-2 border-dashed border-muted-foreground/25 flex items-center justify-center"
             style={{ width: size, height: size }}
           >
-            <span className="text-xs text-gray-500">Фото {i}</span>
+            <LoadingSpinner size="sm" />
           </div>
-        );
-      })}
+        ))}
+      </div>
+    );
+  }
+
+  // Показываем ошибку
+  if (error) {
+    return (
+      <div className="flex gap-1">
+        {[1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="bg-red-50 rounded border-2 border-dashed border-red-200 flex items-center justify-center"
+            style={{ width: size, height: size }}
+          >
+            <button 
+              onClick={() => {
+                setHasLoaded(false);
+                setError(null);
+                loadPhotos();
+              }}
+              className="text-xs text-red-500 hover:text-red-700"
+            >
+              Повторить
+            </button>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Показываем пустые места если фотографий нет
+  if (!photos || photos.length === 0) {
+    return (
+      <div className="flex gap-1">
+        {[1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="bg-muted rounded border-2 border-dashed border-muted-foreground/25 flex items-center justify-center"
+            style={{ width: size, height: size }}
+          >
+            <span className="text-xs text-muted-foreground">Фото {i}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Показываем фотографии
+  return (
+    <div className="flex gap-1">
+      {photos.map((photo, index) => (
+        <div key={index} className="relative">
+          <Dialog>
+            <DialogTrigger asChild>
+              <button className="block group">
+                <Image
+                  src={photo}
+                  alt={`Фото ${index + 1}`}
+                  width={size}
+                  height={size}
+                  className="rounded object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                  style={{ width: size, height: size }}
+                  loading="lazy"
+                  onError={(e) => {
+                    console.error(`❌ Ошибка загрузки изображения ${index + 1} для заказа ${orderId}:`, e);
+                  }}
+                />
+                {/* Индикатор клика */}
+                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all flex items-center justify-center rounded">
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity text-white text-xs">
+                    Просмотр
+                  </div>
+                </div>
+              </button>
+            </DialogTrigger>
+            <DialogContent className="max-w-[95vw] max-h-[80vh] p-4 sm:max-w-2xl md:max-w-3xl" onPointerDownOutside={(e) => e.preventDefault()}>
+              <DialogHeader>
+                <DialogTitle className="flex items-center justify-between">
+                  <span>Фото {index + 1}</span>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-8 w-8 p-0 border-2 hover:bg-red-50 hover:border-red-300">
+                      <X className="h-4 w-4 text-red-600" />
+                    </Button>
+                  </DialogTrigger>
+                </DialogTitle>
+              </DialogHeader>
+              <div className="flex justify-center items-center">
+                <Image
+                  src={photo}
+                  alt={`Фото ${index + 1}`}
+                  width={800}
+                  height={800}
+                  className="rounded-md object-contain max-w-full max-h-[60vh]"
+                  loading="eager"
+                  priority={index === 0}
+                />
+              </div>
+              {/* Навигация по фото если их несколько */}
+              {photos.length > 1 && (
+                <div className="flex justify-center gap-2 mt-4">
+                  {photos.map((_, photoIndex) => (
+                    <div
+                      key={photoIndex}
+                      className={`w-2 h-2 rounded-full ${
+                        photoIndex === index ? 'bg-blue-500' : 'bg-gray-300'
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+        </div>
+      ))}
+      {photos.length < 3 && (
+        <div
+          className="bg-muted rounded border-2 border-dashed border-muted-foreground/25 flex items-center justify-center"
+          style={{ width: size, height: size }}
+        >
+          <span className="text-xs text-muted-foreground">Фото {photos.length + 1}</span>
+        </div>
+      )}
     </div>
   );
 });
-OrderPhotosSimple.displayName = 'OrderPhotosSimple';
+OrderPhotosLazy.displayName = 'OrderPhotosLazy';
 
 // Выносим функцию renderActionsCell для использования в мобильной версии
 const createRenderActionsCell = (
@@ -644,36 +723,9 @@ const OrderTableRow = React.memo<{
         </>
       )}
       <TableCell>
-        <OrderPhotosSimple orderId={order.id} size={photoSize} />
+        <OrderPhotosLazy orderId={order.id} size={photoSize} />
       </TableCell>
       <TableCell>{order.comment}</TableCell>
-      {/* ДОПОЛНИТЕЛЬНЫЙ БЛОК ФОТОГРАФИЙ ДЛЯ ПРИНТОВЩИКА */}
-      {currentUser?.role === 'Принтовщик' && (
-        <TableCell>
-          <div className="bg-red-100 border-2 border-red-300 p-2 rounded">
-            <div className="text-center mb-1">
-              <span className="text-xs font-bold text-red-800">🚨 ФОТО #{order.orderNumber}</span>
-            </div>
-            <div className="flex gap-1 justify-center">
-              <div className="bg-white rounded border border-red-400 flex items-center justify-center" style={{ width: 40, height: 40 }}>
-                <div className="text-center">
-                  <div className="text-xs font-bold text-red-600">1</div>
-                </div>
-              </div>
-              <div className="bg-white rounded border border-red-400 flex items-center justify-center" style={{ width: 40, height: 40 }}>
-                <div className="text-center">
-                  <div className="text-xs font-bold text-red-600">2</div>
-                </div>
-              </div>
-              <div className="bg-white rounded border border-red-400 flex items-center justify-center" style={{ width: 40, height: 40 }}>
-                <div className="text-center">
-                  <div className="text-xs font-bold text-red-600">3</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </TableCell>
-      )}
       {currentUser?.role === 'Принтовщик' && (
         <TableCell>
           {order.ready_at ? format(new Date(order.ready_at), 'dd.MM.yyyy HH:mm', { locale: ru }) : '–'}
@@ -724,7 +776,7 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
     if (!searchTerm.trim()) return orders;
     return orders.filter(order => 
       order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (order.shipmentNumber?.toLowerCase() || '').includes(searchTerm.toLowerCase())
+      order.shipmentNumber.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [orders, searchTerm]);
 
@@ -818,117 +870,89 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
 
         {/* Мобильные карточки заказов */}
         <div className="space-y-3">
-          {paginatedOrders.map((order) => {
-            return (
-              <Card key={order.id} className="p-4">
-                <div className="space-y-3">
-                  {/* Заголовок карточки */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <span className="font-semibold text-lg">#{order.orderNumber}</span>
-                      <StatusBadge status={order.status} />
-                    </div>
-                    <span className="text-lg font-bold text-green-600">
-                      {order.price.toLocaleString('ru-RU')} ₽
-                    </span>
+          {paginatedOrders.map((order) => (
+            <Card key={order.id} className="p-4">
+              <div className="space-y-3">
+                {/* Заголовок карточки */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <span className="font-semibold text-lg">#{order.orderNumber}</span>
+                    <StatusBadge status={order.status} />
                   </div>
+                  <span className="text-lg font-bold text-green-600">
+                    {order.price.toLocaleString('ru-RU')} ₽
+                  </span>
+                </div>
 
-                  {/* Основная информация */}
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Отправление:</span>
-                      <div className="font-medium">{order.shipmentNumber}</div>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Товар:</span>
-                      <div className="font-medium">{order.productType}</div>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Размер:</span>
-                      <div className="font-medium">{order.size}</div>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Продавец:</span>
-                      <div className="font-medium">{order.seller}</div>
-                    </div>
+                {/* Основная информация */}
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Отправление:</span>
+                    <div className="font-medium">{order.shipmentNumber}</div>
                   </div>
-
-                  {/* ФОТОГРАФИИ - ПРОСТАЯ ВЕРСИЯ */}
-                <div className="bg-red-100 border-2 border-red-300 p-3 rounded-lg">
-                  <div className="text-center mb-2">
-                    <span className="text-sm font-bold text-red-800">🚨 ФОТОГРАФИИ ЗАКАЗА #{order.orderNumber}</span>
+                  <div>
+                    <span className="text-muted-foreground">Товар:</span>
+                    <div className="font-medium">{order.productType}</div>
                   </div>
-                  
-                  {/* ПРОСТЫЕ ЗАГЛУШКИ - ВСЕГДА ВИДНЫ */}
-                  <div className="flex gap-2 justify-center">
-                    <div className="bg-white rounded border-2 border-red-400 flex items-center justify-center" style={{ width: 60, height: 60 }}>
-                      <div className="text-center">
-                        <div className="text-xs font-bold text-red-600">ФОТО 1</div>
-                        <div className="text-xs text-red-400">ОБЯЗАТЕЛЬНО</div>
-                      </div>
-                    </div>
-                    <div className="bg-white rounded border-2 border-red-400 flex items-center justify-center" style={{ width: 60, height: 60 }}>
-                      <div className="text-center">
-                        <div className="text-xs font-bold text-red-600">ФОТО 2</div>
-                        <div className="text-xs text-red-400">ОБЯЗАТЕЛЬНО</div>
-                      </div>
-                    </div>
-                    <div className="bg-white rounded border-2 border-red-400 flex items-center justify-center" style={{ width: 60, height: 60 }}>
-                      <div className="text-center">
-                        <div className="text-xs font-bold text-red-600">ФОТО 3</div>
-                        <div className="text-xs text-red-400">ОБЯЗАТЕЛЬНО</div>
-                      </div>
-                    </div>
+                  <div>
+                    <span className="text-muted-foreground">Размер:</span>
+                    <div className="font-medium">{order.size}</div>
                   </div>
-                  
-                  {/* ИНСТРУКЦИЯ */}
-                  <div className="text-xs text-red-700 mt-2 text-center font-bold">
-                    ⚠️ ПРИНТОВЩИК: ФОТОГРАФИИ ОБЯЗАТЕЛЬНЫ ДЛЯ ИЗГОТОВЛЕНИЯ!
+                  <div>
+                    <span className="text-muted-foreground">Продавец:</span>
+                    <div className="font-medium">{order.seller}</div>
                   </div>
                 </div>
 
-                  {/* Комментарий */}
-                  {order.comment && (
-                    <div>
-                      <span className="text-muted-foreground text-sm">Комментарий:</span>
-                      <div className="text-sm mt-1">{order.comment}</div>
-                    </div>
-                  )}
-
-                  {/* Время изготовления (для готовых заказов) */}
-                  {order.status === 'Готов' && order.ready_at && (
-                    <div>
-                      <span className="text-muted-foreground text-sm">Изготовлен:</span>
-                      <div className="text-sm font-medium mt-1 text-blue-600">
-                        {format(new Date(order.ready_at), 'dd.MM.yyyy HH:mm', { locale: ru })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Время изготовления (для принтовщика - показываем для всех статусов) */}
-                  {currentUser?.role === 'Принтовщик' && order.ready_at && (
-                    <div>
-                      <span className="text-muted-foreground text-sm">Готовность:</span>
-                      <div className="text-sm font-medium mt-1 text-blue-600">
-                        {format(new Date(order.ready_at), 'dd.MM.yyyy HH:mm', { locale: ru })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Дата добавления */}
-                  <div className="text-sm text-muted-foreground">
-                    <span>Добавлен: </span>
-                    <span className="font-medium">{format(new Date(order.orderDate), 'dd.MM.yyyy HH:mm', { locale: ru })}</span>
-                  </div>
-
-                  {/* Действия */}
-                  <div className="flex justify-end pt-2 border-t">
-                    {renderActionsCell(order)}
+                {/* Фотографии */}
+                <div>
+                  <span className="text-muted-foreground text-sm">Фото:</span>
+                  <div className="mt-1">
+                    <OrderPhotosLazy orderId={order.id} size={60} />
                   </div>
                 </div>
-              </Card>
-            );
-          })}
+
+                {/* Комментарий */}
+                {order.comment && (
+                  <div>
+                    <span className="text-muted-foreground text-sm">Комментарий:</span>
+                    <div className="text-sm mt-1">{order.comment}</div>
+                  </div>
+                )}
+
+                {/* Время изготовления (для готовых заказов) */}
+                {order.status === 'Готов' && order.ready_at && (
+                  <div>
+                    <span className="text-muted-foreground text-sm">Изготовлен:</span>
+                    <div className="text-sm font-medium mt-1 text-blue-600">
+                      {format(new Date(order.ready_at), 'dd.MM.yyyy HH:mm', { locale: ru })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Время изготовления (для принтовщика - показываем для всех статусов) */}
+                {currentUser?.role === 'Принтовщик' && order.ready_at && (
+                  <div>
+                    <span className="text-muted-foreground text-sm">Готовность:</span>
+                    <div className="text-sm font-medium mt-1 text-blue-600">
+                      {format(new Date(order.ready_at), 'dd.MM.yyyy HH:mm', { locale: ru })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Дата добавления */}
+                <div className="text-sm text-muted-foreground">
+                  <span>Добавлен: </span>
+                  <span className="font-medium">{format(new Date(order.orderDate), 'dd.MM.yyyy HH:mm', { locale: ru })}</span>
+                </div>
+
+                {/* Действия */}
+                <div className="flex justify-end pt-2 border-t">
+                  {renderActionsCell(order)}
+                </div>
+              </div>
+            </Card>
+          ))}
         </div>
 
         {/* Пагинация */}
