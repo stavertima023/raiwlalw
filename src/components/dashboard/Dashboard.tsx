@@ -22,16 +22,6 @@ interface DashboardProps {
   onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void;
   findOrder: (orderNumber: string) => Order | undefined;
   findOrders: (orderNumbers: string[]) => Order[];
-  // Добавляем пропсы для пагинации
-  pagination?: {
-    page: number;
-    pageSize: number;
-    total: number;
-    totalPages: number;
-    hasNext: boolean;
-    hasPrev: boolean;
-  };
-  onPageChange?: (page: number) => void;
 }
 
 export function Dashboard({
@@ -45,8 +35,6 @@ export function Dashboard({
   onUpdateStatus,
   findOrder,
   findOrders,
-  pagination,
-  onPageChange,
 }: DashboardProps) {
   const [selectedOrders, setSelectedOrders] = React.useState<string[]>([]);
   const [searchTerm, setSearchTerm] = React.useState('');
@@ -152,8 +140,6 @@ export function Dashboard({
         onSearchChange={setSearchTerm}
         showSearch={true}
         isLoading={isLoading}
-        pagination={pagination}
-        onPageChange={onPageChange}
       />
     </div>
   );

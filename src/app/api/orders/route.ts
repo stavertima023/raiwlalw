@@ -73,13 +73,6 @@ export async function GET(request: NextRequest) {
 
     console.log('✅ Пользователь авторизован:', { username: user.username, role: user.role });
 
-    // Получаем параметры пагинации из URL
-    const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const pageSize = parseInt(searchParams.get('pageSize') || '25');
-    
-    console.log(`📄 Параметры пагинации: страница ${page}, размер страницы ${pageSize}`);
-
     // Получаем User-Agent для определения мобильного устройства
     const userAgent = request.headers.get('user-agent') || '';
     const mobile = isMobile(userAgent);
@@ -98,15 +91,14 @@ export async function GET(request: NextRequest) {
       console.log(`📊 Фильтруем заказы для продавца: ${user.username}`);
     }
     
-    // Применяем пагинацию только для принтовщика и продавца
+    // Ограничиваем количество для определенных ролей
     if (user.role === 'Принтовщик' || user.role === 'Продавец') {
-      const offset = (page - 1) * pageSize;
-      query = query.range(offset, offset + pageSize - 1);
-      console.log(`📊 Пагинация для ${user.role}: страница ${page}, смещение ${offset}, размер ${pageSize}`);
+      query = query.limit(200);
+      console.log(`📊 Ограничиваем до 200 заказов для ${user.role}`);
     } else if (user.role === 'Администратор') {
-      console.log(`📊 Загружаем ВСЕ заказы для Администратора (без пагинации)`);
+      console.log(`📊 Загружаем ВСЕ заказы для Администратора`);
     } else {
-      console.log(`📊 Загружаем все заказы для ${user.role} (без пагинации)`);
+      console.log(`📊 Загружаем все заказы для ${user.role}`);
     }
     
     console.log('🔍 Выполняем запрос к базе данных...');
@@ -138,28 +130,12 @@ export async function GET(request: NextRequest) {
     // Проверяем данные
     if (!data) {
       console.log(`📊 Нет данных для ${user.role}, возвращаем пустой массив`);
-      return NextResponse.json({ 
-        orders: [], 
-        pagination: { 
-          page, 
-          pageSize, 
-          total: 0, 
-          totalPages: 0 
-        } 
-      });
+      return NextResponse.json([]);
     }
 
     if (!Array.isArray(data)) {
       console.log(`📊 Данные не являются массивом для ${user.role}, возвращаем пустой массив`);
-      return NextResponse.json({ 
-        orders: [], 
-        pagination: { 
-          page, 
-          pageSize, 
-          total: 0, 
-          totalPages: 0 
-        } 
-      });
+      return NextResponse.json([]);
     }
 
     // Парсим даты
@@ -178,57 +154,8 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Для принтовщика и продавца получаем общее количество заказов
-    let totalCount = 0;
-    let totalPages = 0;
-    
-    if (user.role === 'Принтовщик' || user.role === 'Продавец') {
-      try {
-        let countQuery = supabaseAdmin
-          .from('orders')
-          .select('id', { count: 'exact', head: true });
-        
-        if (user.role === 'Продавец') {
-          countQuery = countQuery.eq('seller', user.username);
-        }
-        
-        const { count, error: countError } = await countQuery;
-        
-        if (countError) {
-          console.warn('⚠️ Ошибка получения общего количества заказов:', countError);
-          totalCount = data.length; // Используем количество полученных заказов как fallback
-        } else {
-          totalCount = count || 0;
-        }
-        
-        totalPages = Math.ceil(totalCount / pageSize);
-        console.log(`📊 Общее количество заказов для ${user.role}: ${totalCount}, страниц: ${totalPages}`);
-      } catch (countError) {
-        console.warn('⚠️ Ошибка подсчета заказов:', countError);
-        totalCount = data.length;
-        totalPages = Math.ceil(totalCount / pageSize);
-      }
-    }
-
     console.log(`✅ Заказы получены: ${parsedData.length} шт. для ${user.role}`);
-    
-    // Возвращаем данные с пагинацией для принтовщика и продавца
-    if (user.role === 'Принтовщик' || user.role === 'Продавец') {
-      return NextResponse.json({
-        orders: parsedData,
-        pagination: {
-          page,
-          pageSize,
-          total: totalCount,
-          totalPages,
-          hasNext: page < totalPages,
-          hasPrev: page > 1
-        }
-      });
-    } else {
-      // Для админа возвращаем просто массив заказов (без пагинации)
-      return NextResponse.json(parsedData);
-    }
+    return NextResponse.json(parsedData);
     
   } catch (error: any) {
     console.error('❌ Критическая ошибка API заказов:', error);
