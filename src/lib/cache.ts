@@ -349,48 +349,37 @@ export const cacheManager = new CacheManager();
  * Оптимизированный fetcher с кэшированием и обработкой ошибок
  */
 export const optimizedFetcher = async (url: string) => {
-  // Проверяем использование памяти
-  if (!cacheManager.checkMemoryUsage()) {
-    console.log('🧹 Очищаем кэш из-за нехватки памяти');
-    cacheManager.clear();
-  }
-
+  // Проверяем память перед загрузкой
+  cacheManager.checkMemoryUsage();
+  
   try {
-    // Создаем AbortController для таймаута
     const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), url.includes('/orders') ? 60000 : 30000);
     
-    // Увеличиваем таймаут для заказов (особенно для админа)
-    const timeout = url.includes('/orders') ? 60000 : 15000; // 60 секунд для заказов, 15 для остального
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
-
     const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'max-age=300', // 5 минут кэш на уровне браузера
-      },
       signal: controller.signal,
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
     });
-
+    
     clearTimeout(timeoutId);
-
+    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-
-    const data = await response.json();
     
-    // Сохраняем в кэш только успешные ответы
+    const data = await response.json();
     const cacheKey = url.replace('/api/', '');
     
-    // Не сохраняем payouts в кэш из-за большого размера
-    if (cacheKey !== 'payouts') {
+    // Не кэшируем фотографии и payouts из-за большого размера
+    if (cacheKey !== 'payouts' && !url.includes('/photos')) {
       try {
         cacheManager.set(cacheKey, data);
         console.log(`✅ Данные загружены и сохранены в кэш: ${cacheKey}`);
       } catch (cacheError) {
         console.warn(`⚠️ Не удалось сохранить в кэш ${cacheKey}:`, cacheError);
-        // Продолжаем работу даже если кэш не сохранился
       }
     } else {
       console.log(`📦 Данные загружены (без кэширования): ${cacheKey}`);
@@ -399,16 +388,6 @@ export const optimizedFetcher = async (url: string) => {
     return data;
   } catch (error) {
     console.error(`❌ Ошибка загрузки ${url}:`, error);
-    
-    // Пытаемся вернуть данные из кэша при ошибке
-    const cacheKey = url.replace('/api/', '');
-    const cachedData = cacheManager.get(cacheKey);
-    
-    if (cachedData) {
-      console.log(`📦 Возвращаем данные из кэша: ${cacheKey}`);
-      return cachedData;
-    }
-    
     throw error;
   }
 };

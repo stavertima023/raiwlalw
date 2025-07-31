@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
     // Создаем базовый запрос
     let query = supabaseAdmin
       .from('orders')
-      .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment, ready_at')
+      .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, comment, ready_at')
       .order('orderDate', { ascending: false });
 
     // Фильтруем по роли

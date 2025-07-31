@@ -27,57 +27,19 @@ export const SizeEnum = z.enum(['S', 'M', 'L', 'XL']);
 export type Size = z.infer<typeof SizeEnum>;
 
 export const OrderSchema = z.object({
-  id: z.string().optional(), 
-  orderDate: z.union([z.date(), z.string().transform((str) => new Date(str))]), 
-  orderNumber: z.string().min(1, 'Номер заказа обязателен'),
-  shipmentNumber: z.string().min(1, 'Номер отправления обязателен'),
-  status: OrderStatusEnum.default('Добавлен'),
-  productType: ProductTypeEnum,
-  size: SizeEnum,
-  seller: z.string().min(1, 'Продавец обязателен'), 
-  price: z.coerce.number().positive('Цена должна быть положительной'),
-  cost: z.coerce.number().positive('Себестоимость должна быть положительной').optional(),
-  photos: z.array(
-    z.string()
-      .min(1, 'Фото не может быть пустым')
-      .refine((val) => {
-        try {
-          // Проверяем, что это валидный base64 data URL
-          if (!val || typeof val !== 'string') {
-            return false;
-          }
-          
-          if (!val.startsWith('data:image/')) {
-            return false;
-          }
-          
-          // Проверяем, что после data:image/ есть валидный MIME тип
-          const mimeMatch = val.match(/^data:image\/([a-zA-Z]+);base64,/);
-          if (!mimeMatch) {
-            return false;
-          }
-          
-          // Проверяем, что base64 данные не пустые
-          const base64Data = val.split(',')[1];
-          if (!base64Data || base64Data.length === 0) {
-            return false;
-          }
-          
-          // Проверяем, что base64 данные валидны
-          try {
-            atob(base64Data);
-          } catch {
-            return false;
-          }
-          
-          return true;
-        } catch {
-          return false;
-        }
-      }, 'Неверный формат изображения')
-  ).max(3, 'Максимум 3 фотографии').optional().default([]),
-  comment: z.string().optional().default(''),
-  ready_at: z.union([z.date(), z.string().transform((str) => new Date(str))]).optional(),
+  id: z.string(),
+  orderDate: z.date(),
+  orderNumber: z.string(),
+  shipmentNumber: z.string().optional(),
+  status: z.enum(['pending', 'in_progress', 'completed', 'cancelled']),
+  productType: z.string(),
+  size: z.string(),
+  seller: z.string(),
+  price: z.number(),
+  cost: z.number(),
+  photos: z.array(z.string()).optional(), // Теперь опционально, так как загружается отдельно
+  comment: z.string().optional(),
+  ready_at: z.date().optional(),
 });
 
 export type Order = z.infer<typeof OrderSchema>;

@@ -98,8 +98,57 @@ const StatusBadge = React.memo<{ status: OrderStatus; useLargeLayout?: boolean }
 });
 StatusBadge.displayName = 'StatusBadge';
 
-// Мемоизированный компонент фотографий
-const OrderPhotos = React.memo<{ photos: string[]; size: number }>(({ photos, size }) => {
+// Мемоизированный компонент фотографий с ленивой загрузкой
+const OrderPhotosLazy = React.memo<{ orderId: string; size: number }>(({ orderId, size }) => {
+  const [photos, setPhotos] = React.useState<string[]>([]);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [hasLoaded, setHasLoaded] = React.useState(false);
+
+  const loadPhotos = React.useCallback(async () => {
+    if (hasLoaded) return;
+    
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/orders/${orderId}/photos`);
+      if (response.ok) {
+        const data = await response.json();
+        setPhotos(data.photos || []);
+        setHasLoaded(true);
+      } else {
+        console.warn('Не удалось загрузить фотографии для заказа:', orderId);
+        setPhotos([]);
+        setHasLoaded(true);
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки фотографий:', error);
+      setPhotos([]);
+      setHasLoaded(true);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [orderId, hasLoaded]);
+
+  // Загружаем фотографии при первом рендере
+  React.useEffect(() => {
+    loadPhotos();
+  }, [loadPhotos]);
+
+  if (isLoading) {
+    return (
+      <div className="flex gap-1">
+        {[1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="bg-muted rounded border-2 border-dashed border-muted-foreground/25 flex items-center justify-center"
+            style={{ width: size, height: size }}
+          >
+            <LoadingSpinner size="sm" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   if (!photos || photos.length === 0) {
     return (
       <div className="flex gap-1">
@@ -190,7 +239,7 @@ const OrderPhotos = React.memo<{ photos: string[]; size: number }>(({ photos, si
     </div>
   );
 });
-OrderPhotos.displayName = 'OrderPhotos';
+OrderPhotosLazy.displayName = 'OrderPhotosLazy';
 
 // Выносим функцию renderActionsCell для использования в мобильной версии
 const createRenderActionsCell = (
@@ -632,7 +681,7 @@ const OrderTableRow = React.memo<{
         </>
       )}
       <TableCell>
-        <OrderPhotos photos={order.photos || []} size={photoSize} />
+        <OrderPhotosLazy orderId={order.id} size={photoSize} />
       </TableCell>
       <TableCell>{order.comment}</TableCell>
       {currentUser?.role === 'Принтовщик' && (
@@ -817,7 +866,7 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
                 <div>
                   <span className="text-muted-foreground text-sm">Фото:</span>
                   <div className="mt-1">
-                    <OrderPhotos photos={order.photos || []} size={60} />
+                    <OrderPhotosLazy orderId={order.id} size={60} />
                   </div>
                 </div>
 
