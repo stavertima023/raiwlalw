@@ -31,7 +31,7 @@ export const OrderSchema = z.object({
   orderDate: z.date(),
   orderNumber: z.string(),
   shipmentNumber: z.string().optional(),
-  status: z.enum(['pending', 'in_progress', 'completed', 'cancelled']),
+  status: OrderStatusEnum,
   productType: z.string(),
   size: z.string(),
   seller: z.string(),

@@ -103,24 +103,33 @@ const OrderPhotosLazy = React.memo<{ orderId: string; size: number }>(({ orderId
   const [photos, setPhotos] = React.useState<string[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const [hasLoaded, setHasLoaded] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
 
   const loadPhotos = React.useCallback(async () => {
     if (hasLoaded) return;
     
+    console.log(`📸 Загружаем фотографии для заказа: ${orderId}`);
     setIsLoading(true);
+    setError(null);
+    
     try {
       const response = await fetch(`/api/orders/${orderId}/photos`);
+      console.log(`📸 Ответ API для заказа ${orderId}:`, response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log(`📸 Получены фотографии для заказа ${orderId}:`, data.photos?.length || 0);
         setPhotos(data.photos || []);
         setHasLoaded(true);
       } else {
-        console.warn('Не удалось загрузить фотографии для заказа:', orderId);
+        console.warn(`⚠️ Не удалось загрузить фотографии для заказа ${orderId}:`, response.status);
+        setError(`Ошибка ${response.status}`);
         setPhotos([]);
         setHasLoaded(true);
       }
     } catch (error) {
-      console.error('Ошибка загрузки фотографий:', error);
+      console.error(`❌ Ошибка загрузки фотографий для заказа ${orderId}:`, error);
+      setError('Ошибка сети');
       setPhotos([]);
       setHasLoaded(true);
     } finally {
@@ -133,18 +142,47 @@ const OrderPhotosLazy = React.memo<{ orderId: string; size: number }>(({ orderId
     loadPhotos();
   }, [loadPhotos]);
 
+  console.log(`📸 Рендер OrderPhotosLazy для заказа ${orderId}:`, { 
+    isLoading, 
+    hasLoaded, 
+    photosCount: photos.length, 
+    error 
+  });
+
   if (isLoading) {
     return (
       <div className="flex gap-1">
         {[1, 2, 3].map((i) => (
           <div
             key={i}
-            className="bg-muted rounded border-2 border-dashed border-muted-foreground/25 flex items-center justify-center"
+            className="bg-blue-50 rounded border-2 border-dashed border-blue-200 flex items-center justify-center"
             style={{ width: size, height: size }}
           >
             <LoadingSpinner size="sm" />
           </div>
         ))}
+        <div className="text-xs text-blue-600 ml-2 self-center">
+          Загрузка...
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex gap-1">
+        {[1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="bg-red-50 rounded border-2 border-dashed border-red-200 flex items-center justify-center"
+            style={{ width: size, height: size }}
+          >
+            <span className="text-xs text-red-500">Ошибка</span>
+          </div>
+        ))}
+        <div className="text-xs text-red-500 ml-2 self-center">
+          {error}
+        </div>
       </div>
     );
   }
@@ -155,12 +193,15 @@ const OrderPhotosLazy = React.memo<{ orderId: string; size: number }>(({ orderId
         {[1, 2, 3].map((i) => (
           <div
             key={i}
-            className="bg-muted rounded border-2 border-dashed border-muted-foreground/25 flex items-center justify-center"
+            className="bg-gray-50 rounded border-2 border-dashed border-gray-300 flex items-center justify-center"
             style={{ width: size, height: size }}
           >
-            <span className="text-xs text-muted-foreground">Фото {i}</span>
+            <span className="text-xs text-gray-500">Фото {i}</span>
           </div>
         ))}
+        <div className="text-xs text-gray-500 ml-2 self-center">
+          Нет фото
+        </div>
       </div>
     );
   }
@@ -734,7 +775,7 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
     if (!searchTerm.trim()) return orders;
     return orders.filter(order => 
       order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.shipmentNumber.toLowerCase().includes(searchTerm.toLowerCase())
+      (order.shipmentNumber?.toLowerCase() || '').includes(searchTerm.toLowerCase())
     );
   }, [orders, searchTerm]);
 
@@ -867,6 +908,10 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
                   <span className="text-muted-foreground text-sm">Фото:</span>
                   <div className="mt-1">
                     <OrderPhotosLazy orderId={order.id} size={60} />
+                  </div>
+                  {/* Дополнительная информация о состоянии загрузки */}
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Нажмите для просмотра фотографий
                   </div>
                 </div>
 
