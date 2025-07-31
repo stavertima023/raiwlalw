@@ -15,17 +15,31 @@ const isMobile = (userAgent: string) => {
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('🚀 Начало обработки GET запроса /api/orders');
+    
     // Check supabaseAdmin availability
     if (!supabaseAdmin) {
+      console.error('❌ SupabaseAdmin недоступен');
       return NextResponse.json({ message: 'Сервис недоступен' }, { status: 503 });
     }
 
+    console.log('✅ SupabaseAdmin доступен');
+
     const session = await getSession();
+    console.log('📋 Сессия получена:', { 
+      isLoggedIn: session.isLoggedIn, 
+      hasUser: !!session.user,
+      userRole: session.user?.role 
+    });
+
     const { user } = session;
 
     if (!user || !session.isLoggedIn) {
+      console.error('❌ Пользователь не авторизован');
       return NextResponse.json({ message: 'Пользователь не авторизован' }, { status: 401 });
     }
+
+    console.log('✅ Пользователь авторизован:', { username: user.username, role: user.role });
 
     // Получаем параметры пагинации
     const { searchParams } = new URL(request.url);
@@ -37,7 +51,7 @@ export async function GET(request: NextRequest) {
     const userAgent = request.headers.get('user-agent') || '';
     const mobile = isMobile(userAgent);
 
-    console.log(`📱 Запрос заказов с ${mobile ? 'мобильного' : 'десктопного'} устройства для роли: ${user.role}, страница: ${page}, лимит: ${limit}`);
+    console.log(`📱 Запрос заказов с ${mobile ? 'мобильного' : 'десктопного'} устройства для роли: ${user.role}`);
 
     // Оптимизированный запрос с выбором только нужных полей
     let query = supabaseAdmin
@@ -55,9 +69,8 @@ export async function GET(request: NextRequest) {
       query = query.limit(200); // Максимум 200 самых новых заказов
       console.log(`📊 Ограничиваем до 200 самых новых заказов для ${user.role}`);
     } else if (user.role === 'Администратор') {
-      // Для админа используем пагинацию для больших объемов данных
-      query = query.range(offset, offset + limit - 1);
-      console.log(`📊 Загружаем заказы для Администратора с пагинацией: ${offset}-${offset + limit - 1}`);
+      // Для админа загружаем ВСЕ заказы без ограничений
+      console.log(`📊 Загружаем ВСЕ заказы для Администратора (без ограничений)`);
     } else {
       console.log(`📊 Загружаем все заказы для ${user.role} (без ограничений)`);
     }
@@ -69,6 +82,12 @@ export async function GET(request: NextRequest) {
       throw error;
     }
 
+    // Проверяем, что data существует и является массивом
+    if (!data || !Array.isArray(data)) {
+      console.log(`📊 Нет данных для ${user.role}, возвращаем пустой массив`);
+      return NextResponse.json([]);
+    }
+
     // Парсим даты и возвращаем данные
     const parsedData = data.map(item => ({
       ...item, 
@@ -78,10 +97,19 @@ export async function GET(request: NextRequest) {
     console.log(`✅ Заказы получены: ${parsedData.length} шт. для ${user.role}`);
     return NextResponse.json(parsedData);
   } catch (error: any) {
-    console.error('Ошибка API заказов:', error);
+    console.error('❌ Ошибка API заказов:', error);
+    console.error('❌ Детали ошибки:', {
+      message: error.message,
+      stack: error.stack,
+      code: error.code,
+      details: error.details,
+      hint: error.hint
+    });
+    
     return NextResponse.json({ 
       message: 'Ошибка загрузки заказов', 
-      error: error.message 
+      error: error.message,
+      details: error.details || 'Нет дополнительных деталей'
     }, { status: 500 });
   }
 }

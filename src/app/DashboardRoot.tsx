@@ -14,6 +14,7 @@ import { PayoutsList } from '@/components/admin/PayoutsList';
 import AIAnalytics from '@/components/admin/AIAnalytics';
 import { Analytics } from '@/components/admin/Analytics';
 import { optimizedFetcher, swrConfig, cacheManager, getCacheStatus } from '@/lib/cache';
+import { Button } from '@/components/ui/button';
 
 type DashboardRootProps = {
   initialUser: Omit<User, 'password_hash'> | undefined;
@@ -148,6 +149,9 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       },
       // Принудительно загружаем данные при первом запуске
       revalidateOnMount: isInitialized,
+      // Добавляем обработку ошибок для предотвращения React ошибок
+      shouldRetryOnError: false,
+      errorRetryCount: 0,
     }
   );
   
@@ -494,7 +498,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
         {(activeView: string) => (
           <Dashboard
             user={initialUser}
-      orders={orders}
+            orders={orders || []}
             isLoading={ordersLoading}
             onAddOrder={handleAddOrder} 
             onCancelOrder={handleCancelOrder}
@@ -515,7 +519,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
         {(activeView: string) => (
           <PrinterDashboard
             currentUser={initialUser}
-            allOrders={orders}
+            allOrders={orders || []}
             onUpdateStatus={handleUpdateOrderStatus}
             isLoading={ordersLoading}
           />
@@ -552,12 +556,40 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
             );
           }
 
+          // Показываем ошибку загрузки
+          if (ordersError) {
+            return (
+              <div className="flex items-center justify-center min-h-[400px]">
+                <Card className="w-full max-w-md">
+                  <CardHeader>
+                    <CardTitle>Ошибка загрузки заказов</CardTitle>
+                    <CardDescription>
+                      Не удалось загрузить заказы. Попробуйте обновить страницу.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Button onClick={handleRefreshAll} className="w-full">
+                      Обновить данные
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            );
+          }
+
+          // Проверяем, что данные загружены
+          const safeOrders = orders || [];
+          const safeUsers = users || [];
+          const safeExpenses = expenses || [];
+          const safePayouts = payouts || [];
+          const safeDebts = debts || [];
+
           switch (activeView) {
             case 'admin-orders':
               return (
                 <AdminOrderList 
-                  allOrders={orders} 
-                  allUsers={users}
+                  allOrders={safeOrders} 
+                  allUsers={safeUsers}
                   isLoading={ordersLoading}
                   onRefresh={handleRefreshAll}
                 />
@@ -565,19 +597,19 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
             case 'admin-expenses':
               return (
                 <ExpensesList 
-                        allExpenses={expenses} 
-                  allUsers={users}
-                        onAddExpense={handleAddExpense}
+                  allExpenses={safeExpenses} 
+                  allUsers={safeUsers}
+                  onAddExpense={handleAddExpense}
                   currentUser={initialUser}
-                  debts={debts}
+                  debts={safeDebts}
                   onDebtUpdate={handleDebtUpdate}
                 />
               );
             case 'admin-payouts':
               return (
                 <PayoutsList 
-                  allPayouts={payouts} 
-                  allUsers={users}
+                  allPayouts={safePayouts} 
+                  allUsers={safeUsers}
                   onUpdateStatus={handleUpdatePayoutStatus}
                   currentUser={initialUser}
                   onRefresh={handleRefreshAll}
@@ -587,24 +619,24 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
             case 'admin-analytics':
               return (
                 <Analytics 
-                  orders={orders} 
-                  expenses={expenses} 
-                  payouts={payouts}
-                  users={users}
+                  orders={safeOrders} 
+                  expenses={safeExpenses} 
+                  payouts={safePayouts}
+                  users={safeUsers}
                 />
               );
             case 'admin-ai-analytics':
               return (
                 <AIAnalytics 
-                  orders={orders} 
-                  expenses={expenses}
+                  orders={safeOrders} 
+                  expenses={safeExpenses}
                 />
               );
             default:
               return (
                 <AdminOrderList 
-                  allOrders={orders} 
-                  allUsers={users}
+                  allOrders={safeOrders} 
+                  allUsers={safeUsers}
                   isLoading={ordersLoading}
                   onRefresh={handleRefreshAll}
                 />
