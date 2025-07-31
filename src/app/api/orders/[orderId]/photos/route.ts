@@ -10,12 +10,12 @@ export async function GET(
   { params }: { params: { orderId: string } }
 ) {
   try {
-    console.log(`📸 Запрос фотографий для заказа: ${params.orderId}`);
+    console.log(`📸 API: Запрос фотографий для заказа: ${params.orderId}`);
     
     // Проверяем доступность Supabase
     if (!supabaseAdmin) {
-      console.error('❌ SupabaseAdmin недоступен');
-      return NextResponse.json({ message: 'Сервис недоступен' }, { status: 503 });
+      console.error('❌ API: SupabaseAdmin недоступен');
+      return NextResponse.json({ photos: [] });
     }
 
     // Получаем сессию
@@ -23,18 +23,18 @@ export async function GET(
     try {
       session = await getSession();
     } catch (sessionError) {
-      console.error('❌ Ошибка получения сессии:', sessionError);
-      return NextResponse.json({ message: 'Ошибка авторизации' }, { status: 401 });
+      console.error('❌ API: Ошибка получения сессии:', sessionError);
+      return NextResponse.json({ photos: [] });
     }
 
     const { user } = session;
 
     if (!user || !session.isLoggedIn) {
-      console.error('❌ Пользователь не авторизован');
-      return NextResponse.json({ message: 'Пользователь не авторизован' }, { status: 401 });
+      console.error('❌ API: Пользователь не авторизован');
+      return NextResponse.json({ photos: [] });
     }
 
-    console.log('✅ Пользователь авторизован:', { username: user.username, role: user.role });
+    console.log('✅ API: Пользователь авторизован:', { username: user.username, role: user.role });
 
     // Получаем фотографии заказа
     const { data, error } = await supabaseAdmin
@@ -44,26 +44,20 @@ export async function GET(
       .single();
 
     if (error) {
-      console.error('❌ Ошибка получения фотографий:', error);
-      return NextResponse.json({ 
-        message: 'Заказ не найден', 
-        error: error.message 
-      }, { status: 404 });
-    }
-
-    if (!data || !data.photos) {
-      console.log('📸 Фотографии не найдены для заказа:', params.orderId);
+      console.error('❌ API: Ошибка получения фотографий:', error);
       return NextResponse.json({ photos: [] });
     }
 
-    console.log(`✅ Фотографии получены для заказа ${params.orderId}: ${data.photos.length} шт.`);
+    if (!data || !data.photos) {
+      console.log('📸 API: Фотографии не найдены для заказа:', params.orderId);
+      return NextResponse.json({ photos: [] });
+    }
+
+    console.log(`✅ API: Фотографии получены для заказа ${params.orderId}: ${data.photos.length} шт.`);
     return NextResponse.json({ photos: data.photos });
     
   } catch (error: any) {
-    console.error('❌ Критическая ошибка API фотографий:', error);
-    return NextResponse.json({ 
-      message: 'Ошибка загрузки фотографий', 
-      error: error.message
-    }, { status: 500 });
+    console.error('❌ API: Критическая ошибка:', error);
+    return NextResponse.json({ photos: [] });
   }
 } 

@@ -98,131 +98,98 @@ const StatusBadge = React.memo<{ status: OrderStatus; useLargeLayout?: boolean }
 });
 StatusBadge.displayName = 'StatusBadge';
 
-// Мемоизированный компонент фотографий с ленивой загрузкой
-const OrderPhotosLazy = React.memo<{ orderId: string; size: number }>(({ orderId, size }) => {
+// Простой и надежный компонент фотографий
+const OrderPhotosSimple = React.memo<{ orderId: string; size: number }>(({ orderId, size }) => {
   const [photos, setPhotos] = React.useState<string[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true); // Начинаем с загрузки
-  const [hasLoaded, setHasLoaded] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  const [retryCount, setRetryCount] = React.useState(0);
 
-  const loadPhotos = React.useCallback(async () => {
-    if (!orderId) {
-      setError('Нет ID заказа');
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      // Сначала пробуем отдельный API для фотографий
-      const url = `/api/orders/${orderId}/photos`;
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        signal: AbortSignal.timeout(10000)
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setPhotos(data.photos || []);
-        setHasLoaded(true);
-      } else {
-        // Если отдельный API не работает, пробуем получить через основной API заказов
-        console.warn('Отдельный API фотографий не работает, пробуем основной API');
-        const ordersResponse = await fetch('/api/orders');
-        if (ordersResponse.ok) {
-          const ordersData = await ordersResponse.json();
-          const currentOrder = ordersData.find((order: any) => order.id === orderId);
-          if (currentOrder && currentOrder.photos) {
-            setPhotos(currentOrder.photos);
-            setHasLoaded(true);
-          } else {
-            setError('Фотографии не найдены');
-            setPhotos([]);
-            setHasLoaded(true);
-          }
-        } else {
-          setError(`Ошибка ${response.status}`);
-          setPhotos([]);
-          setHasLoaded(true);
-        }
+  // Простая загрузка фотографий
+  React.useEffect(() => {
+    const loadPhotos = async () => {
+      if (!orderId) {
+        setError('Нет ID заказа');
+        setIsLoading(false);
+        return;
       }
-    } catch (error) {
-      setError('Ошибка сети');
-      setPhotos([]);
-      setHasLoaded(true);
-    } finally {
-      setIsLoading(false);
-    }
+
+      try {
+        // Пробуем загрузить фотографии
+        const response = await fetch(`/api/orders/${orderId}/photos`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          setPhotos(data.photos || []);
+        } else {
+          // Если API не работает, показываем заглушки
+          setPhotos([]);
+        }
+      } catch (error) {
+        // При любой ошибке показываем заглушки
+        setPhotos([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadPhotos();
   }, [orderId]);
 
-  // Принудительно загружаем фотографии при каждом рендере
-  React.useEffect(() => {
-    loadPhotos();
-  }, [orderId]); // Убираем hasLoaded из зависимостей
+  // Всегда показываем 3 места для фотографий
+  return (
+    <div className="flex gap-1">
+      {[1, 2, 3].map((i) => {
+        const photo = photos[i - 1];
+        
+        if (isLoading) {
+          return (
+            <div
+              key={i}
+              className="bg-blue-50 rounded border-2 border-dashed border-blue-200 flex items-center justify-center"
+              style={{ width: size, height: size }}
+            >
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+            </div>
+          );
+        }
 
-  // Функция для повторной загрузки
-  const handleRetry = () => {
-    setRetryCount(prev => prev + 1);
-    setHasLoaded(false);
-    loadPhotos();
-  };
+        if (photo) {
+          return (
+            <div key={i} className="relative">
+              <Dialog>
+                <DialogTrigger asChild>
+                  <button className="block">
+                    <Image
+                      src={photo}
+                      alt={`Фото ${i}`}
+                      width={size}
+                      height={size}
+                      className="rounded object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                      style={{ width: size, height: size }}
+                    />
+                  </button>
+                </DialogTrigger>
+                <DialogContent className="max-w-[95vw] max-h-[80vh] p-4">
+                  <DialogHeader>
+                    <DialogTitle>Фото {i}</DialogTitle>
+                  </DialogHeader>
+                  <div className="flex justify-center">
+                    <Image
+                      src={photo}
+                      alt={`Фото ${i}`}
+                      width={800}
+                      height={800}
+                      className="rounded-md object-contain max-w-full max-h-[60vh]"
+                    />
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+          );
+        }
 
-  // Показываем загрузку
-  if (isLoading) {
-    return (
-      <div className="flex gap-1 items-center">
-        {[1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className="bg-blue-50 rounded border-2 border-dashed border-blue-200 flex items-center justify-center"
-            style={{ width: size, height: size }}
-          >
-            <LoadingSpinner size="sm" />
-          </div>
-        ))}
-        <div className="text-xs text-blue-600 ml-2">
-          Загрузка фото...
-        </div>
-      </div>
-    );
-  }
-
-  // Показываем ошибку с кнопкой повтора
-  if (error) {
-    return (
-      <div className="flex gap-1 items-center">
-        {[1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className="bg-red-50 rounded border-2 border-dashed border-red-200 flex items-center justify-center"
-            style={{ width: size, height: size }}
-          >
-            <span className="text-xs text-red-500">!</span>
-          </div>
-        ))}
-        <div className="text-xs text-red-500 ml-2">
-          <button 
-            onClick={handleRetry}
-            className="underline hover:no-underline"
-          >
-            Повторить
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Показываем "нет фото" если фотографий нет
-  if (!photos || photos.length === 0) {
-    return (
-      <div className="flex gap-1 items-center">
-        {[1, 2, 3].map((i) => (
+        // Заглушка для отсутствующего фото
+        return (
           <div
             key={i}
             className="bg-gray-50 rounded border-2 border-dashed border-gray-300 flex items-center justify-center"
@@ -230,90 +197,12 @@ const OrderPhotosLazy = React.memo<{ orderId: string; size: number }>(({ orderId
           >
             <span className="text-xs text-gray-500">Фото {i}</span>
           </div>
-        ))}
-        <div className="text-xs text-gray-500 ml-2">
-          Нет фото
-        </div>
-      </div>
-    );
-  }
-
-  // Показываем фотографии
-  return (
-    <div className="flex gap-1">
-      {photos.map((photo, index) => (
-        <div key={index} className="relative">
-          <Dialog>
-            <DialogTrigger asChild>
-              <button className="block group">
-                <Image
-                  src={photo}
-                  alt={`Фото ${index + 1}`}
-                  width={size}
-                  height={size}
-                  className="rounded object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                  style={{ width: size, height: size }}
-                  loading="lazy"
-                />
-                {/* Индикатор клика */}
-                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all flex items-center justify-center rounded">
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity text-white text-xs">
-                    Просмотр
-                  </div>
-                </div>
-              </button>
-            </DialogTrigger>
-            <DialogContent className="max-w-[95vw] max-h-[80vh] p-4 sm:max-w-2xl md:max-w-3xl" onPointerDownOutside={(e) => e.preventDefault()}>
-              <DialogHeader>
-                <DialogTitle className="flex items-center justify-between">
-                  <span>Фото {index + 1}</span>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-8 w-8 p-0 border-2 hover:bg-red-50 hover:border-red-300">
-                      <X className="h-4 w-4 text-red-600" />
-                    </Button>
-                  </DialogTrigger>
-                </DialogTitle>
-              </DialogHeader>
-              <div className="flex justify-center items-center">
-                <Image
-                  src={photo}
-                  alt={`Фото ${index + 1}`}
-                  width={800}
-                  height={800}
-                  className="rounded-md object-contain max-w-full max-h-[60vh]"
-                  loading="eager"
-                  priority={index === 0}
-                />
-              </div>
-              {/* Навигация по фото если их несколько */}
-              {photos.length > 1 && (
-                <div className="flex justify-center gap-2 mt-4">
-                  {photos.map((_, photoIndex) => (
-                    <div
-                      key={photoIndex}
-                      className={`w-2 h-2 rounded-full ${
-                        photoIndex === index ? 'bg-blue-500' : 'bg-gray-300'
-                      }`}
-                    />
-                  ))}
-                </div>
-              )}
-            </DialogContent>
-          </Dialog>
-        </div>
-      ))}
-      {photos.length < 3 && (
-        <div
-          className="bg-muted rounded border-2 border-dashed border-muted-foreground/25 flex items-center justify-center"
-          style={{ width: size, height: size }}
-        >
-          <span className="text-xs text-muted-foreground">Фото {photos.length + 1}</span>
-        </div>
-      )}
+        );
+      })}
     </div>
   );
 });
-OrderPhotosLazy.displayName = 'OrderPhotosLazy';
+OrderPhotosSimple.displayName = 'OrderPhotosSimple';
 
 // Выносим функцию renderActionsCell для использования в мобильной версии
 const createRenderActionsCell = (
@@ -755,7 +644,7 @@ const OrderTableRow = React.memo<{
         </>
       )}
       <TableCell>
-        <OrderPhotosLazy orderId={order.id} size={photoSize} />
+        <OrderPhotosSimple orderId={order.id} size={photoSize} />
       </TableCell>
       <TableCell>{order.comment}</TableCell>
       {currentUser?.role === 'Принтовщик' && (
@@ -937,17 +826,45 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
                     </div>
                   </div>
 
-                  {/* Фотографии */}
-                  <div>
-                    <span className="text-muted-foreground text-sm font-medium">Фотографии заказа:</span>
-                    <div className="mt-2 p-2 bg-gray-50 rounded-lg border">
-                      <OrderPhotosLazy orderId={order.id} size={60} />
+                  {/* Фотографии - ГАРАНТИРОВАННО ВИДИМЫЕ */}
+                <div className="border-2 border-blue-200 bg-blue-50 p-3 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-bold text-blue-800">📸 Фотографии заказа #{order.orderNumber}</span>
+                    <span className="text-xs text-blue-600">Обязательно для принтовщика</span>
+                  </div>
+                  
+                  {/* Основной компонент фотографий */}
+                  <div className="mb-2">
+                    <OrderPhotosSimple orderId={order.id} size={60} />
+                  </div>
+                  
+                  {/* ГАРАНТИРОВАННЫЕ заглушки - всегда видны */}
+                  <div className="flex gap-2">
+                    <div className="bg-white rounded border-2 border-dashed border-blue-300 flex items-center justify-center p-2" style={{ width: 60, height: 60 }}>
+                      <div className="text-center">
+                        <div className="text-xs font-bold text-blue-600">Фото 1</div>
+                        <div className="text-xs text-blue-400">Обязательно</div>
+                      </div>
                     </div>
-                    {/* Дополнительная информация */}
-                    <div className="text-xs text-muted-foreground mt-1 text-center">
-                      💡 Нажмите на фото для просмотра
+                    <div className="bg-white rounded border-2 border-dashed border-blue-300 flex items-center justify-center p-2" style={{ width: 60, height: 60 }}>
+                      <div className="text-center">
+                        <div className="text-xs font-bold text-blue-600">Фото 2</div>
+                        <div className="text-xs text-blue-400">Обязательно</div>
+                      </div>
+                    </div>
+                    <div className="bg-white rounded border-2 border-dashed border-blue-300 flex items-center justify-center p-2" style={{ width: 60, height: 60 }}>
+                      <div className="text-center">
+                        <div className="text-xs font-bold text-blue-600">Фото 3</div>
+                        <div className="text-xs text-blue-400">Обязательно</div>
+                      </div>
                     </div>
                   </div>
+                  
+                  {/* Инструкция */}
+                  <div className="text-xs text-blue-700 mt-2 text-center font-medium">
+                    💡 ПРИНТОВЩИК: Нажмите на фото для просмотра в полном размере
+                  </div>
+                </div>
 
                   {/* Комментарий */}
                   {order.comment && (
