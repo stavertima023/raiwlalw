@@ -106,39 +106,60 @@ const OrderPhotosLazy = React.memo<{ orderId: string; size: number }>(({ orderId
   const [error, setError] = React.useState<string | null>(null);
 
   const loadPhotos = React.useCallback(async () => {
-    if (hasLoaded) return;
+    if (hasLoaded) {
+      console.log(`📸 Фотографии уже загружены для заказа: ${orderId}`);
+      return;
+    }
     
-    console.log(`📸 Загружаем фотографии для заказа: ${orderId}`);
+    console.log(`📸 Начинаем загрузку фотографий для заказа: ${orderId}`);
     setIsLoading(true);
     setError(null);
     
     try {
-      const response = await fetch(`/api/orders/${orderId}/photos`);
-      console.log(`📸 Ответ API для заказа ${orderId}:`, response.status);
+      const url = `/api/orders/${orderId}/photos`;
+      console.log(`📸 Отправляем запрос на: ${url}`);
+      
+      const response = await fetch(url);
+      console.log(`📸 Получен ответ для заказа ${orderId}:`, {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
+      });
       
       if (response.ok) {
         const data = await response.json();
-        console.log(`📸 Получены фотографии для заказа ${orderId}:`, data.photos?.length || 0);
+        console.log(`📸 Данные получены для заказа ${orderId}:`, {
+          hasPhotos: !!data.photos,
+          photosLength: data.photos?.length || 0,
+          data: data
+        });
         setPhotos(data.photos || []);
         setHasLoaded(true);
       } else {
-        console.warn(`⚠️ Не удалось загрузить фотографии для заказа ${orderId}:`, response.status);
-        setError(`Ошибка ${response.status}`);
+        const errorText = await response.text();
+        console.warn(`⚠️ Ошибка API для заказа ${orderId}:`, {
+          status: response.status,
+          statusText: response.statusText,
+          errorText: errorText
+        });
+        setError(`Ошибка ${response.status}: ${response.statusText}`);
         setPhotos([]);
         setHasLoaded(true);
       }
     } catch (error) {
-      console.error(`❌ Ошибка загрузки фотографий для заказа ${orderId}:`, error);
+      console.error(`❌ Сетевая ошибка для заказа ${orderId}:`, error);
       setError('Ошибка сети');
       setPhotos([]);
       setHasLoaded(true);
     } finally {
       setIsLoading(false);
+      console.log(`📸 Загрузка завершена для заказа ${orderId}`);
     }
   }, [orderId, hasLoaded]);
 
   // Загружаем фотографии при первом рендере
   React.useEffect(() => {
+    console.log(`📸 useEffect для заказа ${orderId}:`, { hasLoaded, isLoading });
     loadPhotos();
   }, [loadPhotos]);
 
@@ -146,10 +167,12 @@ const OrderPhotosLazy = React.memo<{ orderId: string; size: number }>(({ orderId
     isLoading, 
     hasLoaded, 
     photosCount: photos.length, 
-    error 
+    error,
+    size
   });
 
   if (isLoading) {
+    console.log(`📸 Показываем загрузку для заказа ${orderId}`);
     return (
       <div className="flex gap-1">
         {[1, 2, 3].map((i) => (
@@ -169,6 +192,7 @@ const OrderPhotosLazy = React.memo<{ orderId: string; size: number }>(({ orderId
   }
 
   if (error) {
+    console.log(`📸 Показываем ошибку для заказа ${orderId}:`, error);
     return (
       <div className="flex gap-1">
         {[1, 2, 3].map((i) => (
@@ -188,6 +212,7 @@ const OrderPhotosLazy = React.memo<{ orderId: string; size: number }>(({ orderId
   }
 
   if (!photos || photos.length === 0) {
+    console.log(`📸 Показываем "нет фото" для заказа ${orderId}`);
     return (
       <div className="flex gap-1">
         {[1, 2, 3].map((i) => (
@@ -206,6 +231,7 @@ const OrderPhotosLazy = React.memo<{ orderId: string; size: number }>(({ orderId
     );
   }
 
+  console.log(`📸 Показываем ${photos.length} фотографий для заказа ${orderId}`);
   return (
     <div className="flex gap-1">
       {photos.map((photo, index) => (
@@ -869,93 +895,95 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
 
         {/* Мобильные карточки заказов */}
         <div className="space-y-3">
-          {paginatedOrders.map((order) => (
-            <Card key={order.id} className="p-4">
-              <div className="space-y-3">
-                {/* Заголовок карточки */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <span className="font-semibold text-lg">#{order.orderNumber}</span>
-                    <StatusBadge status={order.status} />
+          {paginatedOrders.map((order) => {
+            return (
+              <Card key={order.id} className="p-4">
+                <div className="space-y-3">
+                  {/* Заголовок карточки */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <span className="font-semibold text-lg">#{order.orderNumber}</span>
+                      <StatusBadge status={order.status} />
+                    </div>
+                    <span className="text-lg font-bold text-green-600">
+                      {order.price.toLocaleString('ru-RU')} ₽
+                    </span>
                   </div>
-                  <span className="text-lg font-bold text-green-600">
-                    {order.price.toLocaleString('ru-RU')} ₽
-                  </span>
-                </div>
 
-                {/* Основная информация */}
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Отправление:</span>
-                    <div className="font-medium">{order.shipmentNumber}</div>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Товар:</span>
-                    <div className="font-medium">{order.productType}</div>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Размер:</span>
-                    <div className="font-medium">{order.size}</div>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Продавец:</span>
-                    <div className="font-medium">{order.seller}</div>
-                  </div>
-                </div>
-
-                {/* Фотографии */}
-                <div>
-                  <span className="text-muted-foreground text-sm">Фото:</span>
-                  <div className="mt-1">
-                    <OrderPhotosLazy orderId={order.id} size={60} />
-                  </div>
-                  {/* Дополнительная информация о состоянии загрузки */}
-                  <div className="text-xs text-muted-foreground mt-1">
-                    Нажмите для просмотра фотографий
-                  </div>
-                </div>
-
-                {/* Комментарий */}
-                {order.comment && (
-                  <div>
-                    <span className="text-muted-foreground text-sm">Комментарий:</span>
-                    <div className="text-sm mt-1">{order.comment}</div>
-                  </div>
-                )}
-
-                {/* Время изготовления (для готовых заказов) */}
-                {order.status === 'Готов' && order.ready_at && (
-                  <div>
-                    <span className="text-muted-foreground text-sm">Изготовлен:</span>
-                    <div className="text-sm font-medium mt-1 text-blue-600">
-                      {format(new Date(order.ready_at), 'dd.MM.yyyy HH:mm', { locale: ru })}
+                  {/* Основная информация */}
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Отправление:</span>
+                      <div className="font-medium">{order.shipmentNumber}</div>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Товар:</span>
+                      <div className="font-medium">{order.productType}</div>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Размер:</span>
+                      <div className="font-medium">{order.size}</div>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Продавец:</span>
+                      <div className="font-medium">{order.seller}</div>
                     </div>
                   </div>
-                )}
 
-                {/* Время изготовления (для принтовщика - показываем для всех статусов) */}
-                {currentUser?.role === 'Принтовщик' && order.ready_at && (
+                  {/* Фотографии */}
                   <div>
-                    <span className="text-muted-foreground text-sm">Готовность:</span>
-                    <div className="text-sm font-medium mt-1 text-blue-600">
-                      {format(new Date(order.ready_at), 'dd.MM.yyyy HH:mm', { locale: ru })}
+                    <span className="text-muted-foreground text-sm">Фото:</span>
+                    <div className="mt-1">
+                      <OrderPhotosLazy orderId={order.id} size={60} />
+                    </div>
+                    {/* Дополнительная информация о состоянии загрузки */}
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Нажмите для просмотра фотографий
                     </div>
                   </div>
-                )}
 
-                {/* Дата добавления */}
-                <div className="text-sm text-muted-foreground">
-                  <span>Добавлен: </span>
-                  <span className="font-medium">{format(new Date(order.orderDate), 'dd.MM.yyyy HH:mm', { locale: ru })}</span>
-                </div>
+                  {/* Комментарий */}
+                  {order.comment && (
+                    <div>
+                      <span className="text-muted-foreground text-sm">Комментарий:</span>
+                      <div className="text-sm mt-1">{order.comment}</div>
+                    </div>
+                  )}
 
-                {/* Действия */}
-                <div className="flex justify-end pt-2 border-t">
-                  {renderActionsCell(order)}
+                  {/* Время изготовления (для готовых заказов) */}
+                  {order.status === 'Готов' && order.ready_at && (
+                    <div>
+                      <span className="text-muted-foreground text-sm">Изготовлен:</span>
+                      <div className="text-sm font-medium mt-1 text-blue-600">
+                        {format(new Date(order.ready_at), 'dd.MM.yyyy HH:mm', { locale: ru })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Время изготовления (для принтовщика - показываем для всех статусов) */}
+                  {currentUser?.role === 'Принтовщик' && order.ready_at && (
+                    <div>
+                      <span className="text-muted-foreground text-sm">Готовность:</span>
+                      <div className="text-sm font-medium mt-1 text-blue-600">
+                        {format(new Date(order.ready_at), 'dd.MM.yyyy HH:mm', { locale: ru })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Дата добавления */}
+                  <div className="text-sm text-muted-foreground">
+                    <span>Добавлен: </span>
+                    <span className="font-medium">{format(new Date(order.orderDate), 'dd.MM.yyyy HH:mm', { locale: ru })}</span>
+                  </div>
+
+                  {/* Действия */}
+                  <div className="flex justify-end pt-2 border-t">
+                    {renderActionsCell(order)}
+                  </div>
                 </div>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
         </div>
 
         {/* Пагинация */}
