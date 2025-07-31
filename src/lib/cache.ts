@@ -83,14 +83,66 @@ class CacheManager {
         mobileOptimized: this.isMobileDevice,
       };
 
-      localStorage.setItem(key, JSON.stringify(cacheItem));
+      const jsonData = JSON.stringify(cacheItem);
+      
+      // Проверяем размер данных перед сохранением
+      const dataSize = new Blob([jsonData]).size;
+      const maxSize = 5 * 1024 * 1024; // 5MB лимит
+      
+      if (dataSize > maxSize) {
+        console.warn(`⚠️ Данные слишком большие для кэша (${(dataSize / 1024 / 1024).toFixed(2)}MB): ${key}`);
+        
+        // Если данные слишком большие, очищаем кэш и сохраняем только самые важные
+        this.clear();
+        
+        // Для заказов сохраняем только последние 50
+        if (key === 'orders' && Array.isArray(data)) {
+          const limitedData = (data as any[]).slice(0, 50);
+          const limitedCacheItem: CacheItem<T> = {
+            data: limitedData as T,
+            timestamp: Date.now(),
+            version: CACHE_VERSION,
+            mobileOptimized: this.isMobileDevice,
+          };
+          localStorage.setItem(key, JSON.stringify(limitedCacheItem));
+          console.log(`📦 Сохранены только последние 50 заказов в кэш`);
+          return;
+        }
+        
+        // Для других данных не сохраняем
+        console.log(`❌ Пропускаем сохранение ${key} из-за большого размера`);
+        return;
+      }
+
+      localStorage.setItem(key, jsonData);
       
       // Обновляем метаданные
       this.updateMetadata();
     } catch (error) {
       console.warn('Ошибка сохранения в кэш:', error);
-      // При ошибке очищаем кэш для освобождения памяти
-      this.clear();
+      
+      // Если ошибка связана с превышением квоты, очищаем кэш
+      if (error instanceof Error && error.name === 'QuotaExceededError') {
+        console.log('🧹 Очищаем кэш из-за превышения квоты');
+        this.clear();
+        
+        // Пытаемся сохранить только самые важные данные
+        try {
+          if (key === 'orders' && Array.isArray(data)) {
+            const limitedData = (data as any[]).slice(0, 20);
+            const limitedCacheItem: CacheItem<T> = {
+              data: limitedData as T,
+              timestamp: Date.now(),
+              version: CACHE_VERSION,
+              mobileOptimized: this.isMobileDevice,
+            };
+            localStorage.setItem(key, JSON.stringify(limitedCacheItem));
+            console.log(`📦 Сохранены только последние 20 заказов после очистки кэша`);
+          }
+        } catch (retryError) {
+          console.error('Не удалось сохранить даже ограниченные данные:', retryError);
+        }
+      }
     }
   }
 
@@ -223,23 +275,35 @@ class CacheManager {
   }
 
   /**
-   * Проверяет доступность памяти
+   * Проверяет использование памяти и очищает кэш при необходимости
    */
   checkMemoryUsage(): boolean {
-    if (!this.isAvailable || typeof performance === 'undefined') return true;
+    if (!this.isAvailable) return true;
 
     try {
-      // Простая проверка производительности
-      const start = performance.now();
-      const testData = new Array(1000).fill('test');
-      localStorage.setItem('memory_test', JSON.stringify(testData));
-      localStorage.removeItem('memory_test');
-      const end = performance.now();
+      // Проверяем общий размер localStorage
+      let totalSize = 0;
+      const keys = Object.keys(localStorage);
+      
+      for (const key of keys) {
+        const item = localStorage.getItem(key);
+        if (item) {
+          totalSize += new Blob([item]).size;
+        }
+      }
 
-      // Если операция занимает больше 50мс, считаем что память переполнена
-      return (end - start) < 50;
+      const totalSizeMB = totalSize / (1024 * 1024);
+      const maxSizeMB = 4; // 4MB лимит
+
+      if (totalSizeMB > maxSizeMB) {
+        console.warn(`⚠️ Превышен лимит localStorage: ${totalSizeMB.toFixed(2)}MB > ${maxSizeMB}MB`);
+        this.clear();
+        return false;
+      }
+
+      return true;
     } catch (error) {
-      // При ошибке очищаем кэш
+      console.warn('Ошибка проверки памяти:', error);
       this.clear();
       return false;
     }
@@ -286,9 +350,15 @@ export const optimizedFetcher = async (url: string) => {
     
     // Сохраняем в кэш только успешные ответы
     const cacheKey = url.replace('/api/', '');
-    cacheManager.set(cacheKey, data);
     
-    console.log(`✅ Данные загружены и сохранены в кэш: ${cacheKey}`);
+    try {
+      cacheManager.set(cacheKey, data);
+      console.log(`✅ Данные загружены и сохранены в кэш: ${cacheKey}`);
+    } catch (cacheError) {
+      console.warn(`⚠️ Не удалось сохранить в кэш ${cacheKey}:`, cacheError);
+      // Продолжаем работу даже если кэш не сохранился
+    }
+    
     return data;
   } catch (error) {
     console.error(`❌ Ошибка загрузки ${url}:`, error);

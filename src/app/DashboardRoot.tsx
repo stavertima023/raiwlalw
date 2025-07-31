@@ -152,6 +152,12 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       // Добавляем обработку ошибок для предотвращения React ошибок
       shouldRetryOnError: false,
       errorRetryCount: 0,
+      // Добавляем обработку ошибок кэша
+      onErrorRetry: (error, key, config, revalidate, { retryCount }) => {
+        console.log(`🔄 Попытка повторной загрузки ${retryCount}:`, error);
+        // Не повторяем при ошибках
+        return;
+      },
     }
   );
   
@@ -163,6 +169,8 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       fallbackData: cacheManager.get('expenses') || [],
       onError: (error) => handleError(error, 'расходов'),
       revalidateOnMount: isInitialized,
+      shouldRetryOnError: false,
+      errorRetryCount: 0,
     }
   );
 
@@ -174,6 +182,8 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       fallbackData: cacheManager.get('payouts') || [],
       onError: (error) => handleError(error, 'выводов'),
       revalidateOnMount: isInitialized,
+      shouldRetryOnError: false,
+      errorRetryCount: 0,
     }
   );
 
@@ -185,6 +195,8 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       fallbackData: cacheManager.get('debts') || [],
       onError: (error) => handleError(error, 'долгов'),
       revalidateOnMount: isInitialized,
+      shouldRetryOnError: false,
+      errorRetryCount: 0,
     }
   );
 
@@ -196,6 +208,8 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       fallbackData: cacheManager.get('users') || [],
       onError: (error) => handleError(error, 'пользователей'),
       revalidateOnMount: isInitialized,
+      shouldRetryOnError: false,
+      errorRetryCount: 0,
     }
   );
 

@@ -25,6 +25,30 @@ export async function GET(request: NextRequest) {
 
     console.log('✅ SupabaseAdmin доступен');
 
+    // Проверяем подключение к базе данных
+    try {
+      const { data: testData, error: testError } = await supabaseAdmin
+        .from('orders')
+        .select('id')
+        .limit(1);
+      
+      if (testError) {
+        console.error('❌ Ошибка подключения к базе данных:', testError);
+        return NextResponse.json({ 
+          message: 'Ошибка подключения к базе данных', 
+          error: testError.message 
+        }, { status: 503 });
+      }
+      
+      console.log('✅ Подключение к базе данных успешно');
+    } catch (dbError) {
+      console.error('❌ Критическая ошибка подключения к БД:', dbError);
+      return NextResponse.json({ 
+        message: 'Сервис базы данных недоступен', 
+        error: 'Database connection failed' 
+      }, { status: 503 });
+    }
+
     const session = await getSession();
     console.log('📋 Сессия получена:', { 
       isLoggedIn: session.isLoggedIn, 
