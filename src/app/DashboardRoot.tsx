@@ -136,9 +136,17 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     console.log('📊 Статус кэша:', status);
   }, [isInitialized]);
 
+  // Состояние для пагинации (только для принтовщика и продавца)
+  const [currentPage, setCurrentPage] = React.useState(1);
+  
+  // Сбрасываем страницу при смене пользователя
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [initialUser.username]);
+
   // Оптимизированные запросы с улучшенной конфигурацией
-  const { data: orders = [], error: ordersError, isLoading: ordersLoading, mutate: mutateOrders } = useSWR<Order[]>(
-    isInitialized ? '/api/orders' : null, // Загружаем только после инициализации
+  const { data: ordersData, error: ordersError, isLoading: ordersLoading, mutate: mutateOrders } = useSWR<Order[] | { orders: Order[]; pagination: any }>(
+    isInitialized ? (initialUser.role === 'Принтовщик' || initialUser.role === 'Продавец' ? `/api/orders?page=${currentPage}&pageSize=25` : '/api/orders') : null,
     optimizedFetcher, 
     {
       ...swrConfig,
@@ -166,12 +174,16 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
         }
       },
       onSuccess: (data) => {
-        console.log(`✅ Заказы загружены успешно: ${data.length} шт. для ${initialUser.role}`);
+        // Проверяем, является ли data объектом с пагинацией или простым массивом
+        const orders = Array.isArray(data) ? data : data.orders;
+        const orderCount = orders.length;
+        console.log(`✅ Заказы загружены успешно: ${orderCount} шт. для ${initialUser.role}`);
+        
         // Показываем специальное уведомление для админа при загрузке большого количества заказов
-        if (initialUser.role === 'Администратор' && data.length > 500) {
+        if (initialUser.role === 'Администратор' && orderCount > 500) {
           toast({
             title: 'Заказы загружены',
-            description: `Загружено ${data.length} заказов (все заказы в системе)`,
+            description: `Загружено ${orderCount} заказов (все заказы в системе)`,
             duration: 3000,
           });
         }
@@ -189,6 +201,15 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       },
     }
   );
+
+  // Извлекаем заказы и информацию о пагинации
+  const orders = Array.isArray(ordersData) ? ordersData : ordersData?.orders || [];
+  const pagination = Array.isArray(ordersData) ? null : ordersData?.pagination;
+
+  // Обработчик смены страницы
+  const handlePageChange = React.useCallback((page: number) => {
+    setCurrentPage(page);
+  }, []);
   
   const { data: expenses = [], error: expensesError, mutate: mutateExpenses } = useSWR<Expense[]>(
     (isInitialized && initialUser.role === 'Администратор') ? '/api/expenses' : null, 
@@ -550,6 +571,8 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
             onUpdateStatus={handleUpdateOrderStatus}
             findOrder={findOrder}
             findOrders={findOrders}
+            pagination={pagination}
+            onPageChange={handlePageChange}
           />
         )}
       </AppLayout>
@@ -565,6 +588,8 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
             allOrders={orders || []}
             onUpdateStatus={handleUpdateOrderStatus}
             isLoading={ordersLoading}
+            pagination={pagination}
+            onPageChange={handlePageChange}
           />
         )}
       </AppLayout>

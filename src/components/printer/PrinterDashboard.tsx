@@ -26,6 +26,16 @@ interface PrinterDashboardProps {
   onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void;
   allOrders: Order[];
   isLoading?: boolean;
+  // Добавляем пропсы для пагинации
+  pagination?: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+  onPageChange?: (page: number) => void;
 }
 
 // Мобильная версия компонента для стабильности
@@ -273,6 +283,8 @@ export function PrinterDashboard({
   onUpdateStatus,
   allOrders,
   isLoading = false,
+  pagination,
+  onPageChange,
 }: PrinterDashboardProps) {
   const [filters, setFilters] = React.useState({
     status: 'all' as OrderStatus | 'all',
@@ -482,6 +494,8 @@ export function PrinterDashboard({
                 currentUser={currentUser} 
                 onUpdateStatus={onUpdateStatus}
                 isLoading={isLoading}
+                pagination={pagination}
+                onPageChange={onPageChange}
             />
         </TabsContent>
         <TabsContent value="shipment">
@@ -490,6 +504,8 @@ export function PrinterDashboard({
                 currentUser={currentUser} 
                 onUpdateStatus={onUpdateStatus}
                 isLoading={isLoading}
+                pagination={pagination}
+                onPageChange={onPageChange}
             />
         </TabsContent>
         <TabsContent value="all">
@@ -498,6 +514,8 @@ export function PrinterDashboard({
                 currentUser={currentUser} 
                 onUpdateStatus={onUpdateStatus}
                 isLoading={isLoading}
+                pagination={pagination}
+                onPageChange={onPageChange}
             />
         </TabsContent>
       </Tabs>
