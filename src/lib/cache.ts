@@ -87,7 +87,15 @@ class CacheManager {
       
       // Проверяем размер данных перед сохранением
       const dataSize = new Blob([jsonData]).size;
-      const maxSize = 5 * 1024 * 1024; // 5MB лимит
+      
+      // Разные лимиты для разных типов данных
+      let maxSize = 5 * 1024 * 1024; // 5MB по умолчанию
+      
+      if (key === 'payouts') {
+        maxSize = 2 * 1024 * 1024; // 2MB для payouts (уменьшено)
+      } else if (key === 'orders') {
+        maxSize = 10 * 1024 * 1024; // 10MB для заказов (увеличено)
+      }
       
       if (dataSize > maxSize) {
         console.warn(`⚠️ Данные слишком большие для кэша (${(dataSize / 1024 / 1024).toFixed(2)}MB): ${key}`);
@@ -106,6 +114,20 @@ class CacheManager {
           };
           localStorage.setItem(key, JSON.stringify(limitedCacheItem));
           console.log(`📦 Сохранены только последние 50 заказов в кэш`);
+          return;
+        }
+        
+        // Для payouts сохраняем только последние 20
+        if (key === 'payouts' && Array.isArray(data)) {
+          const limitedData = (data as any[]).slice(0, 20);
+          const limitedCacheItem: CacheItem<T> = {
+            data: limitedData as T,
+            timestamp: Date.now(),
+            version: CACHE_VERSION,
+            mobileOptimized: this.isMobileDevice,
+          };
+          localStorage.setItem(key, JSON.stringify(limitedCacheItem));
+          console.log(`📦 Сохранены только последние 20 выплат в кэш`);
           return;
         }
         
@@ -138,6 +160,16 @@ class CacheManager {
             };
             localStorage.setItem(key, JSON.stringify(limitedCacheItem));
             console.log(`📦 Сохранены только последние 20 заказов после очистки кэша`);
+          } else if (key === 'payouts' && Array.isArray(data)) {
+            const limitedData = (data as any[]).slice(0, 10);
+            const limitedCacheItem: CacheItem<T> = {
+              data: limitedData as T,
+              timestamp: Date.now(),
+              version: CACHE_VERSION,
+              mobileOptimized: this.isMobileDevice,
+            };
+            localStorage.setItem(key, JSON.stringify(limitedCacheItem));
+            console.log(`📦 Сохранены только последние 10 выплат после очистки кэша`);
           }
         } catch (retryError) {
           console.error('Не удалось сохранить даже ограниченные данные:', retryError);
@@ -351,12 +383,17 @@ export const optimizedFetcher = async (url: string) => {
     // Сохраняем в кэш только успешные ответы
     const cacheKey = url.replace('/api/', '');
     
-    try {
-      cacheManager.set(cacheKey, data);
-      console.log(`✅ Данные загружены и сохранены в кэш: ${cacheKey}`);
-    } catch (cacheError) {
-      console.warn(`⚠️ Не удалось сохранить в кэш ${cacheKey}:`, cacheError);
-      // Продолжаем работу даже если кэш не сохранился
+    // Не сохраняем payouts в кэш из-за большого размера
+    if (cacheKey !== 'payouts') {
+      try {
+        cacheManager.set(cacheKey, data);
+        console.log(`✅ Данные загружены и сохранены в кэш: ${cacheKey}`);
+      } catch (cacheError) {
+        console.warn(`⚠️ Не удалось сохранить в кэш ${cacheKey}:`, cacheError);
+        // Продолжаем работу даже если кэш не сохранился
+      }
+    } else {
+      console.log(`📦 Данные загружены (без кэширования): ${cacheKey}`);
     }
     
     return data;

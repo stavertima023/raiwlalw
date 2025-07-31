@@ -99,9 +99,20 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     
     // Показываем toast только для первой ошибки и не чаще чем раз в минуту
     if (errorCount === 0) {
+      let errorMessage = 'Проверьте подключение к интернету и попробуйте снова';
+      
+      // Специальные сообщения для разных типов ошибок
+      if (error.message.includes('500')) {
+        errorMessage = 'Ошибка сервера. Попробуйте обновить страницу.';
+      } else if (error.message.includes('QuotaExceededError')) {
+        errorMessage = 'Превышен лимит памяти. Данные будут загружены без кэширования.';
+      } else if (error.message.includes('18.06MB')) {
+        errorMessage = 'Данные слишком большие. Загружаем без кэширования.';
+      }
+      
       toast({ 
         title: `Ошибка загрузки ${type}`, 
-        description: 'Проверьте подключение к интернету и попробуйте снова', 
+        description: errorMessage, 
         variant: 'destructive',
         duration: 5000, // Уменьшаем время показа
       });
@@ -179,7 +190,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     optimizedFetcher,
     {
       ...swrConfig,
-      fallbackData: cacheManager.get('payouts') || [],
+      fallbackData: [], // Отключаем кэш для payouts
       onError: (error) => handleError(error, 'выводов'),
       revalidateOnMount: isInitialized,
       shouldRetryOnError: false,

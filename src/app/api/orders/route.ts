@@ -25,30 +25,6 @@ export async function GET(request: NextRequest) {
 
     console.log('✅ SupabaseAdmin доступен');
 
-    // Проверяем подключение к базе данных
-    try {
-      const { data: testData, error: testError } = await supabaseAdmin
-        .from('orders')
-        .select('id')
-        .limit(1);
-      
-      if (testError) {
-        console.error('❌ Ошибка подключения к базе данных:', testError);
-        return NextResponse.json({ 
-          message: 'Ошибка подключения к базе данных', 
-          error: testError.message 
-        }, { status: 503 });
-      }
-      
-      console.log('✅ Подключение к базе данных успешно');
-    } catch (dbError) {
-      console.error('❌ Критическая ошибка подключения к БД:', dbError);
-      return NextResponse.json({ 
-        message: 'Сервис базы данных недоступен', 
-        error: 'Database connection failed' 
-      }, { status: 503 });
-    }
-
     const session = await getSession();
     console.log('📋 Сессия получена:', { 
       isLoggedIn: session.isLoggedIn, 
@@ -64,12 +40,6 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('✅ Пользователь авторизован:', { username: user.username, role: user.role });
-
-    // Получаем параметры пагинации
-    const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '1000'); // Большой лимит для админа
-    const offset = (page - 1) * limit;
 
     // Получаем User-Agent для определения мобильного устройства
     const userAgent = request.headers.get('user-agent') || '';
@@ -99,12 +69,15 @@ export async function GET(request: NextRequest) {
       console.log(`📊 Загружаем все заказы для ${user.role} (без ограничений)`);
     }
     
+    console.log('🔍 Выполняем запрос к базе данных...');
     const { data, error } = await query;
 
     if (error) {
       console.error(`❌ Ошибка запроса заказов для ${user.role}:`, error);
       throw error;
     }
+
+    console.log('✅ Данные получены из БД, обрабатываем...');
 
     // Проверяем, что data существует и является массивом
     if (!data || !Array.isArray(data)) {
