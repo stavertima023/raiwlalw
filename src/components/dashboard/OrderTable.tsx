@@ -101,80 +101,82 @@ StatusBadge.displayName = 'StatusBadge';
 // Мемоизированный компонент фотографий с ленивой загрузкой
 const OrderPhotosLazy = React.memo<{ orderId: string; size: number }>(({ orderId, size }) => {
   const [photos, setPhotos] = React.useState<string[]>([]);
-  const [isLoading, setIsLoading] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(true); // Начинаем с загрузки
   const [hasLoaded, setHasLoaded] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [retryCount, setRetryCount] = React.useState(0);
 
   const loadPhotos = React.useCallback(async () => {
-    if (hasLoaded) {
-      console.log(`📸 Фотографии уже загружены для заказа: ${orderId}`);
+    if (!orderId) {
+      setError('Нет ID заказа');
+      setIsLoading(false);
       return;
     }
-    
-    console.log(`📸 Начинаем загрузку фотографий для заказа: ${orderId}`);
+
     setIsLoading(true);
     setError(null);
     
     try {
+      // Сначала пробуем отдельный API для фотографий
       const url = `/api/orders/${orderId}/photos`;
-      console.log(`📸 Отправляем запрос на: ${url}`);
-      
-      const response = await fetch(url);
-      console.log(`📸 Получен ответ для заказа ${orderId}:`, {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(10000)
       });
       
       if (response.ok) {
         const data = await response.json();
-        console.log(`📸 Данные получены для заказа ${orderId}:`, {
-          hasPhotos: !!data.photos,
-          photosLength: data.photos?.length || 0,
-          data: data
-        });
         setPhotos(data.photos || []);
         setHasLoaded(true);
       } else {
-        const errorText = await response.text();
-        console.warn(`⚠️ Ошибка API для заказа ${orderId}:`, {
-          status: response.status,
-          statusText: response.statusText,
-          errorText: errorText
-        });
-        setError(`Ошибка ${response.status}: ${response.statusText}`);
-        setPhotos([]);
-        setHasLoaded(true);
+        // Если отдельный API не работает, пробуем получить через основной API заказов
+        console.warn('Отдельный API фотографий не работает, пробуем основной API');
+        const ordersResponse = await fetch('/api/orders');
+        if (ordersResponse.ok) {
+          const ordersData = await ordersResponse.json();
+          const currentOrder = ordersData.find((order: any) => order.id === orderId);
+          if (currentOrder && currentOrder.photos) {
+            setPhotos(currentOrder.photos);
+            setHasLoaded(true);
+          } else {
+            setError('Фотографии не найдены');
+            setPhotos([]);
+            setHasLoaded(true);
+          }
+        } else {
+          setError(`Ошибка ${response.status}`);
+          setPhotos([]);
+          setHasLoaded(true);
+        }
       }
     } catch (error) {
-      console.error(`❌ Сетевая ошибка для заказа ${orderId}:`, error);
       setError('Ошибка сети');
       setPhotos([]);
       setHasLoaded(true);
     } finally {
       setIsLoading(false);
-      console.log(`📸 Загрузка завершена для заказа ${orderId}`);
     }
-  }, [orderId, hasLoaded]);
+  }, [orderId]);
 
-  // Загружаем фотографии при первом рендере
+  // Принудительно загружаем фотографии при каждом рендере
   React.useEffect(() => {
-    console.log(`📸 useEffect для заказа ${orderId}:`, { hasLoaded, isLoading });
     loadPhotos();
-  }, [loadPhotos]);
+  }, [orderId]); // Убираем hasLoaded из зависимостей
 
-  console.log(`📸 Рендер OrderPhotosLazy для заказа ${orderId}:`, { 
-    isLoading, 
-    hasLoaded, 
-    photosCount: photos.length, 
-    error,
-    size
-  });
+  // Функция для повторной загрузки
+  const handleRetry = () => {
+    setRetryCount(prev => prev + 1);
+    setHasLoaded(false);
+    loadPhotos();
+  };
 
+  // Показываем загрузку
   if (isLoading) {
-    console.log(`📸 Показываем загрузку для заказа ${orderId}`);
     return (
-      <div className="flex gap-1">
+      <div className="flex gap-1 items-center">
         {[1, 2, 3].map((i) => (
           <div
             key={i}
@@ -184,37 +186,42 @@ const OrderPhotosLazy = React.memo<{ orderId: string; size: number }>(({ orderId
             <LoadingSpinner size="sm" />
           </div>
         ))}
-        <div className="text-xs text-blue-600 ml-2 self-center">
-          Загрузка...
+        <div className="text-xs text-blue-600 ml-2">
+          Загрузка фото...
         </div>
       </div>
     );
   }
 
+  // Показываем ошибку с кнопкой повтора
   if (error) {
-    console.log(`📸 Показываем ошибку для заказа ${orderId}:`, error);
     return (
-      <div className="flex gap-1">
+      <div className="flex gap-1 items-center">
         {[1, 2, 3].map((i) => (
           <div
             key={i}
             className="bg-red-50 rounded border-2 border-dashed border-red-200 flex items-center justify-center"
             style={{ width: size, height: size }}
           >
-            <span className="text-xs text-red-500">Ошибка</span>
+            <span className="text-xs text-red-500">!</span>
           </div>
         ))}
-        <div className="text-xs text-red-500 ml-2 self-center">
-          {error}
+        <div className="text-xs text-red-500 ml-2">
+          <button 
+            onClick={handleRetry}
+            className="underline hover:no-underline"
+          >
+            Повторить
+          </button>
         </div>
       </div>
     );
   }
 
+  // Показываем "нет фото" если фотографий нет
   if (!photos || photos.length === 0) {
-    console.log(`📸 Показываем "нет фото" для заказа ${orderId}`);
     return (
-      <div className="flex gap-1">
+      <div className="flex gap-1 items-center">
         {[1, 2, 3].map((i) => (
           <div
             key={i}
@@ -224,14 +231,14 @@ const OrderPhotosLazy = React.memo<{ orderId: string; size: number }>(({ orderId
             <span className="text-xs text-gray-500">Фото {i}</span>
           </div>
         ))}
-        <div className="text-xs text-gray-500 ml-2 self-center">
+        <div className="text-xs text-gray-500 ml-2">
           Нет фото
         </div>
       </div>
     );
   }
 
-  console.log(`📸 Показываем ${photos.length} фотографий для заказа ${orderId}`);
+  // Показываем фотографии
   return (
     <div className="flex gap-1">
       {photos.map((photo, index) => (
@@ -275,7 +282,7 @@ const OrderPhotosLazy = React.memo<{ orderId: string; size: number }>(({ orderId
                   height={800}
                   className="rounded-md object-contain max-w-full max-h-[60vh]"
                   loading="eager"
-                  priority={index === 0} // Приоритет только для первого фото
+                  priority={index === 0}
                 />
               </div>
               {/* Навигация по фото если их несколько */}
@@ -932,13 +939,13 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
 
                   {/* Фотографии */}
                   <div>
-                    <span className="text-muted-foreground text-sm">Фото:</span>
-                    <div className="mt-1">
+                    <span className="text-muted-foreground text-sm font-medium">Фотографии заказа:</span>
+                    <div className="mt-2 p-2 bg-gray-50 rounded-lg border">
                       <OrderPhotosLazy orderId={order.id} size={60} />
                     </div>
-                    {/* Дополнительная информация о состоянии загрузки */}
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Нажмите для просмотра фотографий
+                    {/* Дополнительная информация */}
+                    <div className="text-xs text-muted-foreground mt-1 text-center">
+                      💡 Нажмите на фото для просмотра
                     </div>
                   </div>
 
