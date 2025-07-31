@@ -137,6 +137,14 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       },
       onSuccess: (data) => {
         console.log(`✅ Заказы загружены успешно: ${data.length} шт. для ${initialUser.role}`);
+        // Показываем специальное уведомление для админа при загрузке большого количества заказов
+        if (initialUser.role === 'Администратор' && data.length > 500) {
+          toast({
+            title: 'Заказы загружены',
+            description: `Загружено ${data.length} заказов (все заказы в системе)`,
+            duration: 3000,
+          });
+        }
       },
       // Принудительно загружаем данные при первом запуске
       revalidateOnMount: isInitialized,
@@ -520,6 +528,30 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
           return (
       <AppLayout currentUser={initialUser}>
         {(activeView: string) => {
+          // Показываем специальный индикатор загрузки для админа
+          if (ordersLoading && initialUser.role === 'Администратор') {
+            return (
+              <div className="flex items-center justify-center min-h-[400px]">
+                <Card className="w-full max-w-md">
+                  <CardHeader>
+                    <CardTitle>Загрузка всех заказов</CardTitle>
+                    <CardDescription>
+                      Загружаем все заказы из базы данных. Это может занять некоторое время...
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    </div>
+                    <p className="text-sm text-muted-foreground text-center mt-4">
+                      Пожалуйста, подождите...
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            );
+          }
+
           switch (activeView) {
             case 'admin-orders':
               return (

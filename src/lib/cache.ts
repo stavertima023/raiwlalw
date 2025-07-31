@@ -262,7 +262,10 @@ export const optimizedFetcher = async (url: string) => {
   try {
     // Создаем AbortController для таймаута
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 секунд таймаут
+    
+    // Увеличиваем таймаут для заказов (особенно для админа)
+    const timeout = url.includes('/orders') ? 60000 : 15000; // 60 секунд для заказов, 15 для остального
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     const response = await fetch(url, {
       method: 'GET',
@@ -324,7 +327,7 @@ export const swrConfig = {
   // Добавляем дополнительные настройки для стабильности
   shouldRetryOnError: false, // Не повторяем при ошибках
   focusThrottleInterval: 0, // Отключаем throttle для фокуса
-  loadingTimeout: isMobile() ? 20000 : 15000, // 20с для мобильных, 15с для десктопа
+  loadingTimeout: isMobile() ? 60000 : 45000, // 60с для мобильных, 45с для десктопа (увеличено для заказов)
   // Добавляем кэширование в памяти
   provider: () => new Map(),
   // Увеличиваем время жизни кэша в памяти
