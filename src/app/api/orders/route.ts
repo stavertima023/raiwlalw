@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   try {
     console.log('🚀 Начало обработки GET запроса /api/orders');
     
-    // Check supabaseAdmin availability
+    // Проверяем доступность Supabase
     if (!supabaseAdmin) {
       console.error('❌ SupabaseAdmin недоступен');
       return NextResponse.json({ message: 'Сервис недоступен' }, { status: 503 });
@@ -25,12 +25,44 @@ export async function GET(request: NextRequest) {
 
     console.log('✅ SupabaseAdmin доступен');
 
-    const session = await getSession();
-    console.log('📋 Сессия получена:', { 
-      isLoggedIn: session.isLoggedIn, 
-      hasUser: !!session.user,
-      userRole: session.user?.role 
-    });
+    // Проверяем подключение к базе данных
+    try {
+      console.log('🔍 Проверяем подключение к базе данных...');
+      const { data: testData, error: testError } = await supabaseAdmin
+        .from('orders')
+        .select('id')
+        .limit(1);
+      
+      if (testError) {
+        console.error('❌ Ошибка подключения к базе данных:', testError);
+        return NextResponse.json({ 
+          message: 'Ошибка подключения к базе данных', 
+          error: testError.message 
+        }, { status: 503 });
+      }
+      
+      console.log('✅ Подключение к базе данных успешно');
+    } catch (dbError) {
+      console.error('❌ Критическая ошибка подключения к БД:', dbError);
+      return NextResponse.json({ 
+        message: 'Сервис базы данных недоступен', 
+        error: 'Database connection failed' 
+      }, { status: 503 });
+    }
+
+    // Получаем сессию
+    let session;
+    try {
+      session = await getSession();
+      console.log('📋 Сессия получена:', { 
+        isLoggedIn: session.isLoggedIn, 
+        hasUser: !!session.user,
+        userRole: session.user?.role 
+      });
+    } catch (sessionError) {
+      console.error('❌ Ошибка получения сессии:', sessionError);
+      return NextResponse.json({ message: 'Ошибка авторизации' }, { status: 401 });
+    }
 
     const { user } = session;
 
@@ -47,54 +79,86 @@ export async function GET(request: NextRequest) {
 
     console.log(`📱 Запрос заказов с ${mobile ? 'мобильного' : 'десктопного'} устройства для роли: ${user.role}`);
 
-    // Оптимизированный запрос с выбором только нужных полей
+    // Создаем базовый запрос
     let query = supabaseAdmin
       .from('orders')
       .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment, ready_at')
-      .order('orderDate', { ascending: false }); // Сначала самые новые
+      .order('orderDate', { ascending: false });
 
-    // Если пользователь продавец, фильтруем только его заказы
+    // Фильтруем по роли
     if (user.role === 'Продавец') {
       query = query.eq('seller', user.username);
+      console.log(`📊 Фильтруем заказы для продавца: ${user.username}`);
     }
     
-    // Ограничиваем количество заказов только для принтовщика и продавца
+    // Ограничиваем количество для определенных ролей
     if (user.role === 'Принтовщик' || user.role === 'Продавец') {
-      query = query.limit(200); // Максимум 200 самых новых заказов
-      console.log(`📊 Ограничиваем до 200 самых новых заказов для ${user.role}`);
+      query = query.limit(200);
+      console.log(`📊 Ограничиваем до 200 заказов для ${user.role}`);
     } else if (user.role === 'Администратор') {
-      // Для админа загружаем ВСЕ заказы без ограничений
-      console.log(`📊 Загружаем ВСЕ заказы для Администратора (без ограничений)`);
+      console.log(`📊 Загружаем ВСЕ заказы для Администратора`);
     } else {
-      console.log(`📊 Загружаем все заказы для ${user.role} (без ограничений)`);
+      console.log(`📊 Загружаем все заказы для ${user.role}`);
     }
     
     console.log('🔍 Выполняем запрос к базе данных...');
-    const { data, error } = await query;
+    
+    // Выполняем запрос
+    let result;
+    try {
+      result = await query;
+    } catch (queryError) {
+      console.error('❌ Ошибка выполнения запроса:', queryError);
+      return NextResponse.json({ 
+        message: 'Ошибка базы данных', 
+        error: queryError instanceof Error ? queryError.message : 'Unknown error'
+      }, { status: 500 });
+    }
+
+    const { data, error } = result;
 
     if (error) {
       console.error(`❌ Ошибка запроса заказов для ${user.role}:`, error);
-      throw error;
+      return NextResponse.json({ 
+        message: 'Ошибка загрузки заказов', 
+        error: error.message 
+      }, { status: 500 });
     }
 
     console.log('✅ Данные получены из БД, обрабатываем...');
 
-    // Проверяем, что data существует и является массивом
-    if (!data || !Array.isArray(data)) {
+    // Проверяем данные
+    if (!data) {
       console.log(`📊 Нет данных для ${user.role}, возвращаем пустой массив`);
       return NextResponse.json([]);
     }
 
-    // Парсим даты и возвращаем данные
-    const parsedData = data.map(item => ({
-      ...item, 
-      orderDate: new Date(item.orderDate)
-    }));
+    if (!Array.isArray(data)) {
+      console.log(`📊 Данные не являются массивом для ${user.role}, возвращаем пустой массив`);
+      return NextResponse.json([]);
+    }
+
+    // Парсим даты
+    const parsedData = data.map(item => {
+      try {
+        return {
+          ...item, 
+          orderDate: new Date(item.orderDate)
+        };
+      } catch (dateError) {
+        console.warn('⚠️ Ошибка парсинга даты для заказа:', item.id, dateError);
+        return {
+          ...item, 
+          orderDate: new Date()
+        };
+      }
+    });
 
     console.log(`✅ Заказы получены: ${parsedData.length} шт. для ${user.role}`);
     return NextResponse.json(parsedData);
+    
   } catch (error: any) {
-    console.error('❌ Ошибка API заказов:', error);
+    console.error('❌ Критическая ошибка API заказов:', error);
     console.error('❌ Детали ошибки:', {
       message: error.message,
       stack: error.stack,
@@ -104,9 +168,8 @@ export async function GET(request: NextRequest) {
     });
     
     return NextResponse.json({ 
-      message: 'Ошибка загрузки заказов', 
-      error: error.message,
-      details: error.details || 'Нет дополнительных деталей'
+      message: 'Критическая ошибка загрузки заказов', 
+      error: error.message
     }, { status: 500 });
   }
 }

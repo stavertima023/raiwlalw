@@ -145,7 +145,25 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       fallbackData: cacheManager.get('orders') || [],
       onError: (error) => {
         console.error('❌ Ошибка загрузки заказов:', error);
-        handleError(error, 'заказов');
+        
+        // Специальная обработка для разных типов ошибок
+        if (error.message.includes('500')) {
+          toast({
+            title: 'Ошибка сервера',
+            description: 'Проблема с загрузкой заказов. Попробуйте обновить страницу.',
+            variant: 'destructive',
+            duration: 5000,
+          });
+        } else if (error.message.includes('401')) {
+          toast({
+            title: 'Ошибка авторизации',
+            description: 'Необходимо войти в систему заново.',
+            variant: 'destructive',
+            duration: 5000,
+          });
+        } else {
+          handleError(error, 'заказов');
+        }
       },
       onSuccess: (data) => {
         console.log(`✅ Заказы загружены успешно: ${data.length} шт. для ${initialUser.role}`);
@@ -589,13 +607,33 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
                   <CardHeader>
                     <CardTitle>Ошибка загрузки заказов</CardTitle>
                     <CardDescription>
-                      Не удалось загрузить заказы. Попробуйте обновить страницу.
+                      Не удалось загрузить заказы. Попробуйте обновить данные.
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    <Button onClick={handleRefreshAll} className="w-full">
-                      Обновить данные
-                    </Button>
+                  <CardContent className="space-y-4">
+                    <div className="text-sm text-muted-foreground">
+                      {ordersError.message.includes('500') && (
+                        <p>Ошибка сервера. Возможно, проблема с базой данных.</p>
+                      )}
+                      {ordersError.message.includes('401') && (
+                        <p>Ошибка авторизации. Необходимо войти заново.</p>
+                      )}
+                      {!ordersError.message.includes('500') && !ordersError.message.includes('401') && (
+                        <p>Проблема с подключением к серверу.</p>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button onClick={handleRefreshAll} className="flex-1">
+                        Обновить данные
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => window.location.reload()}
+                        className="flex-1"
+                      >
+                        Перезагрузить страницу
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
