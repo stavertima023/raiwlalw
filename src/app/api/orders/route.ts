@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { supabaseAdmin } from '@/lib/supabaseClient';
 import { OrderSchema } from '@/lib/types';
-import { cleanImageArray } from '@/lib/imageUtils';
-import { createThumbnailsServer } from '@/lib/imageUtilsServer';
+import { cleanImageArray, createThumbnailsServer } from '@/lib/imageUtils';
 
 // Увеличиваем лимиты для этого API
 export const maxDuration = 120; // 120 секунд (увеличено с 90)
@@ -83,15 +82,21 @@ export async function GET(request: NextRequest) {
     // Создаем базовый запрос в зависимости от роли
     let query;
     if (user.role === 'Принтовщик' || user.role === 'Продавец') {
-      // Для принтовщика и продавца загружаем фотографии в основном запросе
-      // но они будут преобразованы в thumbnails
+      // Для принтовщика и продавца загружаем thumbnails в основном запросе
       query = supabaseAdmin
         .from('orders')
         .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment, ready_at')
         .order('orderDate', { ascending: false });
       console.log(`📸 Включаем фотографии в основной запрос для ${user.role} (будут преобразованы в thumbnails)`);
+    } else if (user.role === 'Администратор') {
+      // Для админа НЕ загружаем фотографии в основном запросе для оптимизации
+      query = supabaseAdmin
+        .from('orders')
+        .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, comment, ready_at')
+        .order('orderDate', { ascending: false });
+      console.log(`🚫 Исключаем фотографии из основного запроса для Администратора (оптимизация)`);
     } else {
-      // Для админа и других ролей включаем фотографии в основной запрос
+      // Для других ролей включаем фотографии в основной запрос
       query = supabaseAdmin
         .from('orders')
         .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment, ready_at')
@@ -161,19 +166,22 @@ export async function GET(request: NextRequest) {
         };
 
         // Для принтовщика и продавца создаем thumbnails из оригинальных фотографий
-        if ((user.role === 'Принтовщик' || user.role === 'Продавец') && item.photos && Array.isArray(item.photos)) {
+        if ((user.role === 'Принтовщик' || user.role === 'Продавец') && 'photos' in item && item.photos && Array.isArray(item.photos)) {
           try {
             console.log(`🖼️ Создание thumbnails для заказа ${item.id} (${item.photos.length} фото)`);
             const thumbnails = await createThumbnailsServer(item.photos, 150, 150, 70);
             
             // Заменяем оригинальные фотографии на thumbnails
-            processedItem.photos = thumbnails;
+            (processedItem as any).photos = thumbnails;
             console.log(`✅ Создано ${thumbnails.length} thumbnails для заказа ${item.id}`);
           } catch (thumbnailError) {
             console.warn(`⚠️ Ошибка создания thumbnails для заказа ${item.id}:`, thumbnailError);
             // В случае ошибки оставляем оригинальные фотографии
-            processedItem.photos = item.photos;
+            (processedItem as any).photos = item.photos;
           }
+        } else if (user.role === 'Администратор') {
+          // Для админа устанавливаем пустой массив фотографий, так как они не загружаются
+          (processedItem as any).photos = [];
         }
 
         return processedItem;

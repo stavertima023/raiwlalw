@@ -27,8 +27,8 @@ const nextConfig: NextConfig = {
       },
     ]
   },
-  // Исправляем конфигурацию для внешних пакетов
-  serverExternalPackages: ['@supabase/supabase-js', 'sharp'],
+  // Конфигурация для Sharp и других серверных пакетов
+  serverExternalPackages: ['sharp', '@supabase/supabase-js'],
   // Конфигурация для увеличения лимитов
   webpack: (config, { isServer }) => {
     if (isServer) {

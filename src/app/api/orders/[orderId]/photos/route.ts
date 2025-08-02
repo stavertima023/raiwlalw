@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { supabaseAdmin } from '@/lib/supabaseClient';
-import { createThumbnailsServer } from '@/lib/imageUtilsServer';
+import { createThumbnailsServer } from '@/lib/imageUtils';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
