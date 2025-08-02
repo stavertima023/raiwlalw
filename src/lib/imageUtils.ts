@@ -383,3 +383,114 @@ export const optimizeImageForIOS = async (file: File): Promise<File> => {
     reader.readAsDataURL(file);
   });
 }; 
+
+/**
+ * Создает thumbnail из base64 изображения (клиентская версия)
+ * @param base64Image - исходное изображение в base64
+ * @param maxWidth - максимальная ширина thumbnail
+ * @param maxHeight - максимальная высота thumbnail
+ * @param quality - качество JPEG (0-1)
+ * @returns Promise<string> - thumbnail в base64
+ */
+export const createThumbnail = async (
+  base64Image: string,
+  maxWidth: number = 150,
+  maxHeight: number = 150,
+  quality: number = 0.7
+): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    try {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        if (!ctx) {
+          reject(new Error('Не удалось получить контекст canvas'));
+          return;
+        }
+
+        // Вычисляем размеры для сохранения пропорций
+        let { width, height } = img;
+        const ratio = Math.min(maxWidth / width, maxHeight / height);
+        
+        if (ratio < 1) {
+          width *= ratio;
+          height *= ratio;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        // Рисуем изображение с новыми размерами
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Конвертируем в base64 с указанным качеством
+        const thumbnailBase64 = canvas.toDataURL('image/jpeg', quality);
+        resolve(thumbnailBase64);
+      };
+
+      img.onerror = () => {
+        reject(new Error('Ошибка загрузки изображения'));
+      };
+
+      img.src = base64Image;
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
+/**
+ * Создает thumbnails для массива изображений (клиентская версия)
+ * @param images - массив base64 изображений
+ * @param maxWidth - максимальная ширина thumbnail
+ * @param maxHeight - максимальная высота thumbnail
+ * @param quality - качество JPEG
+ * @returns Promise<string[]> - массив thumbnails в base64
+ */
+export const createThumbnails = async (
+  images: string[],
+  maxWidth: number = 150,
+  maxHeight: number = 150,
+  quality: number = 0.7
+): Promise<string[]> => {
+  const thumbnails: string[] = [];
+  
+  for (const image of images) {
+    try {
+      const thumbnail = await createThumbnail(image, maxWidth, maxHeight, quality);
+      thumbnails.push(thumbnail);
+    } catch (error) {
+      console.warn('Ошибка создания thumbnail:', error);
+      // В случае ошибки добавляем оригинальное изображение
+      thumbnails.push(image);
+    }
+  }
+  
+  return thumbnails;
+};
+
+/**
+ * Проверяет размер base64 изображения
+ * @param base64Image - изображение в base64
+ * @returns размер в байтах
+ */
+export const getBase64Size = (base64Image: string): number => {
+  if (!base64Image || typeof base64Image !== 'string') return 0;
+  
+  const base64Data = base64Image.split(',')[1];
+  if (!base64Data) return 0;
+  
+  return Math.ceil((base64Data.length * 3) / 4);
+};
+
+/**
+ * Проверяет размер base64 изображения в MB
+ * @param base64Image - изображение в base64
+ * @returns размер в MB
+ */
+export const getBase64SizeInMB = (base64Image: string): number => {
+  const sizeInBytes = getBase64Size(base64Image);
+  return sizeInBytes / (1024 * 1024);
+}; 

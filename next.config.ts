@@ -27,10 +27,8 @@ const nextConfig: NextConfig = {
       },
     ]
   },
-  // Увеличиваем лимиты для API routes
-  experimental: {
-    serverComponentsExternalPackages: ['@supabase/supabase-js'],
-  },
+  // Исправляем конфигурацию для внешних пакетов
+  serverExternalPackages: ['@supabase/supabase-js', 'sharp'],
   // Конфигурация для увеличения лимитов
   webpack: (config, { isServer }) => {
     if (isServer) {

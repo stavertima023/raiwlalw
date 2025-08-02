@@ -3,6 +3,7 @@ import { getSession } from '@/lib/session';
 import { supabaseAdmin } from '@/lib/supabaseClient';
 import { OrderSchema } from '@/lib/types';
 import { cleanImageArray } from '@/lib/imageUtils';
+import { createThumbnailsServer } from '@/lib/imageUtilsServer';
 
 // Увеличиваем лимиты для этого API
 export const maxDuration = 120; // 120 секунд (увеличено с 90)
@@ -79,12 +80,25 @@ export async function GET(request: NextRequest) {
 
     console.log(`📱 Запрос заказов с ${mobile ? 'мобильного' : 'десктопного'} устройства для роли: ${user.role}`);
 
-    // Создаем базовый запрос
-    let query = supabaseAdmin
-      .from('orders')
-      .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment, ready_at')
-      .order('orderDate', { ascending: false });
-
+    // Создаем базовый запрос в зависимости от роли
+    let query;
+    if (user.role === 'Принтовщик' || user.role === 'Продавец') {
+      // Для принтовщика и продавца НЕ загружаем фотографии в основном запросе
+      // Они будут загружены отдельно через OrderPhotosLazy
+      query = supabaseAdmin
+        .from('orders')
+        .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, comment, ready_at')
+        .order('orderDate', { ascending: false });
+      console.log(`📸 ИСКЛЮЧАЕМ фотографии из основного запроса для ${user.role} (будут загружены отдельно)`);
+    } else {
+      // Для админа и других ролей включаем фотографии в основной запрос
+      query = supabaseAdmin
+        .from('orders')
+        .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment, ready_at')
+        .order('orderDate', { ascending: false });
+      console.log(`📸 Включаем фотографии в основной запрос для ${user.role}`);
+    }
+    
     // Фильтруем по роли
     if (user.role === 'Продавец') {
       query = query.eq('seller', user.username);
@@ -138,24 +152,40 @@ export async function GET(request: NextRequest) {
       return NextResponse.json([]);
     }
 
-    // Парсим даты
-    const parsedData = data.map(item => {
+    // Парсим даты и обрабатываем фотографии
+    const processedData = await Promise.all(data.map(async (item) => {
       try {
-        return {
+        const processedItem = {
           ...item, 
           orderDate: new Date(item.orderDate)
         };
+
+        // Для принтовщика и продавца НЕ обрабатываем фотографии
+        // Они будут загружены отдельно через OrderPhotosLazy
+        if (user.role === 'Принтовщик' || user.role === 'Продавец') {
+          // Устанавливаем пустой массив фотографий
+          (processedItem as any).photos = [];
+          console.log(`📸 Устанавливаем пустой массив фотографий для заказа ${item.id} (${user.role})`);
+        }
+
+        return processedItem;
       } catch (dateError) {
-        console.warn('⚠️ Ошибка парсинга даты для заказа:', item.id, dateError);
+        console.warn('⚠️ Ошибка обработки заказа:', item.id, dateError);
         return {
           ...item, 
           orderDate: new Date()
         };
       }
-    });
+    }));
 
-    console.log(`✅ Заказы получены: ${parsedData.length} шт. для ${user.role}`);
-    return NextResponse.json(parsedData);
+    console.log(`✅ Заказы обработаны: ${processedData.length} шт. для ${user.role}`);
+    
+    // Логируем размер ответа для мониторинга
+    const responseSize = JSON.stringify(processedData).length;
+    const responseSizeMB = (responseSize / (1024 * 1024)).toFixed(2);
+    console.log(`📊 Размер ответа: ${responseSizeMB}MB для ${user.role}`);
+    
+    return NextResponse.json(processedData);
     
   } catch (error: any) {
     console.error('❌ Критическая ошибка API заказов:', error);
