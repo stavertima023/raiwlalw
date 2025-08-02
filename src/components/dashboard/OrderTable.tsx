@@ -637,6 +637,7 @@ const OrderTableRow = React.memo<{
           <OrderPhotosLazy 
             orderId={order.id!} 
             size={photoSize}
+            initialThumbnails={order.photos}
             userRole={currentUser?.role}
           />
         ) : (
@@ -830,6 +831,7 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
                       <OrderPhotosLazy 
                         orderId={order.id!} 
                         size={60}
+                        initialThumbnails={order.photos}
                         userRole={currentUser?.role}
                       />
                     ) : (

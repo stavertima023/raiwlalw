@@ -24,7 +24,8 @@ interface OrderPhotosLazyProps {
   size?: number;
   showThumbnails?: boolean;
   onPhotosLoad?: (photos: PhotoData[]) => void;
-  // Убираем initialThumbnails, так как теперь всегда загружаем отдельно
+  // Возвращаем initialThumbnails для использования предзагруженных thumbnails
+  initialThumbnails?: string[];
   userRole?: string;
 }
 
@@ -33,6 +34,7 @@ export const OrderPhotosLazy: React.FC<OrderPhotosLazyProps> = ({
   size = 60,
   showThumbnails = true,
   onPhotosLoad,
+  initialThumbnails,
   userRole
 }) => {
   const [thumbnails, setThumbnails] = React.useState<PhotoData[]>([]);
@@ -42,12 +44,26 @@ export const OrderPhotosLazy: React.FC<OrderPhotosLazyProps> = ({
   const [error, setError] = React.useState<string | null>(null);
   const [selectedPhotoIndex, setSelectedPhotoIndex] = React.useState(0);
 
-  // Загружаем thumbnails при монтировании компонента
+  // Инициализируем thumbnails из пропсов или загружаем их
   React.useEffect(() => {
     if (showThumbnails && orderId) {
-      loadThumbnails();
+      if (initialThumbnails && initialThumbnails.length > 0) {
+        // Используем уже загруженные thumbnails из основного запроса
+        const thumbnailData = initialThumbnails.map((thumbnail, index) => ({
+          type: 'thumbnail' as const,
+          data: thumbnail,
+          size: '150x150',
+          originalIndex: index
+        }));
+        setThumbnails(thumbnailData);
+        onPhotosLoad?.(thumbnailData);
+        console.log(`✅ Используем ${thumbnailData.length} предзагруженных thumbnails для заказа ${orderId}`);
+      } else {
+        // Загружаем thumbnails отдельно (fallback для админа)
+        loadThumbnails();
+      }
     }
-  }, [orderId, showThumbnails]);
+  }, [orderId, showThumbnails, initialThumbnails]);
 
   const loadThumbnails = async () => {
     if (!orderId) return;
@@ -130,8 +146,8 @@ export const OrderPhotosLazy: React.FC<OrderPhotosLazyProps> = ({
     );
   }
 
-  // Показываем loading для thumbnails
-  if (loadingThumbnails) {
+  // Показываем loading для thumbnails (только если не используем предзагруженные)
+  if (loadingThumbnails && !initialThumbnails) {
     return (
       <div className="flex gap-1">
         {[1, 2, 3].map((i) => (

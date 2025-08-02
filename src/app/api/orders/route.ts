@@ -83,13 +83,13 @@ export async function GET(request: NextRequest) {
     // Создаем базовый запрос в зависимости от роли
     let query;
     if (user.role === 'Принтовщик' || user.role === 'Продавец') {
-      // Для принтовщика и продавца НЕ загружаем фотографии в основном запросе
-      // Они будут загружены отдельно через OrderPhotosLazy
+      // Для принтовщика и продавца загружаем фотографии в основном запросе
+      // но они будут преобразованы в thumbnails
       query = supabaseAdmin
         .from('orders')
-        .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, comment, ready_at')
+        .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment, ready_at')
         .order('orderDate', { ascending: false });
-      console.log(`📸 ИСКЛЮЧАЕМ фотографии из основного запроса для ${user.role} (будут загружены отдельно)`);
+      console.log(`📸 Включаем фотографии в основной запрос для ${user.role} (будут преобразованы в thumbnails)`);
     } else {
       // Для админа и других ролей включаем фотографии в основной запрос
       query = supabaseAdmin
@@ -160,12 +160,20 @@ export async function GET(request: NextRequest) {
           orderDate: new Date(item.orderDate)
         };
 
-        // Для принтовщика и продавца НЕ обрабатываем фотографии
-        // Они будут загружены отдельно через OrderPhotosLazy
-        if (user.role === 'Принтовщик' || user.role === 'Продавец') {
-          // Устанавливаем пустой массив фотографий
-          (processedItem as any).photos = [];
-          console.log(`📸 Устанавливаем пустой массив фотографий для заказа ${item.id} (${user.role})`);
+        // Для принтовщика и продавца создаем thumbnails из оригинальных фотографий
+        if ((user.role === 'Принтовщик' || user.role === 'Продавец') && item.photos && Array.isArray(item.photos)) {
+          try {
+            console.log(`🖼️ Создание thumbnails для заказа ${item.id} (${item.photos.length} фото)`);
+            const thumbnails = await createThumbnailsServer(item.photos, 150, 150, 70);
+            
+            // Заменяем оригинальные фотографии на thumbnails
+            processedItem.photos = thumbnails;
+            console.log(`✅ Создано ${thumbnails.length} thumbnails для заказа ${item.id}`);
+          } catch (thumbnailError) {
+            console.warn(`⚠️ Ошибка создания thumbnails для заказа ${item.id}:`, thumbnailError);
+            // В случае ошибки оставляем оригинальные фотографии
+            processedItem.photos = item.photos;
+          }
         }
 
         return processedItem;
