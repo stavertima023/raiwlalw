@@ -37,15 +37,12 @@ export const OrderSchema = z.object({
   seller: z.string().min(1, 'Продавец обязателен'),
   price: z.coerce.number().positive('Цена должна быть положительной'),
   cost: z.coerce.number().positive('Себестоимость должна быть положительной').optional(),
-  photos: z.array(z.string()).optional(),
+  photos: z.array(z.string()).optional().default([]),
   comment: z.string().optional().default(''),
   ready_at: z.union([z.date(), z.string().transform((str) => new Date(str))]).optional(),
 });
 
 export type Order = z.infer<typeof OrderSchema>;
-
-// Тип для API ответов - используем базовый Order, но photos может быть undefined
-export type OrderApiResponse = Order;
 
 export const RoleEnum = z.enum(['Продавец', 'Принтовщик', 'Администратор']);
 export type Role = z.infer<typeof RoleEnum>;

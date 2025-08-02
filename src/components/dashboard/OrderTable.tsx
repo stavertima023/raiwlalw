@@ -47,23 +47,22 @@ import {
   Check,
   X,
 } from 'lucide-react';
-import type { Order, OrderStatus, User, OrderApiResponse } from '@/lib/types';
+import type { Order, OrderStatus, User } from '@/lib/types';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { OrderPhotosLazy } from './OrderPhotosLazy';
 
 interface OrderTableProps {
-  orders: OrderApiResponse[];
+  orders: Order[];
   currentUser?: Omit<User, 'password_hash'>;
   selectedOrders?: string[];
   setSelectedOrders?: React.Dispatch<React.SetStateAction<string[]>>;
   onCancelOrder?: (orderNumber: string) => void;
   onReturnOrder?: (orderNumber: string) => void;
   onPayout?: (orderNumbers: string[]) => void;
-  findOrder?: (orderNumber: string) => OrderApiResponse | undefined;
-  findOrders?: (orderNumbers: string[]) => OrderApiResponse[];
+  findOrder?: (orderNumber: string) => Order | undefined;
+  findOrders?: (orderNumbers: string[]) => Order[];
   onUpdateStatus?: (orderId: string, newStatus: OrderStatus) => void;
   useLargeLayout?: boolean;
   searchTerm?: string;
@@ -198,7 +197,7 @@ const createRenderActionsCell = (
   currentUser: Omit<User, 'password_hash'> | undefined,
   onUpdateStatus: ((orderId: string, newStatus: OrderStatus) => void) | undefined
 ) => {
-  const renderPrinterActions = (order: OrderApiResponse) => {
+  const renderPrinterActions = (order: Order) => {
     if (order.status === 'Добавлен') {
         return (
         <div className="flex space-x-1">
@@ -309,7 +308,7 @@ const createRenderActionsCell = (
     return null;
   };
 
-  const renderSellerActions = (order: OrderApiResponse) => {
+  const renderSellerActions = (order: Order) => {
     if (order.status === 'Отправлен') {
       return (
         <div className="flex space-x-1">
@@ -403,13 +402,13 @@ const createRenderActionsCell = (
 
 // Компонент строки таблицы
 const OrderTableRow = React.memo<{
-  order: OrderApiResponse;
+  order: Order;
   currentUser?: Omit<User, 'password_hash'>;
   onUpdateStatus?: (orderId: string, newStatus: OrderStatus) => void;
   useLargeLayout?: boolean;
   photoSize: number;
 }>(({ order, currentUser, onUpdateStatus, useLargeLayout, photoSize }) => {
-  const renderPrinterActions = React.useCallback((order: OrderApiResponse) => {
+  const renderPrinterActions = React.useCallback((order: Order) => {
     if (order.status === 'Добавлен') {
       return (
         <div className="flex space-x-1">
@@ -520,7 +519,7 @@ const OrderTableRow = React.memo<{
     return null;
   }, [onUpdateStatus]);
 
-  const renderSellerActions = React.useCallback((order: OrderApiResponse) => {
+  const renderSellerActions = React.useCallback((order: Order) => {
     if (order.status === 'Отправлен') {
       return (
         <div className="flex space-x-1">
@@ -633,16 +632,7 @@ const OrderTableRow = React.memo<{
         </>
       )}
       <TableCell>
-        {currentUser?.role === 'Принтовщик' || currentUser?.role === 'Продавец' ? (
-          <OrderPhotosLazy 
-            orderId={order.id!} 
-            size={photoSize}
-            initialThumbnails={order.photos}
-            userRole={currentUser?.role}
-          />
-        ) : (
-          <OrderPhotosSimple photos={order.photos || []} size={photoSize} />
-        )}
+        <OrderPhotosSimple photos={order.photos || []} size={photoSize} />
       </TableCell>
       <TableCell>{order.comment}</TableCell>
       {currentUser?.role === 'Принтовщик' && (
@@ -827,16 +817,7 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
                 <div>
                   <span className="text-muted-foreground text-sm">Фото:</span>
                   <div className="mt-1">
-                    {currentUser?.role === 'Принтовщик' || currentUser?.role === 'Продавец' ? (
-                      <OrderPhotosLazy 
-                        orderId={order.id!} 
-                        size={60}
-                        initialThumbnails={order.photos}
-                        userRole={currentUser?.role}
-                      />
-                    ) : (
-                      <OrderPhotosSimple photos={order.photos || []} size={60} />
-                    )}
+                    <OrderPhotosSimple photos={order.photos || []} size={60} />
                   </div>
                 </div>
 

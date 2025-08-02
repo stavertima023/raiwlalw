@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { supabaseAdmin } from '@/lib/supabaseClient';
 import { OrderSchema } from '@/lib/types';
-import { cleanImageArray, createThumbnailsServer } from '@/lib/imageUtils';
+import { cleanImageArray } from '@/lib/imageUtils';
 
 // Увеличиваем лимиты для этого API
 export const maxDuration = 120; // 120 секунд (увеличено с 90)
@@ -79,31 +79,12 @@ export async function GET(request: NextRequest) {
 
     console.log(`📱 Запрос заказов с ${mobile ? 'мобильного' : 'десктопного'} устройства для роли: ${user.role}`);
 
-    // Создаем базовый запрос в зависимости от роли
-    let query;
-    if (user.role === 'Принтовщик' || user.role === 'Продавец') {
-      // Для принтовщика и продавца загружаем thumbnails в основном запросе
-      query = supabaseAdmin
-        .from('orders')
-        .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment, ready_at')
-        .order('orderDate', { ascending: false });
-      console.log(`📸 Включаем фотографии в основной запрос для ${user.role} (будут преобразованы в thumbnails)`);
-    } else if (user.role === 'Администратор') {
-      // Для админа НЕ загружаем фотографии в основном запросе для оптимизации
-      query = supabaseAdmin
-        .from('orders')
-        .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, comment, ready_at')
-        .order('orderDate', { ascending: false });
-      console.log(`🚫 Исключаем фотографии из основного запроса для Администратора (оптимизация)`);
-    } else {
-      // Для других ролей включаем фотографии в основной запрос
-      query = supabaseAdmin
-        .from('orders')
-        .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment, ready_at')
-        .order('orderDate', { ascending: false });
-      console.log(`📸 Включаем фотографии в основной запрос для ${user.role}`);
-    }
-    
+    // Создаем базовый запрос
+    let query = supabaseAdmin
+      .from('orders')
+      .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment, ready_at')
+      .order('orderDate', { ascending: false });
+
     // Фильтруем по роли
     if (user.role === 'Продавец') {
       query = query.eq('seller', user.username);
@@ -157,51 +138,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.json([]);
     }
 
-    // Парсим даты и обрабатываем фотографии
-    const processedData = await Promise.all(data.map(async (item) => {
+    // Парсим даты
+    const parsedData = data.map(item => {
       try {
-        const processedItem = {
+        return {
           ...item, 
           orderDate: new Date(item.orderDate)
         };
-
-        // Для принтовщика и продавца создаем thumbnails из оригинальных фотографий
-        if ((user.role === 'Принтовщик' || user.role === 'Продавец') && 'photos' in item && item.photos && Array.isArray(item.photos)) {
-          try {
-            console.log(`🖼️ Создание thumbnails для заказа ${item.id} (${item.photos.length} фото)`);
-            const thumbnails = await createThumbnailsServer(item.photos, 150, 150, 70);
-            
-            // Заменяем оригинальные фотографии на thumbnails
-            (processedItem as any).photos = thumbnails;
-            console.log(`✅ Создано ${thumbnails.length} thumbnails для заказа ${item.id}`);
-          } catch (thumbnailError) {
-            console.warn(`⚠️ Ошибка создания thumbnails для заказа ${item.id}:`, thumbnailError);
-            // В случае ошибки оставляем оригинальные фотографии
-            (processedItem as any).photos = item.photos;
-          }
-        } else if (user.role === 'Администратор') {
-          // Для админа устанавливаем пустой массив фотографий, так как они не загружаются
-          (processedItem as any).photos = [];
-        }
-
-        return processedItem;
       } catch (dateError) {
-        console.warn('⚠️ Ошибка обработки заказа:', item.id, dateError);
+        console.warn('⚠️ Ошибка парсинга даты для заказа:', item.id, dateError);
         return {
           ...item, 
           orderDate: new Date()
         };
       }
-    }));
+    });
 
-    console.log(`✅ Заказы обработаны: ${processedData.length} шт. для ${user.role}`);
-    
-    // Логируем размер ответа для мониторинга
-    const responseSize = JSON.stringify(processedData).length;
-    const responseSizeMB = (responseSize / (1024 * 1024)).toFixed(2);
-    console.log(`📊 Размер ответа: ${responseSizeMB}MB для ${user.role}`);
-    
-    return NextResponse.json(processedData);
+    console.log(`✅ Заказы получены: ${parsedData.length} шт. для ${user.role}`);
+    return NextResponse.json(parsedData);
     
   } catch (error: any) {
     console.error('❌ Критическая ошибка API заказов:', error);

@@ -96,10 +96,10 @@ export function AddExpenseForm({ onSave, currentUser }: AddExpenseFormProps) {
         return;
     }
 
-    // Используем клиентскую утилиту для обработки изображения
+    // Используем улучшенную утилиту для обработки изображения
     const processImage = async () => {
         try {
-            const { safeImageToDataURL } = await import('@/lib/clientImageUtils');
+            const { safeImageToDataURL } = await import('@/lib/imageUtils');
             const result = await safeImageToDataURL(file);
             
             if (result.success && result.dataUrl) {

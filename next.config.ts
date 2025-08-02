@@ -27,8 +27,10 @@ const nextConfig: NextConfig = {
       },
     ]
   },
-  // Конфигурация для Sharp и других серверных пакетов
-  serverExternalPackages: ['sharp', '@supabase/supabase-js'],
+  // Увеличиваем лимиты для API routes
+  experimental: {
+    serverComponentsExternalPackages: ['@supabase/supabase-js'],
+  },
   // Конфигурация для увеличения лимитов
   webpack: (config, { isServer }) => {
     if (isServer) {

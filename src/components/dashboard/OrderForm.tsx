@@ -20,7 +20,7 @@ import { OrderSchema, ProductTypeEnum, SizeEnum } from '@/lib/types';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { X, Plus, Upload, ZoomIn } from 'lucide-react';
 import Image from 'next/image';
-import { safeImageToDataURL, cleanImageArray } from '@/lib/clientImageUtils';
+import { safeImageToDataURL, cleanImageArray } from '@/lib/imageUtils';
 import {
   Dialog,
   DialogContent,

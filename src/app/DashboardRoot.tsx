@@ -662,7 +662,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
                 <ExpensesList 
                   allExpenses={safeExpenses} 
                   allUsers={safeUsers}
-                  onAddExpense={handleAddExpense}
+                        onAddExpense={handleAddExpense}
                   currentUser={initialUser}
                   debts={safeDebts}
                   onDebtUpdate={handleDebtUpdate}

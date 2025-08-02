@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { supabaseAdmin } from '@/lib/supabaseClient';
-import { createThumbnailsServer } from '@/lib/imageUtils';
 
-export const maxDuration = 60;
+export const maxDuration = 30;
 export const dynamic = 'force-dynamic';
 
 export async function GET(
@@ -11,7 +10,7 @@ export async function GET(
   { params }: { params: { orderId: string } }
 ) {
   try {
-    console.log('🖼️ Начало обработки GET запроса /api/orders/[orderId]/photos');
+    console.log(`📸 Запрос фотографий для заказа: ${params.orderId}`);
     
     // Проверяем доступность Supabase
     if (!supabaseAdmin) {
@@ -20,7 +19,19 @@ export async function GET(
     }
 
     // Получаем сессию
-    const session = await getSession();
+    let session;
+    try {
+      session = await getSession();
+      console.log('📋 Сессия получена:', { 
+        isLoggedIn: session.isLoggedIn, 
+        hasUser: !!session.user,
+        userRole: session.user?.role 
+      });
+    } catch (sessionError) {
+      console.error('❌ Ошибка получения сессии:', sessionError);
+      return NextResponse.json({ message: 'Ошибка авторизации' }, { status: 401 });
+    }
+
     const { user } = session;
 
     if (!user || !session.isLoggedIn) {
@@ -28,80 +39,38 @@ export async function GET(
       return NextResponse.json({ message: 'Пользователь не авторизован' }, { status: 401 });
     }
 
-    const { orderId } = params;
-    const { searchParams } = new URL(request.url);
-    const type = searchParams.get('type') || 'full'; // 'thumbnails' или 'full'
+    console.log('✅ Пользователь авторизован:', { username: user.username, role: user.role });
 
-    console.log(`📸 Запрос фотографий для заказа ${orderId}, тип: ${type}, роль: ${user.role}`);
-
-    // Получаем заказ с фотографиями
-    const { data: order, error } = await supabaseAdmin
+    // Получаем фотографии заказа
+    console.log(`🔍 Выполняем запрос фотографий для заказа ${params.orderId}...`);
+    const { data, error } = await supabaseAdmin
       .from('orders')
-      .select('id, photos, seller')
-      .eq('id', orderId)
+      .select('photos')
+      .eq('id', params.orderId)
       .single();
 
     if (error) {
-      console.error('❌ Ошибка получения заказа:', error);
+      console.error(`❌ Ошибка получения фотографий для заказа ${params.orderId}:`, error);
       return NextResponse.json({ 
         message: 'Заказ не найден', 
         error: error.message 
       }, { status: 404 });
     }
 
-    if (!order) {
-      console.error('❌ Заказ не найден');
-      return NextResponse.json({ message: 'Заказ не найден' }, { status: 404 });
+    console.log(`📊 Данные получены для заказа ${params.orderId}:`, {
+      hasData: !!data,
+      hasPhotos: !!data?.photos,
+      photosCount: data?.photos?.length || 0
+    });
+
+    if (!data || !data.photos) {
+      console.log(`📸 Фотографии не найдены для заказа: ${params.orderId}`);
+      return NextResponse.json({ photos: [] });
     }
 
-    // Проверяем права доступа
-    if (user.role === 'Продавец' && order.seller !== user.username) {
-      console.error('❌ Продавец не имеет доступа к заказу');
-      return NextResponse.json({ message: 'Доступ запрещен' }, { status: 403 });
-    }
-
-    const photos = order.photos || [];
-
-    if (type === 'thumbnails') {
-      // Создаем thumbnails для фотографий
-      console.log(`🖼️ Создание thumbnails для ${photos.length} фотографий...`);
-      
-      try {
-        const thumbnails = await createThumbnailsServer(photos, 150, 150, 70);
-        
-        const thumbnailData = thumbnails.map((thumbnail, index) => ({
-          type: 'thumbnail',
-          data: thumbnail,
-          size: '150x150',
-          originalIndex: index
-        }));
-
-        console.log(`✅ Создано ${thumbnailData.length} thumbnails для заказа ${orderId}`);
-        return NextResponse.json({ thumbnails: thumbnailData });
-      } catch (thumbnailError) {
-        console.error('❌ Ошибка создания thumbnails:', thumbnailError);
-        // В случае ошибки возвращаем оригинальные фотографии
-        const fallbackThumbnails = photos.map((photo: string, index: number) => ({
-          type: 'thumbnail',
-          data: photo,
-          size: 'original',
-          originalIndex: index
-        }));
-        return NextResponse.json({ thumbnails: fallbackThumbnails });
-      }
-    } else {
-      // Для full-size возвращаем оригинальные фотографии
-      const fullPhotos = photos.map((photo: string, index: number) => ({
-        type: 'full',
-        data: photo,
-        size: 'original',
-        originalIndex: index
-      }));
-
-      console.log(`✅ Возвращено ${fullPhotos.length} full-size фотографий для заказа ${orderId}`);
-      return NextResponse.json({ fullPhotos });
-    }
-
+    console.log(`✅ Фотографии получены для заказа ${params.orderId}: ${data.photos.length} шт.`);
+    return NextResponse.json({ photos: data.photos });
+    
   } catch (error: any) {
     console.error('❌ Критическая ошибка API фотографий:', error);
     return NextResponse.json({ 
