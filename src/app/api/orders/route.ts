@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
     // Создаем базовый запрос
     let query = supabaseAdmin
       .from('orders')
-      .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment, ready_at')
+      .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, comment, ready_at')
       .order('orderDate', { ascending: false });
 
     // Фильтруем по роли
@@ -96,7 +96,9 @@ export async function GET(request: NextRequest) {
       query = query.limit(200);
       console.log(`📊 Ограничиваем до 200 заказов для ${user.role}`);
     } else if (user.role === 'Администратор') {
-      console.log(`📊 Загружаем ВСЕ заказы для Администратора`);
+      // Для админа загружаем больше заказов, но не все сразу
+      query = query.limit(1000);
+      console.log(`📊 Загружаем до 1000 заказов для Администратора (без фотографий)`);
     } else {
       console.log(`📊 Загружаем все заказы для ${user.role}`);
     }
