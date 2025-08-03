@@ -67,9 +67,18 @@ export function SimpleDebtsSection({ debts, currentUser, onDebtUpdate }: SimpleD
       
       const result = await response.json();
       onDebtUpdate();
+      const debtAmount = result.calculation.Тимофей || 0;
+      const details = result.details;
+      
+      let description = `Долги обновлены. Тимофей: ${debtAmount.toLocaleString('ru-RU')} ₽`;
+      
+      if (details) {
+        description += ` (Расходы: ${details.totalExpenses?.toLocaleString('ru-RU') || 0} ₽, Платежи: ${details.totalPayments?.toLocaleString('ru-RU') || 0} ₽)`;
+      }
+      
       toast({
         title: 'Обновлено',
-        description: `Долги обновлены. Тимофей: ${result.calculation.Тимофей?.toLocaleString('ru-RU') || 0} ₽`,
+        description: description,
       });
     } catch (error) {
       console.error('Error refreshing debts:', error);

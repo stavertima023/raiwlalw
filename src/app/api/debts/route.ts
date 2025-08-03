@@ -30,10 +30,28 @@ export async function GET() {
           return NextResponse.json({ error: 'Failed to fetch expenses' }, { status: 500 });
         }
 
-        // Все долги записываются только на Тимофея
-        const totalAmount = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+        // Получаем все платежи по долгу Тимофея
+        const { data: payments, error: paymentsError } = await supabaseAdmin
+          .from('debt_payments')
+          .select('amount')
+          .eq('person_name', 'Тимофей');
+
+        if (paymentsError && paymentsError.code !== 'PGRST116') {
+          console.error('Error fetching payments:', paymentsError);
+          return NextResponse.json({ error: 'Failed to fetch payments' }, { status: 500 });
+        }
+
+        // Суммируем все расходы
+        const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+        
+        // Суммируем все платежи
+        const totalPayments = payments ? payments.reduce((sum, payment) => sum + payment.amount, 0) : 0;
+        
+        // Текущий долг = расходы - платежи
+        const currentDebt = totalExpenses - totalPayments;
+        
         const debtMap = new Map<string, number>();
-        debtMap.set('Тимофей', totalAmount);
+        debtMap.set('Тимофей', currentDebt);
 
         // Создаем временные долги для отображения
         const tempDebts = Array.from(debtMap.entries()).map(([personName, amount]) => ({

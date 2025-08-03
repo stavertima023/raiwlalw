@@ -17,10 +17,31 @@ export async function POST() {
       return NextResponse.json({ error: 'Failed to fetch expenses' }, { status: 500 });
     }
 
-    // Все долги записываются только на Тимофея
-    const totalAmount = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+    // Получаем все платежи по долгу Тимофея
+    const { data: payments, error: paymentsError } = await supabaseAdmin
+      .from('debt_payments')
+      .select('amount')
+      .eq('person_name', 'Тимофей');
 
-    console.log('Calculated total debt for Тимофей:', totalAmount);
+    if (paymentsError && paymentsError.code !== 'PGRST116') {
+      console.error('Error fetching payments:', paymentsError);
+      return NextResponse.json({ error: 'Failed to fetch payments' }, { status: 500 });
+    }
+
+    // Суммируем все расходы
+    const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+    
+    // Суммируем все платежи
+    const totalPayments = payments ? payments.reduce((sum, payment) => sum + payment.amount, 0) : 0;
+    
+    // Текущий долг = расходы - платежи
+    const currentDebt = totalExpenses - totalPayments;
+
+    console.log('Calculated current debt for Тимофей:', {
+      totalExpenses,
+      totalPayments,
+      currentDebt
+    });
 
     // Проверяем, существует ли уже долг Тимофея
     const { data: existingDebt, error: fetchError } = await supabaseAdmin
@@ -39,7 +60,7 @@ export async function POST() {
       const { data: updatedDebt, error: updateError } = await supabaseAdmin
         .from('debts')
         .update({
-          current_amount: totalAmount,
+          current_amount: currentDebt,
           updated_at: new Date().toISOString()
         })
         .eq('person_name', 'Тимофей')
@@ -54,7 +75,12 @@ export async function POST() {
       return NextResponse.json({ 
         message: 'Debt updated successfully', 
         debt: updatedDebt,
-        calculation: { 'Тимофей': totalAmount }
+        calculation: { 'Тимофей': currentDebt },
+        details: {
+          totalExpenses,
+          totalPayments,
+          currentDebt
+        }
       });
     } else {
       // Создаем новый долг
@@ -62,7 +88,7 @@ export async function POST() {
         .from('debts')
         .insert({
           person_name: 'Тимофей',
-          current_amount: totalAmount,
+          current_amount: currentDebt,
           updated_at: new Date().toISOString()
         })
         .select()
@@ -76,7 +102,12 @@ export async function POST() {
       return NextResponse.json({ 
         message: 'Debt created successfully', 
         debt: newDebt,
-        calculation: { 'Тимофей': totalAmount }
+        calculation: { 'Тимофей': currentDebt },
+        details: {
+          totalExpenses,
+          totalPayments,
+          currentDebt
+        }
       });
     }
   } catch (error) {
