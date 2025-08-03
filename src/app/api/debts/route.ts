@@ -20,10 +20,10 @@ export async function GET() {
       if (error.code === 'PGRST116') {
         console.log('Debts table does not exist, calculating from expenses...');
         
+        // Получаем все расходы (все записываются на Тимофея)
         const { data: expenses, error: expensesError } = await supabaseAdmin
           .from('expenses')
-          .select('responsible, amount')
-          .in('responsible', ['admin', 'admin_max']);
+          .select('amount');
 
         if (expensesError) {
           console.error('Error fetching expenses:', expensesError);
@@ -54,19 +54,16 @@ export async function GET() {
         
         // Текущий долг = расходы - платежи
         const currentDebt = totalExpenses - totalPayments;
-        
-        const debtMap = new Map<string, number>();
-        debtMap.set('Тимофей', currentDebt);
 
         // Создаем временные долги для отображения
-        const tempDebts = Array.from(debtMap.entries()).map(([personName, amount]) => ({
-          id: `temp-${personName}`,
-          person_name: personName,
-          current_amount: amount,
+        const tempDebts = [{
+          id: 'temp-Тимофей',
+          person_name: 'Тимофей',
+          current_amount: currentDebt,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           is_temporary: true
-        }));
+        }];
 
         return NextResponse.json(tempDebts);
       }

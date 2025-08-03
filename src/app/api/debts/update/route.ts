@@ -61,7 +61,7 @@ export async function POST() {
     }
 
     if (existingDebt) {
-      // Обновляем существующий долг, сохраняя платежи
+      // Обновляем существующий долг
       const { data: updatedDebt, error: updateError } = await supabaseAdmin
         .from('debts')
         .update({
@@ -78,7 +78,7 @@ export async function POST() {
       }
 
       return NextResponse.json({ 
-        message: 'Debt updated successfully', 
+        message: 'Долг обновлен успешно', 
         debt: updatedDebt,
         calculation: { 'Тимофей': currentDebt },
         details: {
@@ -105,7 +105,7 @@ export async function POST() {
       }
 
       return NextResponse.json({ 
-        message: 'Debt created successfully', 
+        message: 'Долг создан успешно', 
         debt: newDebt,
         calculation: { 'Тимофей': currentDebt },
         details: {

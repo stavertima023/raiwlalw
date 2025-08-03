@@ -77,7 +77,7 @@ export function SimpleDebtsSection({ debts, currentUser, onDebtUpdate }: SimpleD
       const debtAmount = result.calculation.Тимофей || 0;
       const details = result.details;
       
-      let description = `Долги обновлены. Тимофей: ${debtAmount.toLocaleString('ru-RU')} ₽`;
+      let description = `Текущий долг обновлен: ${debtAmount.toLocaleString('ru-RU')} ₽`;
       
       if (details) {
         description += ` (Расходы: ${details.totalExpenses?.toLocaleString('ru-RU') || 0} ₽, Платежи: ${details.totalPayments?.toLocaleString('ru-RU') || 0} ₽)`;
@@ -148,7 +148,7 @@ export function SimpleDebtsSection({ debts, currentUser, onDebtUpdate }: SimpleD
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <CreditCard className="h-5 w-5" />
-              Долги кассы
+              Текущий долг
             </CardTitle>
             <div className="flex gap-2">
               <Button
@@ -180,13 +180,8 @@ export function SimpleDebtsSection({ debts, currentUser, onDebtUpdate }: SimpleD
               debts.map((debt) => (
                 <Card key={debt.id} className="p-4">
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-lg">Долг кассы {debt.person_name}</h3>
+                    <h3 className="font-semibold text-lg">Текущий долг</h3>
                     <div className="flex items-center gap-2">
-                      {debt.is_temporary && (
-                        <Badge variant="secondary" className="text-xs">
-                          Временный
-                        </Badge>
-                      )}
                       <Badge 
                         variant={debt.current_amount > 0 ? 'destructive' : 'success'}
                         className="text-sm"
@@ -203,12 +198,6 @@ export function SimpleDebtsSection({ debts, currentUser, onDebtUpdate }: SimpleD
                     <p className="text-sm text-muted-foreground">
                       Последнее обновление: {format(new Date(debt.updated_at), 'dd.MM.yyyy HH:mm', { locale: ru })}
                     </p>
-                    {debt.is_temporary && (
-                      <p className="text-xs text-orange-600 mt-1 flex items-center gap-1">
-                        <AlertCircle className="h-3 w-3" />
-                        Рассчитано на основе расходов. Создайте таблицы долгов для полной функциональности.
-                      </p>
-                    )}
                   </div>
 
                   <div className="flex gap-2">
@@ -227,7 +216,7 @@ export function SimpleDebtsSection({ debts, currentUser, onDebtUpdate }: SimpleD
                       size="sm"
                     >
                       <History className="h-4 w-4 mr-2" />
-                      История
+                      Платежи по долгу
                     </Button>
                   </div>
                 </Card>
@@ -235,9 +224,9 @@ export function SimpleDebtsSection({ debts, currentUser, onDebtUpdate }: SimpleD
             ) : (
               <div className="col-span-2 text-center py-8">
                 <CreditCard className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Долги не найдены</h3>
+                <h3 className="text-lg font-semibold mb-2">Долг не найден</h3>
                 <p className="text-muted-foreground mb-4">
-                  Нет расходов для расчета долгов Тимофея.
+                  Нет расходов для расчета текущего долга.
                 </p>
                 <Button onClick={handleRefreshDebts} variant="outline">
                   Обновить данные
