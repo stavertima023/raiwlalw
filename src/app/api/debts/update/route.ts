@@ -17,22 +17,27 @@ export async function POST() {
       return NextResponse.json({ error: 'Failed to fetch expenses' }, { status: 500 });
     }
 
-    // Получаем все платежи по долгу Тимофея
-    const { data: payments, error: paymentsError } = await supabaseAdmin
-      .from('debt_payments')
-      .select('amount')
-      .eq('person_name', 'Тимофей');
-
-    if (paymentsError && paymentsError.code !== 'PGRST116') {
-      console.error('Error fetching payments:', paymentsError);
-      return NextResponse.json({ error: 'Failed to fetch payments' }, { status: 500 });
-    }
-
     // Суммируем все расходы
     const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
     
-    // Суммируем все платежи
-    const totalPayments = payments ? payments.reduce((sum, payment) => sum + payment.amount, 0) : 0;
+    // Пытаемся получить платежи, но не падаем если таблица не существует
+    let totalPayments = 0;
+    try {
+      const { data: payments, error: paymentsError } = await supabaseAdmin
+        .from('debt_payments')
+        .select('amount')
+        .eq('person_name', 'Тимофей');
+
+      if (paymentsError) {
+        console.log('Payments table not available, using 0 for payments:', paymentsError.message);
+        totalPayments = 0;
+      } else {
+        totalPayments = payments ? payments.reduce((sum, payment) => sum + payment.amount, 0) : 0;
+      }
+    } catch (error) {
+      console.log('Error fetching payments, using 0:', error);
+      totalPayments = 0;
+    }
     
     // Текущий долг = расходы - платежи
     const currentDebt = totalExpenses - totalPayments;

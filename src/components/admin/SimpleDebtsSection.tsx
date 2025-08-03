@@ -57,15 +57,22 @@ export function SimpleDebtsSection({ debts, currentUser, onDebtUpdate }: SimpleD
   const handleRefreshDebts = async () => {
     setIsRefreshing(true);
     try {
+      console.log('🔄 Начинаем обновление долгов...');
       const response = await fetch('/api/debts/update', {
         method: 'POST',
       });
       
+      console.log('📡 Ответ сервера:', response.status, response.statusText);
+      
       if (!response.ok) {
-        throw new Error('Failed to update debts');
+        const errorText = await response.text();
+        console.error('❌ Ошибка ответа:', errorText);
+        throw new Error(`Failed to update debts: ${response.status} ${response.statusText}`);
       }
       
       const result = await response.json();
+      console.log('✅ Результат обновления:', result);
+      
       onDebtUpdate();
       const debtAmount = result.calculation.Тимофей || 0;
       const details = result.details;
@@ -81,7 +88,7 @@ export function SimpleDebtsSection({ debts, currentUser, onDebtUpdate }: SimpleD
         description: description,
       });
     } catch (error) {
-      console.error('Error refreshing debts:', error);
+      console.error('❌ Error refreshing debts:', error);
       toast({
         title: 'Ошибка',
         description: 'Не удалось обновить данные долгов.',
