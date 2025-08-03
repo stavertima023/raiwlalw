@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
     // Создаем базовый запрос
     let query = supabaseAdmin
       .from('orders')
-      .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, comment, ready_at')
+      .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment, ready_at')
       .order('orderDate', { ascending: false });
 
     // Фильтруем по роли
@@ -139,19 +139,35 @@ export async function GET(request: NextRequest) {
       return NextResponse.json([]);
     }
 
-    // Парсим даты
+    // Парсим даты и обрабатываем данные в зависимости от роли
     const parsedData = data.map(item => {
       try {
-        return {
+        const parsedItem = {
           ...item, 
           orderDate: new Date(item.orderDate)
         };
+        
+        // Для админа убираем фотографии для экономии памяти
+        if (user.role === 'Администратор') {
+          const { photos, ...itemWithoutPhotos } = parsedItem as any;
+          return itemWithoutPhotos;
+        }
+        
+        return parsedItem;
       } catch (dateError) {
         console.warn('⚠️ Ошибка парсинга даты для заказа:', item.id, dateError);
-        return {
+        const fallbackItem = {
           ...item, 
           orderDate: new Date()
         };
+        
+        // Для админа убираем фотографии для экономии памяти
+        if (user.role === 'Администратор') {
+          const { photos, ...itemWithoutPhotos } = fallbackItem as any;
+          return itemWithoutPhotos;
+        }
+        
+        return fallbackItem;
       }
     });
 
