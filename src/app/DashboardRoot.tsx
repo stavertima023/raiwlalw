@@ -138,10 +138,8 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
   }, [isInitialized]);
 
   // Оптимизированные запросы с улучшенной конфигурацией
-  // Используем разные API для админа (без фотографий) и других ролей
-  const ordersApiUrl = isInitialized 
-    ? (initialUser.role === 'Администратор' && !isPhotoMode ? '/api/orders/admin' : '/api/orders')
-    : null;
+  // Временно используем стандартный API для всех ролей
+  const ordersApiUrl = isInitialized ? '/api/orders' : null;
 
   const { data: orders = [], error: ordersError, isLoading: ordersLoading, mutate: mutateOrders } = useSWR<Order[]>(
     ordersApiUrl,
