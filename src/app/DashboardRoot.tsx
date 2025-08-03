@@ -29,7 +29,6 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
   const [errorCount, setErrorCount] = React.useState(0);
   const [lastErrorTime, setLastErrorTime] = React.useState(0);
   const [isInitialized, setIsInitialized] = React.useState(false);
-  const [isPhotoMode, setIsPhotoMode] = React.useState(false);
 
   // Защита от перезагрузок - предотвращаем множественные инициализации
   React.useEffect(() => {
@@ -138,13 +137,8 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
   }, [isInitialized]);
 
   // Оптимизированные запросы с улучшенной конфигурацией
-  // Используем разные API для админа (без фотографий) и других ролей
-  const ordersApiUrl = isInitialized 
-    ? (initialUser.role === 'Администратор' && !isPhotoMode ? '/api/orders/admin' : '/api/orders')
-    : null;
-
   const { data: orders = [], error: ordersError, isLoading: ordersLoading, mutate: mutateOrders } = useSWR<Order[]>(
-    ordersApiUrl,
+    isInitialized ? '/api/orders' : null, // Загружаем только после инициализации
     optimizedFetcher, 
     {
       ...swrConfig,
@@ -164,13 +158,6 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
           toast({
             title: 'Ошибка авторизации',
             description: 'Необходимо войти в систему заново.',
-            variant: 'destructive',
-            duration: 5000,
-          });
-        } else if (error.message.includes('403')) {
-          toast({
-            title: 'Доступ запрещен',
-            description: 'У вас нет прав для просмотра этой страницы.',
             variant: 'destructive',
             duration: 5000,
           });
@@ -668,8 +655,6 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
                   allUsers={safeUsers}
                   isLoading={ordersLoading}
                   onRefresh={handleRefreshAll}
-                  onTogglePhotoMode={() => setIsPhotoMode(!isPhotoMode)}
-                  isPhotoMode={isPhotoMode}
                 />
               );
             case 'admin-expenses':

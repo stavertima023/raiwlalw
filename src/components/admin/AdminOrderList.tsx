@@ -34,8 +34,6 @@ interface AdminOrderListProps {
   allUsers: User[];
   isLoading?: boolean;
   onRefresh?: () => void;
-  onTogglePhotoMode?: () => void;
-  isPhotoMode?: boolean;
 }
 
 const statusConfig: Record<
@@ -67,9 +65,7 @@ export const AdminOrderList: React.FC<AdminOrderListProps> = ({
   allOrders, 
   allUsers, 
   isLoading = false,
-  onRefresh,
-  onTogglePhotoMode,
-  isPhotoMode = false
+  onRefresh 
 }) => {
   const [filters, setFilters] = React.useState({
     status: 'all' as OrderStatus | 'all',
@@ -149,27 +145,14 @@ export const AdminOrderList: React.FC<AdminOrderListProps> = ({
           <h1 className="text-2xl font-bold">Управление заказами</h1>
           <p className="text-muted-foreground">
             Просмотр, фильтрация и сортировка всех заказов в системе.
-            {isPhotoMode ? ' (с фотографиями)' : ' (быстрый режим)'}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {onTogglePhotoMode && (
-            <Button 
-              onClick={onTogglePhotoMode} 
-              variant="outline" 
-              size="sm"
-              title={isPhotoMode ? "Переключиться на быстрый режим" : "Переключиться на режим с фото"}
-            >
-              {isPhotoMode ? '🚀 Быстрый' : '📷 С фото'}
-            </Button>
-          )}
-          {onRefresh && (
-            <Button onClick={onRefresh} variant="outline" disabled={isLoading}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-              Обновить
-            </Button>
-          )}
-        </div>
+        {onRefresh && (
+          <Button onClick={onRefresh} variant="outline" disabled={isLoading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            Обновить
+          </Button>
+        )}
       </div>
 
       {/* Индикатор загрузки */}
@@ -273,21 +256,7 @@ export const AdminOrderList: React.FC<AdminOrderListProps> = ({
                           </DialogContent>
                         </Dialog>
                       ) : (
-                        <div className="flex items-center gap-2">
-                          <span className="text-muted-foreground text-xs">Без фото</span>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-6 w-6 p-0"
-                            onClick={() => {
-                              // Здесь можно добавить логику для загрузки фотографий
-                              console.log('Загрузка фотографий для заказа:', order.orderNumber);
-                            }}
-                            title="Загрузить фото"
-                          >
-                            📷
-                          </Button>
-                        </div>
+                        <span className="text-muted-foreground">Нет фото</span>
                       )}
                     </TableCell>
                     <TableCell className="max-w-[200px] truncate">
