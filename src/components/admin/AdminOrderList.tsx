@@ -2,7 +2,6 @@
 'use client';
 
 import * as React from 'react';
-import Image from 'next/image';
 import {
   Table,
   TableBody,
@@ -13,13 +12,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
+
 import { Button } from '@/components/ui/button';
 import { ArrowUpDown } from 'lucide-react';
 import type { Order, OrderStatus, ProductType, SortDescriptor, User } from '@/lib/types';
@@ -189,7 +182,6 @@ export const AdminOrderList: React.FC<AdminOrderListProps> = ({
                 <TableHead>Продавец</TableHead>
                 {renderSortableHeader('price', 'Цена')}
                 <TableHead className="text-right">Себест.</TableHead>
-                <TableHead>Фото</TableHead>
                 <TableHead>Комментарий</TableHead>
               </TableRow>
             </TableHeader>
@@ -216,49 +208,6 @@ export const AdminOrderList: React.FC<AdminOrderListProps> = ({
                     <TableCell className="text-right whitespace-nowrap">
                       {order.cost ? order.cost.toLocaleString('ru-RU') : '–'} ₽
                     </TableCell>
-                    <TableCell>
-                      {order.photos && order.photos.length > 0 ? (
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <button className="relative group">
-                              <Image
-                                src={order.photos[0]}
-                                alt="Фото заказа"
-                                width={40}
-                                height={40}
-                                className="rounded-md object-cover cursor-pointer"
-                                data-ai-hint="order photo"
-                              />
-                              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all flex items-center justify-center">
-                                <div className="opacity-0 group-hover:opacity-100 transition-opacity text-white text-xs">
-                                  {order.photos.length > 1 && `+${order.photos.length - 1}`}
-                                </div>
-                              </div>
-                            </button>
-                          </DialogTrigger>
-                          <DialogContent className="max-w-md p-2 sm:max-w-lg md:max-w-2xl">
-                            <DialogHeader>
-                              <DialogTitle>Фото заказа #{order.orderNumber}</DialogTitle>
-                            </DialogHeader>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              {order.photos.map((photo, index) => (
-                                <div key={index} className="relative">
-                                  <Image
-                                    src={photo}
-                                    alt={`Фото ${index + 1}`}
-                                    width={400}
-                                    height={400}
-                                    className="w-full h-auto rounded-md"
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                          </DialogContent>
-                        </Dialog>
-                      ) : (
-                        <span className="text-muted-foreground">Нет фото</span>
-                      )}
-                    </TableCell>
                     <TableCell className="max-w-[200px] truncate">
                       {order.comment || '–'}
                     </TableCell>
@@ -266,7 +215,7 @@ export const AdminOrderList: React.FC<AdminOrderListProps> = ({
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={11} className="h-24 text-center">
+                  <TableCell colSpan={10} className="h-24 text-center">
                     {isLoading ? 'Загрузка заказов...' : 'Заказы не найдены.'}
                   </TableCell>
                 </TableRow>
