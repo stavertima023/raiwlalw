@@ -79,10 +79,19 @@ export async function GET(request: NextRequest) {
 
     console.log(`📱 Запрос заказов с ${mobile ? 'мобильного' : 'десктопного'} устройства для роли: ${user.role}`);
 
-    // Создаем базовый запрос
+    // Создаем базовый запрос с разными полями в зависимости от роли
+    let selectFields;
+    if (user.role === 'Администратор') {
+      // Для админа НЕ загружаем фотографии вообще
+      selectFields = 'id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, comment, ready_at';
+    } else {
+      // Для продавцов и принтовщиков загружаем фотографии
+      selectFields = 'id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment, ready_at';
+    }
+    
     let query = supabaseAdmin
       .from('orders')
-      .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment, ready_at')
+      .select(selectFields)
       .order('orderDate', { ascending: false });
 
     // Фильтруем по роли
@@ -139,35 +148,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json([]);
     }
 
-    // Парсим даты и обрабатываем данные в зависимости от роли
-    const parsedData = data.map(item => {
+    // Парсим даты
+    const parsedData = data.map((item: any) => {
       try {
-        const parsedItem = {
+        return {
           ...item, 
           orderDate: new Date(item.orderDate)
         };
-        
-        // Для админа убираем фотографии для экономии памяти
-        if (user.role === 'Администратор') {
-          const { photos, ...itemWithoutPhotos } = parsedItem as any;
-          return itemWithoutPhotos;
-        }
-        
-        return parsedItem;
       } catch (dateError) {
         console.warn('⚠️ Ошибка парсинга даты для заказа:', item.id, dateError);
-        const fallbackItem = {
+        return {
           ...item, 
           orderDate: new Date()
         };
-        
-        // Для админа убираем фотографии для экономии памяти
-        if (user.role === 'Администратор') {
-          const { photos, ...itemWithoutPhotos } = fallbackItem as any;
-          return itemWithoutPhotos;
-        }
-        
-        return fallbackItem;
       }
     });
 
