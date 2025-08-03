@@ -30,12 +30,10 @@ export async function GET() {
           return NextResponse.json({ error: 'Failed to fetch expenses' }, { status: 500 });
         }
 
-        // Группируем расходы по ответственному
+        // Все долги записываются только на Тимофея
+        const totalAmount = expenses.reduce((sum, expense) => sum + expense.amount, 0);
         const debtMap = new Map<string, number>();
-        expenses.forEach(expense => {
-          const personName = expense.responsible === 'admin' ? 'Тимофей' : 'Максим';
-          debtMap.set(personName, (debtMap.get(personName) || 0) + expense.amount);
-        });
+        debtMap.set('Тимофей', totalAmount);
 
         // Создаем временные долги для отображения
         const tempDebts = Array.from(debtMap.entries()).map(([personName, amount]) => ({

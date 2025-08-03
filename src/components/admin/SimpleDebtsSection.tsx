@@ -21,8 +21,6 @@ interface SimpleDebtsSectionProps {
 export function SimpleDebtsSection({ debts, currentUser, onDebtUpdate }: SimpleDebtsSectionProps) {
   const [isInitializing, setIsInitializing] = React.useState(false);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
-  const [isRecalculating, setIsRecalculating] = React.useState(false);
-  const [isFixingTrigger, setIsFixingTrigger] = React.useState(false);
   const [selectedDebt, setSelectedDebt] = React.useState<Debt | null>(null);
   const [showPayDialog, setShowPayDialog] = React.useState(false);
   const [showHistoryDialog, setShowHistoryDialog] = React.useState(false);
@@ -59,10 +57,19 @@ export function SimpleDebtsSection({ debts, currentUser, onDebtUpdate }: SimpleD
   const handleRefreshDebts = async () => {
     setIsRefreshing(true);
     try {
+      const response = await fetch('/api/debts/update', {
+        method: 'POST',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update debts');
+      }
+      
+      const result = await response.json();
       onDebtUpdate();
       toast({
         title: 'Обновлено',
-        description: 'Данные долгов обновлены.',
+        description: `Долги обновлены. Тимофей: ${result.calculation.Тимофей?.toLocaleString('ru-RU') || 0} ₽`,
       });
     } catch (error) {
       console.error('Error refreshing debts:', error);
@@ -76,65 +83,7 @@ export function SimpleDebtsSection({ debts, currentUser, onDebtUpdate }: SimpleD
     }
   };
 
-  const handleRecalculateDebts = async () => {
-    setIsRecalculating(true);
-    try {
-      const response = await fetch('/api/debts/recalculate', {
-        method: 'POST',
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to recalculate debts');
-      }
-      
-      const result = await response.json();
-      onDebtUpdate();
-      toast({
-        title: 'Успешно',
-        description: `Долги пересчитаны. Максим: ${result.calculation.Максим?.toLocaleString('ru-RU') || 0} ₽, Тимофей: ${result.calculation.Тимофей?.toLocaleString('ru-RU') || 0} ₽`,
-      });
-    } catch (error) {
-      console.error('Error recalculating debts:', error);
-      toast({
-        title: 'Ошибка',
-        description: 'Не удалось пересчитать долги.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsRecalculating(false);
-    }
-  };
 
-  const handleFixTrigger = async () => {
-    setIsFixingTrigger(true);
-    try {
-      const response = await fetch('/api/debts/fix-trigger', {
-        method: 'POST',
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to fix trigger');
-      }
-      
-      const result = await response.json();
-      onDebtUpdate();
-      toast({
-        title: 'Успешно',
-        description: result.triggerFixed 
-          ? 'Триггер исправлен и долги пересчитаны автоматически.' 
-          : 'Долги пересчитаны (триггер исправлен через fallback).',
-      });
-    } catch (error) {
-      console.error('Error fixing trigger:', error);
-      toast({
-        title: 'Ошибка',
-        description: 'Не удалось исправить триггер.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsFixingTrigger(false);
-    }
-  };
 
   const handlePayDebt = (debt: Debt) => {
     if (debt.is_temporary) {
@@ -194,25 +143,6 @@ export function SimpleDebtsSection({ debts, currentUser, onDebtUpdate }: SimpleD
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
                 {isRefreshing ? 'Обновление...' : 'Обновить'}
-              </Button>
-              <Button
-                onClick={handleRecalculateDebts}
-                disabled={isRecalculating}
-                variant="outline"
-                size="sm"
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${isRecalculating ? 'animate-spin' : ''}`} />
-                {isRecalculating ? 'Пересчет...' : 'Пересчитать'}
-              </Button>
-              <Button
-                onClick={handleFixTrigger}
-                disabled={isFixingTrigger}
-                variant="outline"
-                size="sm"
-                className="bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100"
-              >
-                <Database className={`h-4 w-4 mr-2 ${isFixingTrigger ? 'animate-spin' : ''}`} />
-                {isFixingTrigger ? 'Исправление...' : 'Исправить триггер'}
               </Button>
               {!hasRealDebts && (
                 <Button
@@ -291,7 +221,7 @@ export function SimpleDebtsSection({ debts, currentUser, onDebtUpdate }: SimpleD
                 <CreditCard className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold mb-2">Долги не найдены</h3>
                 <p className="text-muted-foreground mb-4">
-                  Нет расходов от admin (Администратор) или admin_max (Максим) для расчета долгов.
+                  Нет расходов для расчета долгов Тимофея.
                 </p>
                 <Button onClick={handleRefreshDebts} variant="outline">
                   Обновить данные

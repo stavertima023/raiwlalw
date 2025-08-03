@@ -7,31 +7,28 @@ export async function POST() {
       return NextResponse.json({ error: 'Admin client not available' }, { status: 500 });
     }
 
-    // Получаем все расходы
+    // Получаем все расходы (все записываются на Тимофея)
     const { data: expenses, error: expensesError } = await supabaseAdmin
       .from('expenses')
-      .select('responsible, amount')
-      .in('responsible', ['admin', 'admin_max']);
+      .select('amount');
 
     if (expensesError) {
       console.error('Error fetching expenses:', expensesError);
       return NextResponse.json({ error: 'Failed to fetch expenses' }, { status: 500 });
     }
 
-    // Группируем расходы по ответственному
+    // Все долги записываются только на Тимофея
+    const totalAmount = expenses.reduce((sum, expense) => sum + expense.amount, 0);
     const debtMap = new Map<string, number>();
-    expenses.forEach(expense => {
-      const personName = expense.responsible === 'admin' ? 'Тимофей' : 'Максим';
-      debtMap.set(personName, (debtMap.get(personName) || 0) + expense.amount);
-    });
+    debtMap.set('Тимофей', totalAmount);
 
     console.log('Calculated debts:', Object.fromEntries(debtMap));
 
-    // Очищаем существующие долги
+    // Очищаем существующие долги (только Тимофей)
     const { error: deleteError } = await supabaseAdmin
       .from('debts')
       .delete()
-      .in('person_name', ['Тимофей', 'Максим']);
+      .eq('person_name', 'Тимофей');
 
     if (deleteError) {
       console.error('Error deleting existing debts:', deleteError);
