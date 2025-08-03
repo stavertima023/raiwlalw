@@ -77,7 +77,7 @@ export function SimpleDebtsSection({ debts, currentUser, onDebtUpdate }: SimpleD
       const debtAmount = result.calculation.Тимофей || 0;
       const details = result.details;
       
-      let description = `Текущий долг обновлен: ${debtAmount.toLocaleString('ru-RU')} ₽`;
+      let description = `Остаток обновлен: ${debtAmount.toLocaleString('ru-RU')} ₽`;
       
       if (details) {
         description += ` (Расходы: ${details.totalExpenses?.toLocaleString('ru-RU') || 0} ₽, Платежи: ${details.totalPayments?.toLocaleString('ru-RU') || 0} ₽)`;
@@ -148,7 +148,7 @@ export function SimpleDebtsSection({ debts, currentUser, onDebtUpdate }: SimpleD
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <CreditCard className="h-5 w-5" />
-              Текущий долг
+              Остаток
             </CardTitle>
             <div className="flex gap-2">
               <Button
@@ -180,19 +180,19 @@ export function SimpleDebtsSection({ debts, currentUser, onDebtUpdate }: SimpleD
               debts.map((debt) => (
                 <Card key={debt.id} className="p-4">
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-lg">Текущий долг</h3>
+                    <h3 className="font-semibold text-lg">Остаток</h3>
                     <div className="flex items-center gap-2">
                       <Badge 
-                        variant={debt.current_amount > 0 ? 'destructive' : 'success'}
+                        variant={debt.current_amount > 0 ? 'default' : 'success'}
                         className="text-sm"
                       >
-                        {debt.current_amount > 0 ? 'Есть долг' : 'Нет долга'}
+                        {debt.current_amount > 0 ? 'Есть остаток' : 'Нет остатка'}
                       </Badge>
                     </div>
                   </div>
                   
                   <div className="mb-4">
-                    <div className="text-2xl font-bold text-red-600">
+                    <div className="text-2xl font-bold text-blue-600">
                       {debt.current_amount.toLocaleString('ru-RU')} ₽
                     </div>
                     <p className="text-sm text-muted-foreground">
@@ -224,9 +224,9 @@ export function SimpleDebtsSection({ debts, currentUser, onDebtUpdate }: SimpleD
             ) : (
               <div className="col-span-2 text-center py-8">
                 <CreditCard className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Долг не найден</h3>
+                <h3 className="text-lg font-semibold mb-2">Остаток не найден</h3>
                 <p className="text-muted-foreground mb-4">
-                  Нет расходов для расчета текущего долга.
+                  Нет расходов для расчета остатка.
                 </p>
                 <Button onClick={handleRefreshDebts} variant="outline">
                   Обновить данные

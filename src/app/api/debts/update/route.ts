@@ -23,16 +23,31 @@ export async function POST() {
     // Пытаемся получить платежи, но не падаем если таблица не существует
     let totalPayments = 0;
     try {
-      const { data: payments, error: paymentsError } = await supabaseAdmin
-        .from('debt_payments')
-        .select('amount')
-        .eq('person_name', 'Тимофей');
+      // Сначала получаем ID долга Тимофея
+      const { data: debtData, error: debtError } = await supabaseAdmin
+        .from('debts')
+        .select('id')
+        .eq('person_name', 'Тимофей')
+        .single();
 
-      if (paymentsError) {
-        console.log('Payments table not available, using 0 for payments:', paymentsError.message);
+      if (debtError && debtError.code !== 'PGRST116') {
+        console.log('Debt not found, using 0 for payments:', debtError.message);
         totalPayments = 0;
+      } else if (debtData) {
+        // Получаем платежи по ID долга
+        const { data: payments, error: paymentsError } = await supabaseAdmin
+          .from('debt_payments')
+          .select('payment_amount')
+          .eq('debt_id', debtData.id);
+
+        if (paymentsError) {
+          console.log('Payments table not available, using 0 for payments:', paymentsError.message);
+          totalPayments = 0;
+        } else {
+          totalPayments = payments ? payments.reduce((sum, payment) => sum + payment.payment_amount, 0) : 0;
+        }
       } else {
-        totalPayments = payments ? payments.reduce((sum, payment) => sum + payment.amount, 0) : 0;
+        totalPayments = 0;
       }
     } catch (error) {
       console.log('Error fetching payments, using 0:', error);
