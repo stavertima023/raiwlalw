@@ -203,7 +203,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     }
   );
 
-  const { data: payouts = [], error: payoutsError, mutate: mutatePayouts } = useSWR<PayoutWithOrders[]>(
+  const { data: payouts = [], error: payoutsError, mutate: mutatePayouts, isLoading: payoutsLoading } = useSWR<PayoutWithOrders[]>(
     (isInitialized && (initialUser.role === 'Администратор' || initialUser.role === 'Продавец')) ? '/api/payouts' : null, 
     optimizedFetcher,
     {
@@ -276,6 +276,28 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       });
     }
   }, [mutateOrders, mutateExpenses, mutatePayouts, mutateDebts, mutateUsers, toast]);
+
+  // Функция для обновления только выводов
+  const handleRefreshPayouts = React.useCallback(async () => {
+    console.log('🔄 Обновление выводов...');
+    
+    try {
+      // Обновляем только выводы
+      await mutatePayouts();
+      
+      toast({
+        title: 'Выводы обновлены',
+        description: 'Список выводов успешно обновлен из базы данных',
+      });
+    } catch (error) {
+      console.error('Ошибка при обновлении выводов:', error);
+      toast({
+        title: 'Ошибка обновления',
+        description: 'Не удалось обновить выводы',
+        variant: 'destructive',
+      });
+    }
+  }, [mutatePayouts, toast]);
 
   // Мемоизированные функции для предотвращения лишних ререндеров
   const handleAddOrder = React.useCallback(async (newOrderData: Omit<Order, 'id' | 'orderDate' | 'seller'>) => {
@@ -679,8 +701,8 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
                   allUsers={safeUsers}
                   onUpdateStatus={handleUpdatePayoutStatus}
                   currentUser={initialUser}
-                  onRefresh={handleRefreshAll}
-                  isLoading={ordersLoading}
+                  onRefresh={handleRefreshPayouts}
+                  isLoading={payoutsLoading}
                 />
               );
             case 'admin-analytics':

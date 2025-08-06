@@ -239,9 +239,9 @@ export const PayoutsList: React.FC<PayoutsListProps> = ({
           </p>
         </div>
         {onRefresh && (
-          <Button onClick={onRefresh} variant="outline" disabled={isLoading}>
+          <Button onClick={onRefresh} variant="default" disabled={isLoading} className="bg-blue-600 hover:bg-blue-700">
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Обновить
+            {isLoading ? 'Обновление...' : 'Обновить данные'}
           </Button>
         )}
       </div>
@@ -336,10 +336,10 @@ export const PayoutsList: React.FC<PayoutsListProps> = ({
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col">
-                          <span className="font-medium">{payout.orderCount} шт.</span>
+                          <span className="font-medium">{payout.orderCount || payout.orderNumbers?.length || 0} шт.</span>
                           <span className="text-xs text-muted-foreground">
-                            {payout.orderNumbers.slice(0, 3).join(', ')}
-                            {payout.orderNumbers.length > 3 && '...'}
+                            {payout.orderNumbers?.slice(0, 3).join(', ') || '-'}
+                            {payout.orderNumbers && payout.orderNumbers.length > 3 && '...'}
                           </span>
                         </div>
                       </TableCell>
