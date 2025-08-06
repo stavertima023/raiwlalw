@@ -46,18 +46,58 @@ export async function GET() {
 
     // Если это администратор, возвращаем упрощенные данные без заказов
     if (user.role === 'Администратор') {
-      // Добавляем базовую статистику без загрузки заказов
+      // Собираем все номера заказов для быстрого получения статистики
+      const allOrderNumbers = parsedData.reduce((acc, payout) => {
+        if (payout.orderNumbers && Array.isArray(payout.orderNumbers)) {
+          acc.push(...payout.orderNumbers);
+        }
+        return acc;
+      }, [] as string[]);
+
+      // Получаем только необходимые данные заказов для статистики
+      let ordersStats: any[] = [];
+      if (allOrderNumbers.length > 0) {
+        const { data: orders, error: ordersError } = await supabaseAdmin!
+          .from('orders')
+          .select('orderNumber, productType, price')
+          .in('orderNumber', allOrderNumbers);
+
+        if (ordersError) {
+          console.error('Ошибка получения статистики заказов:', ordersError);
+        } else {
+          ordersStats = orders || [];
+        }
+      }
+
+      // Создаем Map для быстрого поиска заказов по номеру
+      const ordersMap = new Map();
+      ordersStats.forEach(order => {
+        ordersMap.set(order.orderNumber, order);
+      });
+
+      // Обрабатываем каждую выплату
       const payoutsWithStats = parsedData.map((payout) => {
         const orderCount = payout.orderNumbers?.length || 0;
         const averageCheck = orderCount > 0 ? payout.amount / orderCount : 0;
         
-        // Простая статистика по типам товаров (если есть в payout)
-        const productTypeStats = payout.productTypeStats || {};
+        // Рассчитываем статистику по типам товаров
+        const productTypeStats: Record<string, number> = {};
+        let totalAmount = 0;
+        
+        if (payout.orderNumbers) {
+          payout.orderNumbers.forEach((orderNumber: string) => {
+            const order = ordersMap.get(orderNumber);
+            if (order) {
+              productTypeStats[order.productType] = (productTypeStats[order.productType] || 0) + 1;
+              totalAmount += order.price;
+            }
+          });
+        }
         
         return {
           ...payout,
           orderCount,
-          averageCheck,
+          averageCheck: totalAmount > 0 ? totalAmount / orderCount : averageCheck,
           productTypeStats,
           // Не загружаем полные данные заказов для ускорения
           orders: [],

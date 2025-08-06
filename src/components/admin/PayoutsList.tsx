@@ -63,15 +63,25 @@ const StatusBadge: React.FC<{ status: PayoutStatus }> = ({ status }) => {
 
 // Компонент для отображения статистики по типам товаров
 const ProductTypeStats: React.FC<{ stats: Record<string, number> }> = ({ stats }) => {
-  const entries = Object.entries(stats);
+  const entries = Object.entries(stats).sort((a, b) => b[1] - a[1]); // Сортируем по убыванию количества
   
   return (
-    <div className="flex flex-wrap gap-1">
-      {entries.map(([type, count]) => (
-        <Badge key={type} variant="secondary" className="text-xs">
-          {type}: {count}
-        </Badge>
-      ))}
+    <div className="space-y-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+        {entries.map(([type, count]) => (
+          <div key={type} className="flex justify-between items-center p-2 border rounded">
+            <span className="font-medium">{type.toUpperCase()}</span>
+            <Badge variant="secondary" className="text-sm">
+              {count} шт.
+            </Badge>
+          </div>
+        ))}
+      </div>
+      {entries.length > 0 && (
+        <div className="text-sm text-muted-foreground mt-2">
+          Всего типов товаров: {entries.length}
+        </div>
+      )}
     </div>
   );
 };
@@ -141,6 +151,9 @@ const PayoutDetailsDialog: React.FC<{ payout: PayoutWithOrders; sellerMap: Recor
                 </CardHeader>
                 <CardContent>
                   <ProductTypeStats stats={payout.productTypeStats} />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    * Статистика рассчитана на основе номеров заказов в выплате
+                  </p>
                 </CardContent>
               </Card>
             )}
@@ -353,8 +366,25 @@ export const PayoutsList: React.FC<PayoutsListProps> = ({
                         )}
                       </TableCell>
                       <TableCell>
-                        {payout.productTypeStats ? (
-                          <ProductTypeStats stats={payout.productTypeStats} />
+                        {payout.productTypeStats && Object.keys(payout.productTypeStats).length > 0 ? (
+                          <div className="space-y-1">
+                            {Object.entries(payout.productTypeStats)
+                              .sort((a, b) => b[1] - a[1])
+                              .slice(0, 3)
+                              .map(([type, count]) => (
+                                <div key={type} className="flex justify-between items-center text-xs">
+                                  <span className="font-medium">{type.toUpperCase()}</span>
+                                  <Badge variant="secondary" className="text-xs">
+                                    {count}
+                                  </Badge>
+                                </div>
+                              ))}
+                            {Object.keys(payout.productTypeStats).length > 3 && (
+                              <div className="text-xs text-muted-foreground">
+                                +{Object.keys(payout.productTypeStats).length - 3} еще
+                              </div>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-muted-foreground">–</span>
                         )}
