@@ -208,11 +208,15 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     optimizedFetcher,
     {
       ...swrConfig,
-      fallbackData: [], // Отключаем кэш для payouts
+      fallbackData: cacheManager.get('payouts') || [],
       onError: (error) => handleError(error, 'выводов'),
       revalidateOnMount: isInitialized,
       shouldRetryOnError: false,
       errorRetryCount: 0,
+      onSuccess: (data) => {
+        // Кэшируем данные выводов
+        cacheManager.set('payouts', data);
+      },
     }
   );
 

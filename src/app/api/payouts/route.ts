@@ -24,7 +24,8 @@ export async function GET() {
     let query = supabaseAdmin
       .from('payouts')
       .select('*')
-      .order('date', { ascending: false });
+      .order('date', { ascending: false })
+      .limit(1000); // Ограничиваем количество для админа
 
     // Sellers can only see their own payouts
     if (user.role === 'Продавец') {
@@ -45,42 +46,64 @@ export async function GET() {
 
     // Если это администратор, получаем подробную информацию о заказах
     if (user.role === 'Администратор') {
-      const payoutsWithOrders = await Promise.all(
-        parsedData.map(async (payout) => {
-          try {
-            // Получаем заказы для этой выплаты
-            const { data: orders, error: ordersError } = await supabaseAdmin!
-              .from('orders')
-              .select('*')
-              .in('orderNumber', payout.orderNumbers);
+      // Собираем все номера заказов из всех выплат
+      const allOrderNumbers = parsedData.reduce((acc, payout) => {
+        if (payout.orderNumbers && Array.isArray(payout.orderNumbers)) {
+          acc.push(...payout.orderNumbers);
+        }
+        return acc;
+      }, [] as string[]);
 
-            if (ordersError) {
-              console.error('Ошибка получения заказов для выплаты:', ordersError);
-              return payout;
-            }
+      // Получаем все заказы одним запросом
+      let allOrders: any[] = [];
+      if (allOrderNumbers.length > 0) {
+        const { data: orders, error: ordersError } = await supabaseAdmin!
+          .from('orders')
+          .select('*')
+          .in('orderNumber', allOrderNumbers);
 
-            // Рассчитываем статистику по типам товаров
-            const productTypeStats = orders.reduce((acc, order) => {
-              acc[order.productType] = (acc[order.productType] || 0) + 1;
-              return acc;
-            }, {} as Record<string, number>);
+        if (ordersError) {
+          console.error('Ошибка получения заказов для выплат:', ordersError);
+        } else {
+          allOrders = orders || [];
+        }
+      }
 
-            // Рассчитываем средний чек
-            const totalAmount = orders.reduce((sum, order) => sum + order.price, 0);
-            const averageCheck = orders.length > 0 ? totalAmount / orders.length : 0;
+      // Создаем Map для быстрого поиска заказов по номеру
+      const ordersMap = new Map();
+      allOrders.forEach(order => {
+        ordersMap.set(order.orderNumber, order);
+      });
 
-            return {
-              ...payout,
-              orders,
-              productTypeStats,
-              averageCheck,
-            };
-          } catch (error) {
-            console.error('Ошибка обработки выплаты:', error);
-            return payout;
-          }
-        })
-      );
+      // Обрабатываем каждую выплату
+      const payoutsWithOrders = parsedData.map((payout) => {
+        try {
+          // Получаем заказы для этой выплаты из Map
+          const orders = payout.orderNumbers
+            ?.map((orderNumber: string) => ordersMap.get(orderNumber))
+            .filter(Boolean) || [];
+
+          // Рассчитываем статистику по типам товаров
+          const productTypeStats = orders.reduce((acc: Record<string, number>, order: any) => {
+            acc[order.productType] = (acc[order.productType] || 0) + 1;
+            return acc;
+          }, {} as Record<string, number>);
+
+          // Рассчитываем средний чек
+          const totalAmount = orders.reduce((sum: number, order: any) => sum + order.price, 0);
+          const averageCheck = orders.length > 0 ? totalAmount / orders.length : 0;
+
+          return {
+            ...payout,
+            orders,
+            productTypeStats,
+            averageCheck,
+          };
+        } catch (error) {
+          console.error('Ошибка обработки выплаты:', error);
+          return payout;
+        }
+      });
 
       return NextResponse.json(payoutsWithOrders);
     }
