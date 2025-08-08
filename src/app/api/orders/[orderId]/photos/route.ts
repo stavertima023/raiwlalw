@@ -41,8 +41,8 @@ export async function GET(
 
     console.log('✅ Пользователь авторизован:', { username: user.username, role: user.role });
 
-    // Получаем фотографии заказа
-    console.log(`🔍 Выполняем запрос фотографий для заказа ${params.orderId}...`);
+    // Получаем фотографии заказа (теперь это массив URL)
+    console.log(`🔍 Выполняем запрос фотографий (URL) для заказа ${params.orderId}...`);
     const { data, error } = await supabaseAdmin
       .from('orders')
       .select('photos')
@@ -65,11 +65,15 @@ export async function GET(
 
     if (!data || !data.photos) {
       console.log(`📸 Фотографии не найдены для заказа: ${params.orderId}`);
-      return NextResponse.json({ photos: [] });
+      return NextResponse.json({ thumbnails: [], fullPhotos: [] });
     }
 
-    console.log(`✅ Фотографии получены для заказа ${params.orderId}: ${data.photos.length} шт.`);
-    return NextResponse.json({ photos: data.photos });
+    console.log(`✅ Фотографии (URL) получены для заказа ${params.orderId}: ${data.photos.length} шт.`);
+    // На клиенте ожидаются раздельные массивы. Для совместимости формируем одинаковые URL.
+    const urls: string[] = data.photos;
+    const thumbnails = urls.map((u) => ({ type: 'thumbnail', data: u, size: 'url' }));
+    const fullPhotos = urls.map((u) => ({ type: 'full', data: u, size: 'url' }));
+    return NextResponse.json({ thumbnails, fullPhotos });
     
   } catch (error: any) {
     console.error('❌ Критическая ошибка API фотографий:', error);

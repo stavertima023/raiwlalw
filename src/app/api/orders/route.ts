@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { supabaseAdmin } from '@/lib/supabaseClient';
 import { OrderSchema } from '@/lib/types';
+import { uploadBase64ToStorage } from '@/lib/storage';
 import { cleanImageArray } from '@/lib/imageUtils';
 
 // Увеличиваем лимиты для этого API
@@ -255,8 +256,6 @@ export async function POST(request: Request) {
       }
 
       json.photos = cleanImageArray(json.photos);
-      
-      // Если все фотографии были отфильтрованы, устанавливаем пустой массив
       if (json.photos.length === 0) {
         console.warn('Все фотографии были отфильтрованы как невалидные');
         json.photos = [];
@@ -276,22 +275,53 @@ export async function POST(request: Request) {
     // Валидируем данные с помощью Zod
     const validatedOrder = OrderSchema.omit({ id: true }).parse(newOrderData);
 
-    // Вставляем заказ в базу данных
-    const { data, error } = await supabaseAdmin
+    // 1) Вставляем заказ без фотографий (временно)
+    const { photos: base64Photos, ...rest } = validatedOrder as any;
+    const { data: created, error: createError } = await supabaseAdmin
       .from('orders')
-      .insert(validatedOrder)
-      .select()
+      .insert({ ...rest, photos: [] })
+      .select('id, seller, orderDate, orderNumber, shipmentNumber, status, productType, size, price, cost, comment, ready_at')
       .single();
+    if (createError) throw createError;
+
+    // 2) Если были фотографии — загружаем в Storage, сохраняем URL в orders.photos
+    if (Array.isArray(base64Photos) && base64Photos.length > 0) {
+      const uploaded: string[] = [];
+      let index = 0;
+      for (const b64 of base64Photos) {
+        try {
+          const result = await uploadBase64ToStorage({
+            base64: b64,
+            orderId: created.id,
+            seller: user.username,
+            index,
+          });
+          uploaded.push(result.publicUrl);
+          index += 1;
+        } catch (e) {
+          console.warn('Не удалось загрузить фото в Storage:', e);
+        }
+      }
+      if (uploaded.length > 0) {
+        const { error: updatePhotosError } = await supabaseAdmin
+          .from('orders')
+          .update({ photos: uploaded })
+          .eq('id', created.id);
+        if (updatePhotosError) throw updatePhotosError;
+      }
+    }
 
     if (error) {
       throw error;
     }
 
     // Парсим дату перед отправкой ответа
-    const result = {
-      ...data,
-      orderDate: new Date(data.orderDate)
-    };
+    const { data: finalRow } = await supabaseAdmin
+      .from('orders')
+      .select('*')
+      .eq('id', created.id)
+      .single();
+    const result = { ...finalRow, orderDate: new Date(finalRow.orderDate) };
 
     return NextResponse.json(result, { status: 201 });
 
