@@ -76,8 +76,8 @@ export async function uploadBase64ToStorage(options: {
   try {
     compressed = await sharp(buffer)
       .rotate()
-      .resize({ width: 1920, height: 1920, fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 84, mozjpeg: true })
+      .resize({ width: 2048, height: 2048, fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 90, mozjpeg: true })
       .toBuffer();
   } catch {
     // Fallback to original buffer if compression fails

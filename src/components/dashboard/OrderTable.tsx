@@ -657,7 +657,7 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
   showSearch = false,
   isLoading = false
 }) => {
-  const photoSize = useLargeLayout ? 100 : 60;
+  const photoSize = useLargeLayout ? 120 : 80;
   const [currentPage, setCurrentPage] = React.useState(1);
   const [isMobile, setIsMobile] = React.useState(false);
 
