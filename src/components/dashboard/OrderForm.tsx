@@ -315,8 +315,9 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
                               <Image
                                 src={photo}
                                 alt={`Фото ${index + 1}`}
-                                width={112}
-                                height={112}
+                                width={128}
+                                height={128}
+                                quality={95}
                                 className="rounded-md object-cover w-full h-full"
                               />
                               <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all flex items-center justify-center">

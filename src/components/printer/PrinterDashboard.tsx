@@ -150,7 +150,7 @@ const MobilePrinterView = React.memo<{
                           <img
                             src={photo}
                             alt={`Фото ${index + 1}`}
-                            className="w-24 h-24 object-cover rounded-md border transition-transform group-hover:scale-105"
+                            className="w-28 h-28 object-cover rounded-md border transition-transform group-hover:scale-105"
                             loading="lazy"
                           />
                           {order.photos.length > 1 && index === 0 && (

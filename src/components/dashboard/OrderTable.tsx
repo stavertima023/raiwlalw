@@ -129,6 +129,8 @@ const OrderPhotosSimple = React.memo<{ photos: string[]; size: number }>(({ phot
                   width={size}
                   height={size}
                   className="rounded object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                  quality={95}
+                  sizes={`${size}px`}
                   style={{ width: size, height: size }}
                   loading="lazy"
                 />
@@ -817,7 +819,7 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
                 <div>
                   <span className="text-muted-foreground text-sm">Фото:</span>
                   <div className="mt-1">
-                    <OrderPhotosSimple photos={order.photos || []} size={60} />
+                    <OrderPhotosSimple photos={order.photos || []} size={100} />
                   </div>
                 </div>
 
