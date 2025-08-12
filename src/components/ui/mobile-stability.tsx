@@ -8,53 +8,45 @@ interface MobileStabilityProps {
 
 export const MobileStability: React.FC<MobileStabilityProps> = ({ children }) => {
   const [isStable, setIsStable] = React.useState(true);
-  const [lastActivity, setLastActivity] = React.useState(Date.now());
+  const lastActivityRef = React.useRef<number>(Date.now());
 
   React.useEffect(() => {
-    // Отслеживаем активность пользователя
+    // Обновляем активность пользователя (одноразовая регистрация обработчиков)
     const updateActivity = () => {
-      setLastActivity(Date.now());
-      setIsStable(true);
+      lastActivityRef.current = Date.now();
+      if (!isStable) setIsStable(true);
     };
 
-    // Предотвращаем перезагрузки
-    const preventReload = (e: Event) => {
-      if (e.type === 'beforeunload') {
-        console.log('🛡️ Попытка перезагрузки предотвращена');
-        e.preventDefault();
-        return '';
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        lastActivityRef.current = Date.now();
+        if (!isStable) setIsStable(true);
       }
     };
 
-    // Обработчики активности
-    const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+    const activityEvents = ['touchstart', 'touchmove', 'click', 'scroll'];
     activityEvents.forEach(event => {
       document.addEventListener(event, updateActivity, { passive: true });
     });
+    document.addEventListener('visibilitychange', onVisibilityChange);
 
-    // Обработчики стабильности
-    window.addEventListener('beforeunload', preventReload);
-    window.addEventListener('pagehide', () => console.log('📱 Страница скрыта'));
-    window.addEventListener('pageshow', () => console.log('📱 Страница показана'));
-
-    // Проверка стабильности каждые 5 секунд
-    const stabilityInterval = setInterval(() => {
-      const timeSinceActivity = Date.now() - lastActivity;
-      if (timeSinceActivity > 30000) { // 30 секунд бездействия
+    // Мягкая проверка стабильности раз в 30 секунд (без вмешательства в навигацию)
+    const stabilityInterval = window.setInterval(() => {
+      const idleMs = Date.now() - lastActivityRef.current;
+      // Только для отладки меняем индикатор; никаких перезагрузок/блокировок
+      if (idleMs > 120000) {
         setIsStable(false);
       }
-    }, 5000);
+    }, 30000);
 
     return () => {
       activityEvents.forEach(event => {
-        document.removeEventListener(event, updateActivity);
+        document.removeEventListener(event, updateActivity as any);
       });
-      window.removeEventListener('beforeunload', preventReload);
-      window.removeEventListener('pagehide', () => {});
-      window.removeEventListener('pageshow', () => {});
+      document.removeEventListener('visibilitychange', onVisibilityChange);
       clearInterval(stabilityInterval);
     };
-  }, [lastActivity]);
+  }, [isStable]);
 
   // Показываем индикатор стабильности в режиме разработки
   if (process.env.NODE_ENV === 'development') {
