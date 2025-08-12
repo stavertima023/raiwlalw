@@ -16,6 +16,27 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'kong-production-efec.up.railway.app',
+        port: '',
+        pathname: '/**',
+      },
+      // Optional S3/MinIO public endpoint (set at runtime via env)
+      ...(process.env.S3_PUBLIC_HOSTNAME
+        ? [{ protocol: process.env.S3_PUBLIC_PROTOCOL || 'https', hostname: process.env.S3_PUBLIC_HOSTNAME, port: '', pathname: '/**' }]
+        : []),
+      // Allow images from dedicated photo Supabase domain
+      ...(process.env.PHOTO_SUPABASE_URL
+        ? (() => {
+            try {
+              const u = new URL(process.env.PHOTO_SUPABASE_URL);
+              return [{ protocol: u.protocol.replace(':',''), hostname: u.hostname, port: '', pathname: '/**' }];
+            } catch (_) {
+              return [] as any[];
+            }
+          })()
+        : []),
     ],
   },
   async redirects() {

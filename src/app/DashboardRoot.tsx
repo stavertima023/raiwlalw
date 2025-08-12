@@ -314,8 +314,17 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Ошибка добавления заказа');
+        let errorMessage = 'Ошибка добавления заказа';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message || response.statusText || errorMessage;
+        } catch {
+          try {
+            const text = await response.text();
+            if (text) errorMessage = text;
+          } catch {}
+        }
+        throw new Error(errorMessage);
       }
 
       const newOrder = await response.json();

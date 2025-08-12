@@ -311,9 +311,7 @@ export async function POST(request: Request) {
       }
     }
 
-    if (error) {
-      throw error;
-    }
+    // Note: remove stray error rethrow; all errors above are handled explicitly
 
     // Парсим дату перед отправкой ответа
     const { data: finalRow } = await supabaseAdmin
