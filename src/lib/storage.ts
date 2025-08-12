@@ -68,8 +68,8 @@ export async function uploadBase64ToStorage(options: {
   const path = `orders/${y}/${m}/${d}/${safeSeller}/${options.orderId}/${filename}`;
 
   // Supabase Storage fallback
-  const primary = supabaseStorageAdmin || supabaseAdmin;
-  const secondary = supabaseStorageAdminServiceApikey || supabaseAdmin;
+  const primary = photoSupabaseStorageAdmin || supabaseStorageAdmin || supabaseAdmin;
+  const secondary = supabaseStorageAdminServiceApikey || supabaseAdmin || photoSupabaseStorageAdmin;
   if (!primary && !secondary) throw new Error('Supabase admin client not available');
   await ensureBucketPublic(bucket);
 
@@ -82,7 +82,7 @@ export async function uploadBase64ToStorage(options: {
       upsert: true,
     });
   // If unauthorized, retry with apikey=service
-  if (uploadError && String(uploadError.message).toLowerCase().includes('invalid authentication')) {
+  if (uploadError && String(uploadError.message).toLowerCase().includes('invalid')) {
     if (secondary && secondary !== primary) {
       const retry = await (secondary as any).storage
         .from(bucket)

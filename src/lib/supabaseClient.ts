@@ -117,5 +117,11 @@ export const photoSupabaseStorageAdmin = (photoSupabaseServiceKey && photoSupaba
         autoRefreshToken: false,
         persistSession: false,
       },
+      global: {
+        headers: {
+          Authorization: `Bearer ${photoSupabaseServiceKey}`,
+          apikey: photoSupabaseServiceKey,
+        },
+      },
     })
   : null;
