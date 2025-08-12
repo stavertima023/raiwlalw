@@ -80,93 +80,87 @@ export async function GET(request: NextRequest) {
 
     console.log(`📱 Запрос заказов с ${mobile ? 'мобильного' : 'десктопного'} устройства для роли: ${user.role}`);
 
-    // Создаем базовый запрос с разными полями в зависимости от роли
-    let selectFields;
-    if (user.role === 'Администратор') {
-      // Для админа НЕ загружаем фотографии вообще
-      selectFields = 'id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, comment, ready_at';
-    } else {
-      // Для продавцов и принтовщиков загружаем фотографии
-      selectFields = 'id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment, ready_at';
-    }
-    
-    let query = supabaseAdmin
-      .from('orders')
-      .select(selectFields)
-      .order('orderDate', { ascending: false });
-
-    // Фильтруем по роли
-    if (user.role === 'Продавец') {
-      query = query.eq('seller', user.username);
-      console.log(`📊 Фильтруем заказы для продавца: ${user.username}`);
-    }
-    
-    // Ограничиваем количество для определенных ролей
-    if (user.role === 'Принтовщик' || user.role === 'Продавец') {
-      query = query.limit(200);
-      console.log(`📊 Ограничиваем до 200 заказов для ${user.role}`);
-    } else if (user.role === 'Администратор') {
-      // Для админа загружаем ВСЕ заказы без ограничений (но без фотографий)
-      console.log(`📊 Загружаем ВСЕ заказы для Администратора (без фотографий)`);
-    } else {
-      console.log(`📊 Загружаем все заказы для ${user.role}`);
-    }
-    
+    // Логика выборки по ролям
     console.log('🔍 Выполняем запрос к базе данных...');
-    
-    // Выполняем запрос
-    let result;
-    try {
-      result = await query;
-    } catch (queryError) {
-      console.error('❌ Ошибка выполнения запроса:', queryError);
-      return NextResponse.json({ 
-        message: 'Ошибка базы данных', 
-        error: queryError instanceof Error ? queryError.message : 'Unknown error'
-      }, { status: 500 });
-    }
 
-    const { data, error } = result;
-
-    if (error) {
-      console.error(`❌ Ошибка запроса заказов для ${user.role}:`, error);
-      return NextResponse.json({ 
-        message: 'Ошибка загрузки заказов', 
-        error: error.message 
-      }, { status: 500 });
-    }
-
-    console.log('✅ Данные получены из БД, обрабатываем...');
-
-    // Проверяем данные
-    if (!data) {
-      console.log(`📊 Нет данных для ${user.role}, возвращаем пустой массив`);
-      return NextResponse.json([]);
-    }
-
-    if (!Array.isArray(data)) {
-      console.log(`📊 Данные не являются массивом для ${user.role}, возвращаем пустой массив`);
-      return NextResponse.json([]);
-    }
-
-    // Парсим даты
-    const parsedData = data.map((item: any) => {
-      try {
-        return {
-          ...item, 
-          orderDate: new Date(item.orderDate)
-        };
-      } catch (dateError) {
-        console.warn('⚠️ Ошибка парсинга даты для заказа:', item.id, dateError);
-        return {
-          ...item, 
-          orderDate: new Date()
-        };
+    if (user.role === 'Администратор') {
+      // Для админа — без фото
+      const { data, error } = await supabaseAdmin
+        .from('orders')
+        .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, comment, ready_at')
+        .order('orderDate', { ascending: false });
+      if (error) {
+        console.error('❌ Ошибка запроса (Администратор):', error);
+        return NextResponse.json({ message: 'Ошибка загрузки заказов', error: error.message }, { status: 500 });
       }
-    });
+      const parsed = (data || []).map((item: any) => ({ ...item, orderDate: new Date(item.orderDate) }));
+      console.log(`✅ Заказы получены: ${parsed.length} шт. для Администратор`);
+      return NextResponse.json(parsed);
+    }
 
-    console.log(`✅ Заказы получены: ${parsedData.length} шт. для ${user.role}`);
-    return NextResponse.json(parsedData);
+    if (user.role === 'Продавец') {
+      // Для продавца: последние 50 заказов с фото, следующие 150 без фото (итого до 200)
+      const sellerFilter = { column: 'seller', value: user.username } as const;
+
+      const [recentWithPhotos, olderWithoutPhotos] = await Promise.all([
+        supabaseAdmin
+          .from('orders')
+          .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment, ready_at')
+          .eq(sellerFilter.column, sellerFilter.value)
+          .order('orderDate', { ascending: false })
+          .limit(50),
+        supabaseAdmin
+          .from('orders')
+          .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, comment, ready_at')
+          .eq(sellerFilter.column, sellerFilter.value)
+          .order('orderDate', { ascending: false })
+          .range(50, 199),
+      ]);
+
+      if (recentWithPhotos.error) {
+        console.error('❌ Ошибка запроса (Продавец, последние 50):', recentWithPhotos.error);
+        return NextResponse.json({ message: 'Ошибка загрузки заказов', error: recentWithPhotos.error.message }, { status: 500 });
+      }
+      if (olderWithoutPhotos.error) {
+        console.error('❌ Ошибка запроса (Продавец, старшие 150):', olderWithoutPhotos.error);
+        return NextResponse.json({ message: 'Ошибка загрузки заказов', error: olderWithoutPhotos.error.message }, { status: 500 });
+      }
+
+      const data = [ ...(recentWithPhotos.data || []), ...(olderWithoutPhotos.data || []) ];
+      const parsed = data.map((item: any) => ({ ...item, orderDate: new Date(item.orderDate) }));
+      console.log(`✅ Заказы получены: ${parsed.length} шт. для Продавец (50 с фото + остальное без фото)`);
+      return NextResponse.json(parsed);
+    }
+
+    if (user.role === 'Принтовщик') {
+      // Для принтовщика — без изменений: 200 заказов с фото
+      const { data, error } = await supabaseAdmin
+        .from('orders')
+        .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment, ready_at')
+        .order('orderDate', { ascending: false })
+        .limit(200);
+      if (error) {
+        console.error('❌ Ошибка запроса (Принтовщик):', error);
+        return NextResponse.json({ message: 'Ошибка загрузки заказов', error: error.message }, { status: 500 });
+      }
+      const parsed = (data || []).map((item: any) => ({ ...item, orderDate: new Date(item.orderDate) }));
+      console.log(`✅ Заказы получены: ${parsed.length} шт. для Принтовщик`);
+      return NextResponse.json(parsed);
+    }
+
+    // Прочие роли — по умолчанию без фото, до 200
+    const { data, error } = await supabaseAdmin
+      .from('orders')
+      .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, comment, ready_at')
+      .order('orderDate', { ascending: false })
+      .limit(200);
+    if (error) {
+      console.error('❌ Ошибка запроса (прочие роли):', error);
+      return NextResponse.json({ message: 'Ошибка загрузки заказов', error: error.message }, { status: 500 });
+    }
+    const parsed = (data || []).map((item: any) => ({ ...item, orderDate: new Date(item.orderDate) }));
+    console.log(`✅ Заказы получены: ${parsed.length} шт. для ${user.role}`);
+    return NextResponse.json(parsed);
     
   } catch (error: any) {
     console.error('❌ Критическая ошибка API заказов:', error);
