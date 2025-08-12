@@ -9,11 +9,13 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing required Supabase environment variables');
+  console.warn('Missing required Supabase environment variables; skipping default client init at build time');
 }
 
 // Client for frontend (with anon key, respects RLS)
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = (supabaseUrl && supabaseAnonKey)
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : (undefined as any);
 
 // Client for backend/API routes (with service key, bypasses RLS)
 if (!supabaseServiceKey) {
@@ -48,7 +50,7 @@ export const supabaseAdmin = supabaseServiceKey
   : null;
 
 // Dedicated admin client for Storage API behind Kong: some gateways expect apikey=anon
-export const supabaseStorageAdmin = supabaseServiceKey
+export const supabaseStorageAdmin = (supabaseServiceKey && supabaseUrl)
   ? createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
         autoRefreshToken: false,
@@ -75,7 +77,7 @@ export const supabaseStorageAdmin = supabaseServiceKey
     })
   : null;
 
-export const supabaseStorageAdminServiceApikey = supabaseServiceKey
+export const supabaseStorageAdminServiceApikey = (supabaseServiceKey && supabaseUrl)
   ? createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
         autoRefreshToken: false,
@@ -109,7 +111,7 @@ if (photoSupabaseUrl && photoSupabaseUrl.startsWith('@')) {
 }
 const photoSupabaseServiceKey = process.env.PHOTO_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE;
 
-export const photoSupabaseStorageAdmin = photoSupabaseServiceKey && photoSupabaseUrl
+export const photoSupabaseStorageAdmin = (photoSupabaseServiceKey && photoSupabaseUrl)
   ? createClient(photoSupabaseUrl, photoSupabaseServiceKey, {
       auth: {
         autoRefreshToken: false,
