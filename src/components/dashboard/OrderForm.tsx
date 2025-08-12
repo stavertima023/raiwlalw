@@ -308,15 +308,15 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
                   
                   <div className="flex flex-wrap gap-2">
                     {photos.map((photo, index) => (
-                      <div key={index} className="relative group w-24 h-24">
+                      <div key={index} className="relative group w-28 h-28">
                         <Dialog>
                           <DialogTrigger asChild>
                             <button className="w-full h-full rounded-md overflow-hidden border hover:opacity-80 transition-opacity">
                               <Image
                                 src={photo}
                                 alt={`Фото ${index + 1}`}
-                                width={96}
-                                height={96}
+                                width={112}
+                                height={112}
                                 className="rounded-md object-cover w-full h-full"
                               />
                               <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all flex items-center justify-center">
