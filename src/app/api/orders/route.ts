@@ -23,33 +23,7 @@ export async function GET(request: NextRequest) {
       console.error('❌ SupabaseAdmin недоступен');
       return NextResponse.json({ message: 'Сервис недоступен' }, { status: 503 });
     }
-
     console.log('✅ SupabaseAdmin доступен');
-
-    // Проверяем подключение к базе данных
-    try {
-      console.log('🔍 Проверяем подключение к базе данных...');
-      const { data: testData, error: testError } = await supabaseAdmin
-        .from('orders')
-        .select('id')
-        .limit(1);
-      
-      if (testError) {
-        console.error('❌ Ошибка подключения к базе данных:', testError);
-        return NextResponse.json({ 
-          message: 'Ошибка подключения к базе данных', 
-          error: testError.message 
-        }, { status: 503 });
-      }
-      
-      console.log('✅ Подключение к базе данных успешно');
-    } catch (dbError) {
-      console.error('❌ Критическая ошибка подключения к БД:', dbError);
-      return NextResponse.json({ 
-        message: 'Сервис базы данных недоступен', 
-        error: 'Database connection failed' 
-      }, { status: 503 });
-    }
 
     // Получаем сессию
     let session;
@@ -119,12 +93,31 @@ export async function GET(request: NextRequest) {
     }
     
     console.log('🔍 Выполняем запрос к базе данных...');
-    
-    // Выполняем запрос
+
+    // Небольшая обертка с ретраями для сетевых обрывов (terminated/ECONNRESET)
+    const retry = async <T>(fn: () => Promise<T>, attempts = 2): Promise<T> => {
+      let lastErr: any = null;
+      for (let i = 0; i <= attempts; i += 1) {
+        try {
+          return await fn();
+        } catch (e: any) {
+          lastErr = e;
+          const msg = String(e?.message || e);
+          if (/(terminated|ECONNRESET|socket hang up|fetch failed|network)/i.test(msg) && i < attempts) {
+            await new Promise(r => setTimeout(r, 400 * (i + 1)));
+            continue;
+          }
+          break;
+        }
+      }
+      throw lastErr;
+    };
+
+    // Выполняем запрос с ретраями
     let result;
     try {
-      result = await query;
-    } catch (queryError) {
+      result = await retry(() => query as unknown as Promise<any>, 2);
+    } catch (queryError: any) {
       console.error('❌ Ошибка выполнения запроса:', queryError);
       return NextResponse.json({ 
         message: 'Ошибка базы данных', 
