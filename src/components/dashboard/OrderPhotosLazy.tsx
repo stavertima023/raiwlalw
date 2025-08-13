@@ -182,6 +182,9 @@ export const OrderPhotosLazy: React.FC<OrderPhotosLazyProps> = ({
                   className="rounded object-cover cursor-pointer hover:opacity-80 transition-opacity"
                   style={{ width: size, height: size }}
                   loading="lazy"
+                  quality={95}
+                  sizes={`${size}px`}
+                  unoptimized
                 />
                 {/* Индикатор клика */}
                 <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all flex items-center justify-center rounded">
@@ -217,6 +220,8 @@ export const OrderPhotosLazy: React.FC<OrderPhotosLazyProps> = ({
                     className="rounded-md object-contain max-w-full max-h-[60vh]"
                     loading="eager"
                     priority={selectedPhotoIndex === 0}
+                    quality={100}
+                    unoptimized
                   />
                 ) : (
                   <Image
@@ -227,6 +232,8 @@ export const OrderPhotosLazy: React.FC<OrderPhotosLazyProps> = ({
                     className="rounded-md object-contain max-w-full max-h-[60vh]"
                     loading="eager"
                     priority={selectedPhotoIndex === 0}
+                    quality={100}
+                    unoptimized
                   />
                 )}
               </div>

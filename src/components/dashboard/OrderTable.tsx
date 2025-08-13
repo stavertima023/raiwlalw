@@ -819,7 +819,7 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
                 <div>
                   <span className="text-muted-foreground text-sm">Фото:</span>
                   <div className="mt-1">
-                    <OrderPhotosSimple photos={order.photos || []} size={100} />
+                    <OrderPhotosSimple photos={order.photos || []} size={120} />
                   </div>
                 </div>
 
