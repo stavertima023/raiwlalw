@@ -66,8 +66,6 @@ export async function uploadBase64ToStorage(options: {
   const safeSeller = (options.seller || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '_');
   const filename = `${idPart}-${options.index ?? 0}.${ext}`;
   const path = `orders/${y}/${m}/${d}/${safeSeller}/${options.orderId}/${filename}`;
-  // No compression: upload original buffer as-is with original content type
-  const uploadBuffer = buffer as any;
 
   // Supabase Storage fallback
   const primary = photoSupabaseStorageAdmin || supabaseStorageAdmin || supabaseAdmin;
@@ -78,7 +76,7 @@ export async function uploadBase64ToStorage(options: {
   // Try primary (apikey=anon) first
   let { error: uploadError } = await (primary as any).storage
     .from(bucket)
-    .upload(path, uploadBuffer, {
+    .upload(path, buffer, {
       contentType,
       cacheControl: '3600',
       upsert: true,
@@ -88,7 +86,7 @@ export async function uploadBase64ToStorage(options: {
     if (secondary && secondary !== primary) {
       const retry = await (secondary as any).storage
         .from(bucket)
-        .upload(path, uploadBuffer, {
+        .upload(path, buffer, {
           contentType,
           cacheControl: '3600',
           upsert: true,
