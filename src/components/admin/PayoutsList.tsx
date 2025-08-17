@@ -142,22 +142,31 @@ const PayoutDetailsDialog: React.FC<{ payout: PayoutWithOrders; sellerMap: Recor
             </Card>
 
             {/* Статистика по типам товаров */}
-            {payout.productTypeStats && Object.keys(payout.productTypeStats).length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center">
-                    <Package className="h-4 w-4 mr-2" />
-                    Статистика по типам товаров
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ProductTypeStats stats={payout.productTypeStats} />
-                  <p className="text-xs text-muted-foreground mt-2">
-                    * Статистика рассчитана на основе номеров заказов в выплате
-                  </p>
-                </CardContent>
-              </Card>
-            )}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center">
+                  <Package className="h-4 w-4 mr-2" />
+                  Статистика по типам товаров
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {payout.productTypeStats && Object.keys(payout.productTypeStats).length > 0 ? (
+                  <>
+                    <ProductTypeStats stats={payout.productTypeStats} />
+                    <p className="text-xs text-muted-foreground mt-2">
+                      * Статистика рассчитана на основе номеров заказов в выплате
+                    </p>
+                  </>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-muted-foreground">Статистика не рассчитана</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Для получения статистики нужно обновить этот вывод через кнопку миграции
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
             {/* Список заказов */}
             {payout.orders && payout.orders.length > 0 && (
@@ -189,27 +198,40 @@ const PayoutDetailsDialog: React.FC<{ payout: PayoutWithOrders; sellerMap: Recor
             {/* Номера заказов с суммами */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Номера заказов с суммами</CardTitle>
+                <CardTitle className="text-lg">Номера заказов{payout.orders && payout.orders.length > 0 ? ' с суммами' : ''}</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {payout.orderNumbers.map((orderNumber) => {
-                    // Найти заказ в списке orders для получения суммы
-                    const order = payout.orders?.find(o => o.orderNumber === orderNumber);
-                    return (
-                      <div key={orderNumber} className="flex justify-between items-center p-2 border rounded">
-                        <Badge variant="outline">
-                          #{orderNumber}
-                        </Badge>
-                        {order && (
-                          <span className="text-sm font-medium">
-                            {order.price.toLocaleString('ru-RU')} ₽
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                {payout.orders && payout.orders.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {payout.orderNumbers.map((orderNumber) => {
+                      // Найти заказ в списке orders для получения суммы
+                      const order = payout.orders?.find(o => o.orderNumber === orderNumber);
+                      return (
+                        <div key={orderNumber} className="flex justify-between items-center p-2 border rounded">
+                          <Badge variant="outline">
+                            #{orderNumber}
+                          </Badge>
+                          {order && (
+                            <span className="text-sm font-medium">
+                              {order.price.toLocaleString('ru-RU')} ₽
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {payout.orderNumbers.map((orderNumber) => (
+                      <Badge key={orderNumber} variant="outline">
+                        #{orderNumber}
+                      </Badge>
+                    ))}
+                    <p className="w-full text-xs text-muted-foreground mt-2">
+                      Для отображения сумм заказов выполните миграцию через кнопку "Обновить выводы"
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -312,17 +334,23 @@ export const PayoutsList: React.FC<PayoutsListProps> = ({
     if (currentUser.role === 'Администратор') {
       checkMigrationStatus();
     }
-  }, [currentUser.role]);
+  }, [currentUser.role, allPayouts.length]); // Добавляем зависимость от количества выводов
 
   const checkMigrationStatus = async () => {
     try {
+      console.log('🔍 Проверяем статус миграции...');
       const response = await fetch('/api/admin/payouts/migrate');
       if (response.ok) {
         const status = await response.json();
+        console.log('📊 Статус миграции:', status);
         setMigrationStatus(status);
+      } else {
+        console.error('❌ Ошибка ответа API миграции:', response.status, response.statusText);
+        const errorText = await response.text();
+        console.error('❌ Детали ошибки:', errorText);
       }
     } catch (error) {
-      console.error('Ошибка проверки статуса миграции:', error);
+      console.error('❌ Ошибка проверки статуса миграции:', error);
     }
   };
 
@@ -399,8 +427,8 @@ export const PayoutsList: React.FC<PayoutsListProps> = ({
       </div>
 
       {/* Информация о миграции */}
-      {currentUser.role === 'Администратор' && migrationStatus && (
-        <Card className={migrationStatus.ready ? "border-orange-200 bg-orange-50" : "border-green-200 bg-green-50"}>
+      {currentUser.role === 'Администратор' && (migrationStatus || allPayouts.length > 0) && (
+        <Card className={migrationStatus?.ready ? "border-orange-200 bg-orange-50" : "border-green-200 bg-green-50"}>
           <CardHeader>
             <CardTitle className="flex items-center text-lg">
               <Database className="h-5 w-5 mr-2" />
@@ -408,29 +436,43 @@ export const PayoutsList: React.FC<PayoutsListProps> = ({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold">{migrationStatus.totalPayouts}</div>
-                <div className="text-sm text-muted-foreground">Всего выводов</div>
+            {migrationStatus ? (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold">{migrationStatus.totalPayouts}</div>
+                    <div className="text-sm text-muted-foreground">Всего выводов</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-600">{migrationStatus.alreadyMigrated}</div>
+                    <div className="text-sm text-muted-foreground">Уже обновлены</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-orange-600">{migrationStatus.needsUpdate}</div>
+                    <div className="text-sm text-muted-foreground">Требуют обновления</div>
+                  </div>
+                </div>
+                {migrationStatus.ready && (
+                  <p className="text-sm text-orange-700 mt-3">
+                    ⚡ Нажмите кнопку "Обновить выводы" выше, чтобы применить новые возможности: суммы заказов, типы товаров, подсчет х/ф/ш/л
+                  </p>
+                )}
+                {!migrationStatus.ready && migrationStatus.needsUpdate === 0 && (
+                  <p className="text-sm text-green-700 mt-3">
+                    ✅ Все выводы актуальны! Новые возможности уже доступны во всех деталях выводов.
+                  </p>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-4">
+                <p className="text-muted-foreground">Проверяем статус...</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Всего выводов: {allPayouts.length}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Откройте консоль браузера (F12) для диагностики
+                </p>
               </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">{migrationStatus.alreadyMigrated}</div>
-                <div className="text-sm text-muted-foreground">Уже обновлены</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-orange-600">{migrationStatus.needsUpdate}</div>
-                <div className="text-sm text-muted-foreground">Требуют обновления</div>
-              </div>
-            </div>
-            {migrationStatus.ready && (
-              <p className="text-sm text-orange-700 mt-3">
-                ⚡ Нажмите кнопку "Обновить выводы" выше, чтобы применить новые возможности: суммы заказов, типы товаров, подсчет х/ф/ш/л
-              </p>
-            )}
-            {!migrationStatus.ready && migrationStatus.needsUpdate === 0 && (
-              <p className="text-sm text-green-700 mt-3">
-                ✅ Все выводы актуальны! Новые возможности уже доступны во всех деталях выводов.
-              </p>
             )}
           </CardContent>
         </Card>
