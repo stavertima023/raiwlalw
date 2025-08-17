@@ -27,7 +27,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Eye, Package, TrendingUp, Calculator, RefreshCw, Database } from 'lucide-react';
+import { Eye, Package, TrendingUp, Calculator, RefreshCw } from 'lucide-react';
 import type { Payout, PayoutStatus, User, PayoutWithOrders } from '@/lib/types';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -266,13 +266,13 @@ const PayoutDetailsDialog: React.FC<{ payout: PayoutWithOrders; sellerMap: Recor
                           <h4 className="font-medium mb-2">Заказы на х, ф, ш, л:</h4>
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                             {specialCounts.map(({ letter, count }) => (
-                              <div key={letter} className="text-center p-2 bg-blue-50 rounded">
+                              <div key={letter} className="text-center p-2 bg-slate-700 text-white rounded border border-slate-600">
                                 <div className="font-bold text-lg">{count}</div>
-                                <div className="text-sm text-muted-foreground">на "{letter}"</div>
+                                <div className="text-sm text-slate-300">на "{letter}"</div>
                               </div>
                             ))}
                           </div>
-                          <div className="text-center mt-2 p-2 bg-blue-100 rounded">
+                          <div className="text-center mt-2 p-2 bg-slate-800 text-white rounded border border-slate-700">
                             <div className="font-bold">Всего: {totalSpecial} заказов</div>
                           </div>
                         </div>
@@ -302,13 +302,7 @@ export const PayoutsList: React.FC<PayoutsListProps> = ({
     status: 'all' as PayoutStatus | 'all',
     seller: 'all' as string | 'all',
   });
-  const [migrationStatus, setMigrationStatus] = React.useState<{
-    totalPayouts: number;
-    needsUpdate: number;
-    alreadyMigrated: number;
-    ready: boolean;
-  } | null>(null);
-  const [isMigrating, setIsMigrating] = React.useState(false);
+  const [isAutoMigrating, setIsAutoMigrating] = React.useState(false);
 
   const sellerMap = React.useMemo(() => {
     return allUsers.reduce((acc, user) => {
@@ -332,70 +326,58 @@ export const PayoutsList: React.FC<PayoutsListProps> = ({
 
   const sellerUsers = allUsers.filter(u => u.role === 'Продавец');
 
-  // Проверяем статус миграции при загрузке
+  // Автоматическая миграция при загрузке
   React.useEffect(() => {
-    if (currentUser.role === 'Администратор') {
-      checkMigrationStatus();
+    if (currentUser.role === 'Администратор' && allPayouts.length > 0 && !isAutoMigrating) {
+      autoMigrateIfNeeded();
     }
-  }, [currentUser.role, allPayouts.length]); // Добавляем зависимость от количества выводов
+  }, [currentUser.role, allPayouts.length, isAutoMigrating]);
 
-  const checkMigrationStatus = async () => {
+  const autoMigrateIfNeeded = async () => {
     try {
-      console.log('🔍 Проверяем статус миграции...');
-      const response = await fetch('/api/admin/payouts/migrate');
-      if (response.ok) {
-        const status = await response.json();
+      setIsAutoMigrating(true);
+      console.log('🔍 Проверяем необходимость автоматической миграции...');
+      
+      const statusResponse = await fetch('/api/admin/payouts/migrate');
+      if (statusResponse.ok) {
+        const status = await statusResponse.json();
         console.log('📊 Статус миграции:', status);
-        setMigrationStatus(status);
-      } else {
-        console.error('❌ Ошибка ответа API миграции:', response.status, response.statusText);
-        const errorText = await response.text();
-        console.error('❌ Детали ошибки:', errorText);
+        
+        // Если есть выводы, требующие обновления, выполняем миграцию автоматически
+        if (status.ready && status.needsUpdate > 0) {
+          console.log(`🚀 Запускаем автоматическую миграцию для ${status.needsUpdate} выводов...`);
+          
+          const migrateResponse = await fetch('/api/admin/payouts/migrate', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+
+          const result = await migrateResponse.json();
+          
+          if (migrateResponse.ok) {
+            console.log(`✅ Автоматическая миграция завершена: обновлено ${result.stats.updatedCount} выводов`);
+            
+            // Обновляем данные выводов
+            if (onRefresh) {
+              onRefresh();
+            }
+          } else {
+            console.error('❌ Ошибка автоматической миграции:', result.message);
+          }
+        } else {
+          console.log('✅ Все выводы уже актуальны, миграция не требуется');
+        }
       }
     } catch (error) {
-      console.error('❌ Ошибка проверки статуса миграции:', error);
-    }
-  };
-
-  const runMigration = async () => {
-    setIsMigrating(true);
-    try {
-      const response = await fetch('/api/admin/payouts/migrate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const result = await response.json();
-      
-      if (response.ok) {
-        toast({
-          title: 'Миграция завершена',
-          description: `Обновлено ${result.stats.updatedCount} выводов из ${result.stats.totalPayouts}`,
-        });
-        
-        // Обновляем статус миграции
-        await checkMigrationStatus();
-        
-        // Обновляем данные выводов
-        if (onRefresh) {
-          onRefresh();
-        }
-      } else {
-        throw new Error(result.message || 'Ошибка миграции');
-      }
-    } catch (error: any) {
-      console.error('Ошибка миграции:', error);
-      toast({
-        title: 'Ошибка миграции',
-        description: error.message || 'Не удалось выполнить миграцию',
-        variant: 'destructive',
-      });
+      console.error('❌ Ошибка автоматической миграции:', error);
     } finally {
-      setIsMigrating(false);
+      setIsAutoMigrating(false);
     }
   };
+
+
 
   return (
     <div className="space-y-6">
@@ -406,80 +388,13 @@ export const PayoutsList: React.FC<PayoutsListProps> = ({
             Управление выплатами и выводами средств с подробной статистикой
           </p>
         </div>
-        <div className="flex gap-2">
-          {onRefresh && (
-            <Button onClick={onRefresh} variant="default" disabled={isLoading} className="bg-blue-600 hover:bg-blue-700">
-              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-              {isLoading ? 'Обновление...' : 'Обновить данные'}
-            </Button>
-          )}
-          
-          {/* Кнопка миграции для администратора */}
-          {currentUser.role === 'Администратор' && migrationStatus && migrationStatus.ready && (
-            <Button 
-              onClick={runMigration} 
-              variant="outline" 
-              disabled={isMigrating}
-              className="border-orange-300 text-orange-700 hover:bg-orange-50"
-            >
-              <Database className={`h-4 w-4 mr-2 ${isMigrating ? 'animate-spin' : ''}`} />
-              {isMigrating ? 'Обновление...' : `Обновить ${migrationStatus.needsUpdate} выводов`}
-            </Button>
-          )}
-        </div>
+        {onRefresh && (
+          <Button onClick={onRefresh} variant="default" disabled={isLoading || isAutoMigrating} className="bg-blue-600 hover:bg-blue-700">
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading || isAutoMigrating ? 'animate-spin' : ''}`} />
+            {isLoading || isAutoMigrating ? 'Обновление...' : 'Обновить данные'}
+          </Button>
+        )}
       </div>
-
-      {/* Информация о миграции */}
-      {currentUser.role === 'Администратор' && (migrationStatus || allPayouts.length > 0) && (
-        <Card className={migrationStatus?.ready ? "border-orange-200 bg-orange-50" : "border-green-200 bg-green-50"}>
-          <CardHeader>
-            <CardTitle className="flex items-center text-lg">
-              <Database className="h-5 w-5 mr-2" />
-              Статус нововведений в выводах
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {migrationStatus ? (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold">{migrationStatus.totalPayouts}</div>
-                    <div className="text-sm text-muted-foreground">Всего выводов</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600">{migrationStatus.alreadyMigrated}</div>
-                    <div className="text-sm text-muted-foreground">Уже обновлены</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-orange-600">{migrationStatus.needsUpdate}</div>
-                    <div className="text-sm text-muted-foreground">Требуют обновления</div>
-                  </div>
-                </div>
-                {migrationStatus.ready && (
-                  <p className="text-sm text-orange-700 mt-3">
-                    ⚡ Нажмите кнопку "Обновить выводы" выше, чтобы применить новые возможности: суммы заказов, типы товаров, подсчет х/ф/ш/л
-                  </p>
-                )}
-                {!migrationStatus.ready && migrationStatus.needsUpdate === 0 && (
-                  <p className="text-sm text-green-700 mt-3">
-                    ✅ Все выводы актуальны! Новые возможности уже доступны во всех деталях выводов.
-                  </p>
-                )}
-              </>
-            ) : (
-              <div className="text-center py-4">
-                <p className="text-muted-foreground">Проверяем статус...</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Всего выводов: {allPayouts.length}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Откройте консоль браузера (F12) для диагностики
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
 
       {/* Индикатор загрузки */}
       <LoadingIndicator 
