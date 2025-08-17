@@ -27,11 +27,12 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Eye, Package, TrendingUp, Calculator, RefreshCw } from 'lucide-react';
+import { Eye, Package, TrendingUp, Calculator, RefreshCw, Database } from 'lucide-react';
 import type { Payout, PayoutStatus, User, PayoutWithOrders } from '@/lib/types';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { LoadingIndicator } from '@/components/ui/loading-indicator';
+import { useToast } from '@/hooks/use-toast';
 
 interface PayoutsListProps {
   allPayouts: PayoutWithOrders[];
@@ -271,10 +272,18 @@ export const PayoutsList: React.FC<PayoutsListProps> = ({
   onRefresh,
   isLoading = false
 }) => {
+  const { toast } = useToast();
   const [filters, setFilters] = React.useState({
     status: 'all' as PayoutStatus | 'all',
     seller: 'all' as string | 'all',
   });
+  const [migrationStatus, setMigrationStatus] = React.useState<{
+    totalPayouts: number;
+    needsUpdate: number;
+    alreadyMigrated: number;
+    ready: boolean;
+  } | null>(null);
+  const [isMigrating, setIsMigrating] = React.useState(false);
 
   const sellerMap = React.useMemo(() => {
     return allUsers.reduce((acc, user) => {
@@ -298,6 +307,65 @@ export const PayoutsList: React.FC<PayoutsListProps> = ({
 
   const sellerUsers = allUsers.filter(u => u.role === 'Продавец');
 
+  // Проверяем статус миграции при загрузке
+  React.useEffect(() => {
+    if (currentUser.role === 'Администратор') {
+      checkMigrationStatus();
+    }
+  }, [currentUser.role]);
+
+  const checkMigrationStatus = async () => {
+    try {
+      const response = await fetch('/api/admin/payouts/migrate');
+      if (response.ok) {
+        const status = await response.json();
+        setMigrationStatus(status);
+      }
+    } catch (error) {
+      console.error('Ошибка проверки статуса миграции:', error);
+    }
+  };
+
+  const runMigration = async () => {
+    setIsMigrating(true);
+    try {
+      const response = await fetch('/api/admin/payouts/migrate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const result = await response.json();
+      
+      if (response.ok) {
+        toast({
+          title: 'Миграция завершена',
+          description: `Обновлено ${result.stats.updatedCount} выводов из ${result.stats.totalPayouts}`,
+        });
+        
+        // Обновляем статус миграции
+        await checkMigrationStatus();
+        
+        // Обновляем данные выводов
+        if (onRefresh) {
+          onRefresh();
+        }
+      } else {
+        throw new Error(result.message || 'Ошибка миграции');
+      }
+    } catch (error: any) {
+      console.error('Ошибка миграции:', error);
+      toast({
+        title: 'Ошибка миграции',
+        description: error.message || 'Не удалось выполнить миграцию',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsMigrating(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -307,13 +375,66 @@ export const PayoutsList: React.FC<PayoutsListProps> = ({
             Управление выплатами и выводами средств с подробной статистикой
           </p>
         </div>
-        {onRefresh && (
-          <Button onClick={onRefresh} variant="default" disabled={isLoading} className="bg-blue-600 hover:bg-blue-700">
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            {isLoading ? 'Обновление...' : 'Обновить данные'}
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {onRefresh && (
+            <Button onClick={onRefresh} variant="default" disabled={isLoading} className="bg-blue-600 hover:bg-blue-700">
+              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              {isLoading ? 'Обновление...' : 'Обновить данные'}
+            </Button>
+          )}
+          
+          {/* Кнопка миграции для администратора */}
+          {currentUser.role === 'Администратор' && migrationStatus && migrationStatus.ready && (
+            <Button 
+              onClick={runMigration} 
+              variant="outline" 
+              disabled={isMigrating}
+              className="border-orange-300 text-orange-700 hover:bg-orange-50"
+            >
+              <Database className={`h-4 w-4 mr-2 ${isMigrating ? 'animate-spin' : ''}`} />
+              {isMigrating ? 'Обновление...' : `Обновить ${migrationStatus.needsUpdate} выводов`}
+            </Button>
+          )}
+        </div>
       </div>
+
+      {/* Информация о миграции */}
+      {currentUser.role === 'Администратор' && migrationStatus && (
+        <Card className={migrationStatus.ready ? "border-orange-200 bg-orange-50" : "border-green-200 bg-green-50"}>
+          <CardHeader>
+            <CardTitle className="flex items-center text-lg">
+              <Database className="h-5 w-5 mr-2" />
+              Статус нововведений в выводах
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold">{migrationStatus.totalPayouts}</div>
+                <div className="text-sm text-muted-foreground">Всего выводов</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">{migrationStatus.alreadyMigrated}</div>
+                <div className="text-sm text-muted-foreground">Уже обновлены</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-orange-600">{migrationStatus.needsUpdate}</div>
+                <div className="text-sm text-muted-foreground">Требуют обновления</div>
+              </div>
+            </div>
+            {migrationStatus.ready && (
+              <p className="text-sm text-orange-700 mt-3">
+                ⚡ Нажмите кнопку "Обновить выводы" выше, чтобы применить новые возможности: суммы заказов, типы товаров, подсчет х/ф/ш/л
+              </p>
+            )}
+            {!migrationStatus.ready && migrationStatus.needsUpdate === 0 && (
+              <p className="text-sm text-green-700 mt-3">
+                ✅ Все выводы актуальны! Новые возможности уже доступны во всех деталях выводов.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Индикатор загрузки */}
       <LoadingIndicator 
