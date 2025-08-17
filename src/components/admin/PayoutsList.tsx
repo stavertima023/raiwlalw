@@ -302,8 +302,6 @@ export const PayoutsList: React.FC<PayoutsListProps> = ({
     status: 'all' as PayoutStatus | 'all',
     seller: 'all' as string | 'all',
   });
-  const [isAutoMigrating, setIsAutoMigrating] = React.useState(false);
-
   const sellerMap = React.useMemo(() => {
     return allUsers.reduce((acc, user) => {
       acc[user.username] = user.name;
@@ -326,59 +324,6 @@ export const PayoutsList: React.FC<PayoutsListProps> = ({
 
   const sellerUsers = allUsers.filter(u => u.role === 'Продавец');
 
-  // Автоматическая миграция при загрузке
-  React.useEffect(() => {
-    if (currentUser.role === 'Администратор' && allPayouts.length > 0 && !isAutoMigrating) {
-      autoMigrateIfNeeded();
-    }
-  }, [currentUser.role, allPayouts.length, isAutoMigrating]);
-
-  const autoMigrateIfNeeded = async () => {
-    try {
-      setIsAutoMigrating(true);
-      console.log('🔍 Проверяем необходимость автоматической миграции...');
-      
-      const statusResponse = await fetch('/api/admin/payouts/migrate');
-      if (statusResponse.ok) {
-        const status = await statusResponse.json();
-        console.log('📊 Статус миграции:', status);
-        
-        // Если есть выводы, требующие обновления, выполняем миграцию автоматически
-        if (status.ready && status.needsUpdate > 0) {
-          console.log(`🚀 Запускаем автоматическую миграцию для ${status.needsUpdate} выводов...`);
-          
-          const migrateResponse = await fetch('/api/admin/payouts/migrate', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          });
-
-          const result = await migrateResponse.json();
-          
-          if (migrateResponse.ok) {
-            console.log(`✅ Автоматическая миграция завершена: обновлено ${result.stats.updatedCount} выводов`);
-            
-            // Обновляем данные выводов
-            if (onRefresh) {
-              onRefresh();
-            }
-          } else {
-            console.error('❌ Ошибка автоматической миграции:', result.message);
-          }
-        } else {
-          console.log('✅ Все выводы уже актуальны, миграция не требуется');
-        }
-      }
-    } catch (error) {
-      console.error('❌ Ошибка автоматической миграции:', error);
-    } finally {
-      setIsAutoMigrating(false);
-    }
-  };
-
-
-
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -389,9 +334,9 @@ export const PayoutsList: React.FC<PayoutsListProps> = ({
           </p>
         </div>
         {onRefresh && (
-          <Button onClick={onRefresh} variant="default" disabled={isLoading || isAutoMigrating} className="bg-blue-600 hover:bg-blue-700">
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading || isAutoMigrating ? 'animate-spin' : ''}`} />
-            {isLoading || isAutoMigrating ? 'Обновление...' : 'Обновить данные'}
+          <Button onClick={onRefresh} variant="default" disabled={isLoading} className="bg-blue-600 hover:bg-blue-700">
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            {isLoading ? 'Обновление...' : 'Обновить данные'}
           </Button>
         )}
       </div>
