@@ -41,19 +41,33 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        // Получаем данные заказов для этого вывода
-        const { data: orders, error: ordersError } = await supabaseAdmin
-          .from('orders')
-          .select('id, orderNumber, productType, price, size, status, orderDate')
-          .in('orderNumber', payout.orderNumbers);
+        // Получаем данные заказов для этого вывода порциями
+        let orders: any[] = [];
+        const BATCH_SIZE = 50; // Меньший размер для миграции
+        
+        for (let i = 0; i < payout.orderNumbers.length; i += BATCH_SIZE) {
+          const batch = payout.orderNumbers.slice(i, i + BATCH_SIZE);
+          
+          try {
+            const { data: batchOrders, error: ordersError } = await supabaseAdmin
+              .from('orders')
+              .select('id, orderNumber, productType, price, size, status, orderDate')
+              .in('orderNumber', batch);
 
-        if (ordersError) {
-          console.error(`❌ Ошибка получения заказов для вывода ${payout.id}:`, ordersError);
-          skippedCount++;
-          continue;
+            if (ordersError) {
+              console.error(`❌ Ошибка получения заказов для вывода ${payout.id} (batch ${i}):`, ordersError);
+              continue;
+            }
+
+            if (batchOrders && batchOrders.length > 0) {
+              orders.push(...batchOrders);
+            }
+          } catch (batchError) {
+            console.error(`❌ Ошибка обработки batch ${i} для вывода ${payout.id}:`, batchError);
+          }
         }
 
-        if (!orders || orders.length === 0) {
+        if (orders.length === 0) {
           console.log(`⚠️ Пропускаем вывод ${payout.id} - заказы не найдены`);
           skippedCount++;
           continue;

@@ -54,18 +54,28 @@ export async function GET() {
         return acc;
       }, [] as string[]);
 
-      // Получаем полные данные заказов для статистики и отображения
+      // Получаем полные данные заказов порциями для избежания "URI too long"
       let ordersStats: any[] = [];
       if (allOrderNumbers.length > 0) {
-        const { data: orders, error: ordersError } = await supabaseAdmin!
-          .from('orders')
-          .select('id, orderNumber, productType, price, size, status, orderDate')
-          .in('orderNumber', allOrderNumbers);
+        const BATCH_SIZE = 100; // Обрабатываем по 100 заказов за раз
+        
+        for (let i = 0; i < allOrderNumbers.length; i += BATCH_SIZE) {
+          const batch = allOrderNumbers.slice(i, i + BATCH_SIZE);
+          
+          try {
+            const { data: orders, error: ordersError } = await supabaseAdmin!
+              .from('orders')
+              .select('id, orderNumber, productType, price, size, status, orderDate')
+              .in('orderNumber', batch);
 
-        if (ordersError) {
-          console.error('Ошибка получения статистики заказов:', ordersError);
-        } else {
-          ordersStats = orders || [];
+            if (ordersError) {
+              console.error(`Ошибка получения статистики заказов (batch ${i}-${i + BATCH_SIZE}):`, ordersError);
+            } else {
+              ordersStats.push(...(orders || []));
+            }
+          } catch (batchError) {
+            console.error(`Ошибка обработки batch ${i}-${i + BATCH_SIZE}:`, batchError);
+          }
         }
       }
 

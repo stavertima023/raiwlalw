@@ -102,10 +102,13 @@ const PayoutDetailsDialog: React.FC<{ payout: PayoutWithOrders; sellerMap: Recor
           Детали
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl" aria-describedby="payout-details-description">
         <DialogHeader>
           <DialogTitle>Детали выплаты</DialogTitle>
         </DialogHeader>
+        <div id="payout-details-description" className="sr-only">
+          Подробная информация о выплате включая заказы, статистику по типам товаров и суммы
+        </div>
         <ScrollArea className="h-[400px]">
           <div className="space-y-4">
             {/* Основная информация */}
