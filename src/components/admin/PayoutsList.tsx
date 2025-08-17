@@ -185,21 +185,77 @@ const PayoutDetailsDialog: React.FC<{ payout: PayoutWithOrders; sellerMap: Recor
               </Card>
             )}
 
-            {/* Номера заказов */}
+            {/* Номера заказов с суммами */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Номера заказов</CardTitle>
+                <CardTitle className="text-lg">Номера заказов с суммами</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {payout.orderNumbers.map((orderNumber) => (
-                    <Badge key={orderNumber} variant="outline">
-                      #{orderNumber}
-                    </Badge>
-                  ))}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {payout.orderNumbers.map((orderNumber) => {
+                    // Найти заказ в списке orders для получения суммы
+                    const order = payout.orders?.find(o => o.orderNumber === orderNumber);
+                    return (
+                      <div key={orderNumber} className="flex justify-between items-center p-2 border rounded">
+                        <Badge variant="outline">
+                          #{orderNumber}
+                        </Badge>
+                        {order && (
+                          <span className="text-sm font-medium">
+                            {order.price.toLocaleString('ru-RU')} ₽
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
+
+            {/* Статистика по типам с х, ф, ш, л */}
+            {payout.productTypeStats && Object.keys(payout.productTypeStats).length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Анализ типов товаров</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {/* Общая статистика */}
+                    <ProductTypeStats stats={payout.productTypeStats} />
+                    
+                    {/* Специальные типы */}
+                    {(() => {
+                      const specialTypes = ['х', 'ф', 'ш', 'л'];
+                      const specialCounts = specialTypes.map(letter => ({
+                        letter,
+                        count: Object.entries(payout.productTypeStats)
+                          .filter(([type]) => type.toLowerCase().startsWith(letter))
+                          .reduce((sum, [, count]) => sum + count, 0)
+                      })).filter(item => item.count > 0);
+                      
+                      const totalSpecial = specialCounts.reduce((sum, item) => sum + item.count, 0);
+                      
+                      return totalSpecial > 0 ? (
+                        <div className="border-t pt-4">
+                          <h4 className="font-medium mb-2">Заказы на х, ф, ш, л:</h4>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                            {specialCounts.map(({ letter, count }) => (
+                              <div key={letter} className="text-center p-2 bg-blue-50 rounded">
+                                <div className="font-bold text-lg">{count}</div>
+                                <div className="text-sm text-muted-foreground">на "{letter}"</div>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="text-center mt-2 p-2 bg-blue-100 rounded">
+                            <div className="font-bold">Всего: {totalSpecial} заказов</div>
+                          </div>
+                        </div>
+                      ) : null;
+                    })()}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </ScrollArea>
       </DialogContent>

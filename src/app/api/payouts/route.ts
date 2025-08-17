@@ -54,12 +54,12 @@ export async function GET() {
         return acc;
       }, [] as string[]);
 
-      // Получаем только необходимые данные заказов для статистики
+      // Получаем полные данные заказов для статистики и отображения
       let ordersStats: any[] = [];
       if (allOrderNumbers.length > 0) {
         const { data: orders, error: ordersError } = await supabaseAdmin!
           .from('orders')
-          .select('orderNumber, productType, price')
+          .select('id, orderNumber, productType, price, size, status, orderDate')
           .in('orderNumber', allOrderNumbers);
 
         if (ordersError) {
@@ -80,9 +80,10 @@ export async function GET() {
         const orderCount = payout.orderNumbers?.length || 0;
         const averageCheck = orderCount > 0 ? payout.amount / orderCount : 0;
         
-        // Рассчитываем статистику по типам товаров
+        // Рассчитываем статистику по типам товаров и собираем заказы
         const productTypeStats: Record<string, number> = {};
         let totalAmount = 0;
+        const orders: any[] = [];
         
         if (payout.orderNumbers) {
           payout.orderNumbers.forEach((orderNumber: string) => {
@@ -90,6 +91,7 @@ export async function GET() {
             if (order) {
               productTypeStats[order.productType] = (productTypeStats[order.productType] || 0) + 1;
               totalAmount += order.price;
+              orders.push(order);
             }
           });
         }
@@ -99,8 +101,8 @@ export async function GET() {
           orderCount,
           averageCheck: totalAmount > 0 ? totalAmount / orderCount : averageCheck,
           productTypeStats,
-          // Не загружаем полные данные заказов для ускорения
-          orders: [],
+          // Включаем данные заказов для отображения в деталях
+          orders,
         };
       });
 

@@ -13,8 +13,6 @@ import { LoadingIndicator } from '@/components/ui/loading-indicator';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -152,7 +150,7 @@ const MobilePrinterView = React.memo<{
                           <img
                             src={photo}
                             alt={`Фото ${index + 1}`}
-                            className="w-20 h-20 md:w-24 md:h-24 object-cover rounded-md border transition-transform group-hover:scale-105"
+                            className="w-16 h-16 object-cover rounded-md border transition-transform group-hover:scale-105"
                             loading="lazy"
                           />
                           {order.photos.length > 1 && index === 0 && (
@@ -183,7 +181,7 @@ const MobilePrinterView = React.memo<{
                           <img
                             src={photo}
                             alt={`Фото ${index + 1}`}
-                            className="w-full h-auto rounded-md max-h-[70vh] object-contain"
+                            className="w-full h-auto rounded-md max-h-[60vh] object-contain"
                             loading="eager"
                           />
                           {/* Навигация по фото если их несколько */}
@@ -282,15 +280,6 @@ export function PrinterDashboard({
     orderNumber: '',
   });
 
-  const [orderSearch, setOrderSearch] = React.useState('');
-
-  React.useEffect(() => {
-    const handle = setTimeout(() => {
-      setFilters(prev => ({ ...prev, orderNumber: orderSearch.trim() }));
-    }, 300);
-    return () => clearTimeout(handle);
-  }, [orderSearch]);
-
   // Защита от ошибок и стабилизация
   const [error, setError] = React.useState<string | null>(null);
   const [isMobile, setIsMobile] = React.useState(false);
@@ -388,25 +377,6 @@ export function PrinterDashboard({
           </CardHeader>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">Поиск по номеру заказа</CardTitle>
-            <CardDescription>Введите номер полностью или часть номера</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                value={orderSearch}
-                onChange={(e) => setOrderSearch(e.target.value)}
-                placeholder="Например: 12345"
-                className="pl-8"
-                aria-label="Поиск по номеру заказа"
-              />
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Индикатор загрузки */}
         <LoadingIndicator 
           isLoading={isLoading}
@@ -479,27 +449,6 @@ export function PrinterDashboard({
             Здесь отображаются заказы, требующие вашего внимания.
           </CardDescription>
         </CardHeader>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Поиск по номеру заказа</CardTitle>
-          <CardDescription>Введите номер полностью или часть номера</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="max-w-sm">
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                value={orderSearch}
-                onChange={(e) => setOrderSearch(e.target.value)}
-                placeholder="Например: 12345"
-                className="pl-8"
-                aria-label="Поиск по номеру заказа"
-              />
-            </div>
-          </div>
-        </CardContent>
       </Card>
 
       {/* Индикатор загрузки */}
