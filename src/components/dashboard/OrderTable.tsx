@@ -675,7 +675,10 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
   showSearch = false,
   isLoading = false
 }) => {
-  const photoSize = useLargeLayout ? 100 : 60;
+  // Увеличиваем размер фото для принтовщика в ПК версии в 2 раза
+  const photoSize = useLargeLayout 
+    ? (currentUser?.role === 'Принтовщик' ? 200 : 100) 
+    : (currentUser?.role === 'Принтовщик' ? 120 : 60);
   const [currentPage, setCurrentPage] = React.useState(1);
   const [isMobile, setIsMobile] = React.useState(false);
   const [updatingCheckbox, setUpdatingCheckbox] = React.useState<string | null>(null);
