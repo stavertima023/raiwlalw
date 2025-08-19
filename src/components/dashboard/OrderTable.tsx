@@ -39,6 +39,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   MoreHorizontal,
   Send,
@@ -409,9 +410,11 @@ const OrderTableRow = React.memo<{
   order: Order;
   currentUser?: Omit<User, 'password_hash'>;
   onUpdateStatus?: (orderId: string, newStatus: OrderStatus) => void;
+  onPrinterCheckUpdate?: (orderId: string, checked: boolean) => void;
+  updatingCheckbox?: string | null;
   useLargeLayout?: boolean;
   photoSize: number;
-}>(({ order, currentUser, onUpdateStatus, useLargeLayout, photoSize }) => {
+}>(({ order, currentUser, onUpdateStatus, onPrinterCheckUpdate, updatingCheckbox, useLargeLayout, photoSize }) => {
   const renderPrinterActions = React.useCallback((order: Order) => {
     if (order.status === 'Добавлен') {
       return (
@@ -636,7 +639,18 @@ const OrderTableRow = React.memo<{
         </>
       )}
       <TableCell>
-        <OrderPhotosSimple photos={order.photos || []} size={photoSize} />
+        <div className="flex items-center gap-3">
+          {/* Чекбокс принтовщика */}
+          {currentUser?.role === 'Принтовщик' && onPrinterCheckUpdate && (
+            <Checkbox
+              checked={order.printerChecked || false}
+              onCheckedChange={(checked) => onPrinterCheckUpdate(order.id!, !!checked)}
+              disabled={updatingCheckbox === order.id}
+              className="w-4 h-4"
+            />
+          )}
+          <OrderPhotosSimple photos={order.photos || []} size={photoSize} />
+        </div>
       </TableCell>
       <TableCell>{order.comment}</TableCell>
       {currentUser?.role === 'Принтовщик' && (
@@ -664,6 +678,7 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
   const photoSize = useLargeLayout ? 100 : 60;
   const [currentPage, setCurrentPage] = React.useState(1);
   const [isMobile, setIsMobile] = React.useState(false);
+  const [updatingCheckbox, setUpdatingCheckbox] = React.useState<string | null>(null);
 
   // Определяем мобильное устройство
   React.useEffect(() => {
@@ -675,6 +690,38 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // Обработка обновления чекбокса принтовщика
+  const handlePrinterCheckUpdate = React.useCallback(async (orderId: string, checked: boolean) => {
+    if (currentUser?.role !== 'Принтовщик') return;
+    
+    try {
+      setUpdatingCheckbox(orderId);
+      
+      const response = await fetch(`/api/orders/${orderId}/printer-check`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ checked }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Не удалось обновить отметку');
+      }
+
+      // Успешно обновлено - обновляем локальное состояние
+      const orderIndex = orders.findIndex(order => order.id === orderId);
+      if (orderIndex !== -1) {
+        orders[orderIndex].printerChecked = checked;
+      }
+    } catch (err) {
+      console.error('Ошибка обновления отметки принтовщика:', err);
+    } finally {
+      setUpdatingCheckbox(null);
+    }
+  }, [orders, currentUser?.role]);
 
   // Сбрасываем страницу при изменении поиска
   React.useEffect(() => {
@@ -947,7 +994,9 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
                   <TableHead className="text-right">Цена</TableHead>
                 </>
               )}
-              <TableHead>Фото</TableHead>
+              <TableHead>
+                {currentUser?.role === 'Принтовщик' ? 'Отметка / Фото' : 'Фото'}
+              </TableHead>
               <TableHead>Комментарий</TableHead>
               {currentUser?.role === 'Принтовщик' && (
                 <TableHead>Время готовности</TableHead>
@@ -963,6 +1012,8 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
                 order={order}
                 currentUser={currentUser}
                 onUpdateStatus={onUpdateStatus}
+                onPrinterCheckUpdate={handlePrinterCheckUpdate}
+                updatingCheckbox={updatingCheckbox}
                 useLargeLayout={useLargeLayout}
                 photoSize={photoSize}
               />

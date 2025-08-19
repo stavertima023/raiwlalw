@@ -8,6 +8,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { RefreshCw, AlertCircle, CheckCircle, Send, Check, X } from 'lucide-react';
 import { LoadingIndicator } from '@/components/ui/loading-indicator';
 import { useToast } from '@/hooks/use-toast';
@@ -39,6 +40,7 @@ const MobilePrinterView = React.memo<{
 }>(({ orders, currentUser, onUpdateStatus, isLoading, title, description }) => {
   const { toast } = useToast();
   const [error, setError] = React.useState<string | null>(null);
+  const [updatingCheckbox, setUpdatingCheckbox] = React.useState<string | null>(null);
 
   // Защита от ошибок
   React.useEffect(() => {
@@ -65,6 +67,46 @@ const MobilePrinterView = React.memo<{
       setError('Не удалось обновить статус заказа');
     }
   }, [onUpdateStatus, toast]);
+
+  // Обработка обновления чекбокса принтовщика
+  const handlePrinterCheckUpdate = React.useCallback(async (orderId: string, checked: boolean) => {
+    try {
+      setUpdatingCheckbox(orderId);
+      
+      const response = await fetch(`/api/orders/${orderId}/printer-check`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ checked }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Не удалось обновить отметку');
+      }
+
+      // Успешно обновлено - обновляем локальное состояние
+      const orderIndex = orders.findIndex(order => order.id === orderId);
+      if (orderIndex !== -1) {
+        orders[orderIndex].printerChecked = checked;
+      }
+
+      toast({
+        title: checked ? 'Заказ отмечен' : 'Отметка снята',
+        description: checked ? 'Заказ помечен как выполненный' : 'Отметка удалена',
+      });
+    } catch (err) {
+      console.error('Ошибка обновления отметки принтовщика:', err);
+      toast({
+        title: 'Ошибка',
+        description: err instanceof Error ? err.message : 'Не удалось обновить отметку',
+        variant: 'destructive',
+      });
+    } finally {
+      setUpdatingCheckbox(null);
+    }
+  }, [orders, toast]);
 
   if (isLoading) {
     return (
@@ -140,10 +182,29 @@ const MobilePrinterView = React.memo<{
                 </Badge>
               </div>
               
-              {/* Фото заказа */}
-              {order.photos && order.photos.length > 0 && (
-                <div className="flex gap-2 overflow-x-auto pb-2">
-                  {order.photos.map((photo, index) => (
+              {/* Фото заказа с чекбоксом */}
+              <div className="flex items-start gap-3">
+                {/* Чекбокс принтовщика */}
+                <div className="flex-shrink-0 pt-1">
+                  <Checkbox
+                    id={`printer-check-${order.id}`}
+                    checked={order.printerChecked || false}
+                    onCheckedChange={(checked) => handlePrinterCheckUpdate(order.id!, !!checked)}
+                    disabled={updatingCheckbox === order.id}
+                    className="w-5 h-5"
+                  />
+                  <label 
+                    htmlFor={`printer-check-${order.id}`}
+                    className="text-xs text-muted-foreground mt-1 block cursor-pointer"
+                  >
+                    Отметка
+                  </label>
+                </div>
+
+                {/* Фото заказа */}
+                {order.photos && order.photos.length > 0 && (
+                  <div className="flex gap-2 overflow-x-auto pb-2 flex-1">
+                    {order.photos.map((photo, index) => (
                     <Dialog key={index}>
                       <DialogTrigger asChild>
                         <div className="relative flex-shrink-0 cursor-pointer group">
@@ -200,9 +261,10 @@ const MobilePrinterView = React.memo<{
                         </div>
                       </DialogContent>
                     </Dialog>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
+              </div>
               
               {/* Основная информация */}
               <div className="grid grid-cols-2 gap-2 text-sm">

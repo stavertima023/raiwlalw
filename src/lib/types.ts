@@ -40,6 +40,7 @@ export const OrderSchema = z.object({
   photos: z.array(z.string()).optional().default([]),
   comment: z.string().optional().default(''),
   ready_at: z.union([z.date(), z.string().transform((str) => new Date(str))]).optional(),
+  printerChecked: z.boolean().optional().default(false),
 });
 
 export type Order = z.infer<typeof OrderSchema>;

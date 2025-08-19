@@ -58,13 +58,13 @@ export async function GET(request: NextRequest) {
     let selectFields;
     if (user.role === 'Администратор') {
       // Для админа НЕ загружаем фотографии вообще
-      selectFields = 'id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, comment, ready_at';
+      selectFields = 'id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, comment, ready_at, printerChecked';
     } else if (user.role === 'Продавец') {
       // Для продавцов фото будут только у последних 50 записей
-      selectFields = 'id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment, ready_at';
+      selectFields = 'id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment, ready_at, printerChecked';
     } else {
       // Для Принтовщика без изменений (все фото)
-      selectFields = 'id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment, ready_at';
+      selectFields = 'id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment, ready_at, printerChecked';
     }
     
     let query = supabaseAdmin
@@ -288,7 +288,7 @@ export async function POST(request: Request) {
     const { data: created, error: createError } = await supabaseAdmin
       .from('orders')
       .insert({ ...rest, photos: [] })
-      .select('id, seller, orderDate, orderNumber, shipmentNumber, status, productType, size, price, cost, comment, ready_at')
+      .select('id, seller, orderDate, orderNumber, shipmentNumber, status, productType, size, price, cost, comment, ready_at, printerChecked')
       .single();
     if (createError) throw createError;
 
