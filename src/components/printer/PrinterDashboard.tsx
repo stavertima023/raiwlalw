@@ -9,7 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { RefreshCw, AlertCircle, CheckCircle, Send, Check, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { RefreshCw, AlertCircle, CheckCircle, Send, Check, X, Search } from 'lucide-react';
 import { LoadingIndicator } from '@/components/ui/loading-indicator';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -341,6 +342,8 @@ export function PrinterDashboard({
     productType: 'all' as ProductType | 'all',
     orderNumber: '',
   });
+  
+  const [searchTerm, setSearchTerm] = React.useState('');
 
   // Защита от ошибок и стабилизация
   const [error, setError] = React.useState<string | null>(null);
@@ -365,16 +368,19 @@ export function PrinterDashboard({
     return allOrders.filter(order => {
       const statusMatch = filters.status === 'all' || order.status === filters.status;
       const productTypeMatch = filters.productType === 'all' || order.productType === filters.productType;
-        const orderNumberMatch = filters.orderNumber === '' || 
-          order.orderNumber.toLowerCase().includes(filters.orderNumber.toLowerCase());
-      return statusMatch && productTypeMatch && orderNumberMatch;
+      const orderNumberMatch = filters.orderNumber === '' || 
+        order.orderNumber.toLowerCase().includes(filters.orderNumber.toLowerCase());
+      // Добавляем поиск по номеру заказа
+      const searchMatch = searchTerm === '' || 
+        order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase());
+      return statusMatch && productTypeMatch && orderNumberMatch && searchMatch;
     });
     } catch (err) {
       console.error('Ошибка фильтрации заказов:', err);
       setError('Ошибка при фильтрации заказов');
       return [];
     }
-  }, [allOrders, filters]);
+  }, [allOrders, filters, searchTerm]);
 
   const ordersForProduction = React.useMemo(() => {
     try {
@@ -446,6 +452,21 @@ export function PrinterDashboard({
           dataType="заказов"
           showCacheStatus={true}
         />
+
+        {/* Поиск для мобильной версии */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Поиск по номеру заказа..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Мобильные вкладки */}
         <Tabs defaultValue="production" className="w-full">
@@ -520,6 +541,24 @@ export function PrinterDashboard({
         dataType="заказов"
         showCacheStatus={true}
       />
+
+      {/* Поиск по номеру заказа */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Поиск заказов</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="relative">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Введите номер заказа для поиска..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </CardContent>
+      </Card>
       
        <Tabs defaultValue="production" className="w-full">
         <TabsList className="grid w-full grid-cols-3 gap-1 p-1">
