@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { RefreshCw, AlertCircle, CheckCircle, Send, Check, X, Search } from 'lucide-react';
+import { RefreshCw, AlertCircle, CheckCircle, Send, Check, X, Search, ArrowUpAZ, ArrowDownAZ } from 'lucide-react';
 import { LoadingIndicator } from '@/components/ui/loading-indicator';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -344,6 +344,7 @@ export function PrinterDashboard({
   });
   
   const [searchTerm, setSearchTerm] = React.useState('');
+  const [sellerSort, setSellerSort] = React.useState<'none' | 'asc' | 'desc'>('none');
 
   // Защита от ошибок и стабилизация
   const [error, setError] = React.useState<string | null>(null);
@@ -365,7 +366,7 @@ export function PrinterDashboard({
   // Стабилизированная фильтрация с защитой от ошибок
   const filteredOrders = React.useMemo(() => {
     try {
-    return allOrders.filter(order => {
+    const base = allOrders.filter(order => {
       const statusMatch = filters.status === 'all' || order.status === filters.status;
       const productTypeMatch = filters.productType === 'all' || order.productType === filters.productType;
       const orderNumberMatch = filters.orderNumber === '' || 
@@ -375,12 +376,22 @@ export function PrinterDashboard({
         order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase());
       return statusMatch && productTypeMatch && orderNumberMatch && searchMatch;
     });
+    // Сортировка по продавцу для принтовщика
+    if (sellerSort !== 'none') {
+      base.sort((a, b) => {
+        const sa = (a.seller || '').toLowerCase();
+        const sb = (b.seller || '').toLowerCase();
+        if (sa === sb) return 0;
+        return sellerSort === 'asc' ? (sa < sb ? -1 : 1) : (sa > sb ? -1 : 1);
+      });
+    }
+    return base;
     } catch (err) {
       console.error('Ошибка фильтрации заказов:', err);
       setError('Ошибка при фильтрации заказов');
       return [];
     }
-  }, [allOrders, filters, searchTerm]);
+  }, [allOrders, filters, searchTerm, sellerSort]);
 
   const ordersForProduction = React.useMemo(() => {
     try {
@@ -453,9 +464,9 @@ export function PrinterDashboard({
           showCacheStatus={true}
         />
 
-        {/* Поиск для мобильной версии */}
+        {/* Поиск и сортировка для мобильной версии */}
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-4 space-y-3">
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
@@ -464,6 +475,20 @@ export function PrinterDashboard({
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Сортировка продавца:</span>
+              <div className="flex gap-1">
+                <Button type="button" variant={sellerSort === 'asc' ? 'default' : 'outline'} size="sm" onClick={() => setSellerSort('asc')}>
+                  <ArrowUpAZ className="h-4 w-4 mr-1" /> A→Z
+                </Button>
+                <Button type="button" variant={sellerSort === 'desc' ? 'default' : 'outline'} size="sm" onClick={() => setSellerSort('desc')}>
+                  <ArrowDownAZ className="h-4 w-4 mr-1" /> Z→A
+                </Button>
+                <Button type="button" variant={sellerSort === 'none' ? 'default' : 'outline'} size="sm" onClick={() => setSellerSort('none')}>
+                  <X className="h-4 w-4 mr-1" /> Сброс
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -545,17 +570,33 @@ export function PrinterDashboard({
       {/* Поиск по номеру заказа */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg">Поиск заказов</CardTitle>
+          <CardTitle className="text-lg">Поиск и сортировка</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Введите номер заказа для поиска..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Введите номер заказа для поиска..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Сортировка по продавцу:</span>
+              <div className="flex gap-1">
+                <Button type="button" variant={sellerSort === 'asc' ? 'default' : 'outline'} size="sm" onClick={() => setSellerSort('asc')}>
+                  <ArrowUpAZ className="h-4 w-4 mr-1" /> A→Z
+                </Button>
+                <Button type="button" variant={sellerSort === 'desc' ? 'default' : 'outline'} size="sm" onClick={() => setSellerSort('desc')}>
+                  <ArrowDownAZ className="h-4 w-4 mr-1" /> Z→A
+                </Button>
+                <Button type="button" variant={sellerSort === 'none' ? 'default' : 'outline'} size="sm" onClick={() => setSellerSort('none')}>
+                  <X className="h-4 w-4 mr-1" /> Сброс
+                </Button>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
