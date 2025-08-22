@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RefreshCw, AlertCircle, CheckCircle, Send, Check, X, Search, ArrowUpAZ, ArrowDownAZ } from 'lucide-react';
 import { LoadingIndicator } from '@/components/ui/loading-indicator';
 import { useToast } from '@/hooks/use-toast';
@@ -344,7 +345,7 @@ export function PrinterDashboard({
   });
   
   const [searchTerm, setSearchTerm] = React.useState('');
-  const [sellerSort, setSellerSort] = React.useState<'none' | 'asc' | 'desc'>('none');
+  const [sellerFilter, setSellerFilter] = React.useState<string>('all');
 
   // Защита от ошибок и стабилизация
   const [error, setError] = React.useState<string | null>(null);
@@ -374,24 +375,16 @@ export function PrinterDashboard({
       // Добавляем поиск по номеру заказа
       const searchMatch = searchTerm === '' || 
         order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase());
-      return statusMatch && productTypeMatch && orderNumberMatch && searchMatch;
+      const sellerMatch = sellerFilter === 'all' || (order.seller || '') === sellerFilter;
+      return statusMatch && productTypeMatch && orderNumberMatch && searchMatch && sellerMatch;
     });
-    // Сортировка по продавцу для принтовщика
-    if (sellerSort !== 'none') {
-      base.sort((a, b) => {
-        const sa = (a.seller || '').toLowerCase();
-        const sb = (b.seller || '').toLowerCase();
-        if (sa === sb) return 0;
-        return sellerSort === 'asc' ? (sa < sb ? -1 : 1) : (sa > sb ? -1 : 1);
-      });
-    }
     return base;
     } catch (err) {
       console.error('Ошибка фильтрации заказов:', err);
       setError('Ошибка при фильтрации заказов');
       return [];
     }
-  }, [allOrders, filters, searchTerm, sellerSort]);
+  }, [allOrders, filters, searchTerm, sellerFilter]);
 
   const ordersForProduction = React.useMemo(() => {
     try {
@@ -477,18 +470,20 @@ export function PrinterDashboard({
               />
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Сортировка продавца:</span>
-              <div className="flex gap-1">
-                <Button type="button" variant={sellerSort === 'asc' ? 'default' : 'outline'} size="sm" onClick={() => setSellerSort('asc')}>
-                  <ArrowUpAZ className="h-4 w-4 mr-1" /> A→Z
-                </Button>
-                <Button type="button" variant={sellerSort === 'desc' ? 'default' : 'outline'} size="sm" onClick={() => setSellerSort('desc')}>
-                  <ArrowDownAZ className="h-4 w-4 mr-1" /> Z→A
-                </Button>
-                <Button type="button" variant={sellerSort === 'none' ? 'default' : 'outline'} size="sm" onClick={() => setSellerSort('none')}>
-                  <X className="h-4 w-4 mr-1" /> Сброс
-                </Button>
-              </div>
+              <span className="text-sm text-muted-foreground">Продавец:</span>
+              <Select value={sellerFilter} onValueChange={setSellerFilter}>
+                <SelectTrigger className="w-full sm:w-[220px]">
+                  <SelectValue placeholder="Все продавцы" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все продавцы</SelectItem>
+                  {Array.from(new Set(allOrders.map(o => o.seller || '').filter(Boolean)))
+                    .sort((a, b) => a.localeCompare(b))
+                    .map(name => (
+                      <SelectItem key={name} value={name}>{name}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
             </div>
           </CardContent>
         </Card>
@@ -584,18 +579,20 @@ export function PrinterDashboard({
               />
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Сортировка по продавцу:</span>
-              <div className="flex gap-1">
-                <Button type="button" variant={sellerSort === 'asc' ? 'default' : 'outline'} size="sm" onClick={() => setSellerSort('asc')}>
-                  <ArrowUpAZ className="h-4 w-4 mr-1" /> A→Z
-                </Button>
-                <Button type="button" variant={sellerSort === 'desc' ? 'default' : 'outline'} size="sm" onClick={() => setSellerSort('desc')}>
-                  <ArrowDownAZ className="h-4 w-4 mr-1" /> Z→A
-                </Button>
-                <Button type="button" variant={sellerSort === 'none' ? 'default' : 'outline'} size="sm" onClick={() => setSellerSort('none')}>
-                  <X className="h-4 w-4 mr-1" /> Сброс
-                </Button>
-              </div>
+              <span className="text-sm text-muted-foreground">Продавец:</span>
+              <Select value={sellerFilter} onValueChange={setSellerFilter}>
+                <SelectTrigger className="w-[220px]">
+                  <SelectValue placeholder="Все продавцы" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все продавцы</SelectItem>
+                  {Array.from(new Set(allOrders.map(o => o.seller || '').filter(Boolean)))
+                    .sort((a, b) => a.localeCompare(b))
+                    .map(name => (
+                      <SelectItem key={name} value={name}>{name}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardContent>
