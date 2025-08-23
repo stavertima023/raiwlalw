@@ -346,6 +346,7 @@ export function PrinterDashboard({
   
   const [searchTerm, setSearchTerm] = React.useState('');
   const [sellerFilter, setSellerFilter] = React.useState<string>('all');
+  const [productTypeFilter, setProductTypeFilter] = React.useState<string>('all');
 
   // Защита от ошибок и стабилизация
   const [error, setError] = React.useState<string | null>(null);
@@ -376,7 +377,8 @@ export function PrinterDashboard({
       const searchMatch = searchTerm === '' || 
         order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase());
       const sellerMatch = sellerFilter === 'all' || (order.seller || '') === sellerFilter;
-      return statusMatch && productTypeMatch && orderNumberMatch && searchMatch && sellerMatch;
+      const productTypeFilterMatch = productTypeFilter === 'all' || order.productType === productTypeFilter;
+      return statusMatch && productTypeMatch && orderNumberMatch && searchMatch && sellerMatch && productTypeFilterMatch;
     });
     return base;
     } catch (err) {
@@ -384,7 +386,7 @@ export function PrinterDashboard({
       setError('Ошибка при фильтрации заказов');
       return [];
     }
-  }, [allOrders, filters, searchTerm, sellerFilter]);
+  }, [allOrders, filters, searchTerm, sellerFilter, productTypeFilter]);
 
   const ordersForProduction = React.useMemo(() => {
     try {
@@ -481,6 +483,22 @@ export function PrinterDashboard({
                     .sort((a, b) => a.localeCompare(b))
                     .map(name => (
                       <SelectItem key={name} value={name}>{name}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Тип:</span>
+              <Select value={productTypeFilter} onValueChange={setProductTypeFilter}>
+                <SelectTrigger className="w-full sm:w-[220px]">
+                  <SelectValue placeholder="Все типы" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все типы</SelectItem>
+                  {Array.from(new Set(allOrders.map(o => o.productType).filter(Boolean)))
+                    .sort((a, b) => a.localeCompare(b))
+                    .map(type => (
+                      <SelectItem key={type} value={type}>{type}</SelectItem>
                     ))}
                 </SelectContent>
               </Select>
@@ -590,6 +608,22 @@ export function PrinterDashboard({
                     .sort((a, b) => a.localeCompare(b))
                     .map(name => (
                       <SelectItem key={name} value={name}>{name}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Тип:</span>
+              <Select value={productTypeFilter} onValueChange={setProductTypeFilter}>
+                <SelectTrigger className="w-[220px]">
+                  <SelectValue placeholder="Все типы" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все типы</SelectItem>
+                  {Array.from(new Set(allOrders.map(o => o.productType).filter(Boolean)))
+                    .sort((a, b) => a.localeCompare(b))
+                    .map(type => (
+                      <SelectItem key={type} value={type}>{type}</SelectItem>
                     ))}
                 </SelectContent>
               </Select>
