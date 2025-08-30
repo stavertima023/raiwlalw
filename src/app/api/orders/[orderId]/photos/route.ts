@@ -7,11 +7,10 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ orderId: string }> }
+  { params }: { params: { orderId: string } }
 ) {
   try {
-    const { orderId } = await params;
-    console.log(`📸 Запрос фотографий для заказа: ${orderId}`);
+    console.log(`📸 Запрос фотографий для заказа: ${params.orderId}`);
     
     // Проверяем доступность Supabase
     if (!supabaseAdmin) {
@@ -43,33 +42,33 @@ export async function GET(
     console.log('✅ Пользователь авторизован:', { username: user.username, role: user.role });
 
     // Получаем фотографии заказа (теперь это массив URL)
-    console.log(`🔍 Выполняем запрос фотографий (URL) для заказа ${orderId}...`);
+    console.log(`🔍 Выполняем запрос фотографий (URL) для заказа ${params.orderId}...`);
     const { data, error } = await supabaseAdmin
       .from('orders')
       .select('photos')
-      .eq('id', orderId)
+      .eq('id', params.orderId)
       .single();
 
     if (error) {
-      console.error(`❌ Ошибка получения фотографий для заказа ${orderId}:`, error);
+      console.error(`❌ Ошибка получения фотографий для заказа ${params.orderId}:`, error);
       return NextResponse.json({ 
         message: 'Заказ не найден', 
         error: error.message 
       }, { status: 404 });
     }
 
-    console.log(`📊 Данные получены для заказа ${orderId}:`, {
+    console.log(`📊 Данные получены для заказа ${params.orderId}:`, {
       hasData: !!data,
       hasPhotos: !!data?.photos,
       photosCount: data?.photos?.length || 0
     });
 
     if (!data || !data.photos) {
-      console.log(`📸 Фотографии не найдены для заказа: ${orderId}`);
+      console.log(`📸 Фотографии не найдены для заказа: ${params.orderId}`);
       return NextResponse.json({ thumbnails: [], fullPhotos: [] });
     }
 
-    console.log(`✅ Фотографии (URL) получены для заказа ${orderId}: ${data.photos.length} шт.`);
+    console.log(`✅ Фотографии (URL) получены для заказа ${params.orderId}: ${data.photos.length} шт.`);
     // На клиенте ожидаются раздельные массивы. Для совместимости формируем одинаковые URL.
     const urls: string[] = data.photos;
     const thumbnails = urls.map((u) => ({ type: 'thumbnail', data: u, size: 'url' }));

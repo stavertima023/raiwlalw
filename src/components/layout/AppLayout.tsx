@@ -22,14 +22,13 @@ type AppLayoutProps = {
 };
 
 export function AppLayout({ children, currentUser }: AppLayoutProps) {
-  // Все хуки должны быть в начале компонента, до любых условных операторов
-  const [activeView, setActiveView] = React.useState('');
-
   // Defensive check for client-side hydration
   if (!currentUser) {
     // You can replace this with a more sophisticated loading spinner
     return <div className="flex h-screen w-full items-center justify-center">Загрузка...</div>;
-  }
+}
+
+  const [activeView, setActiveView] = React.useState('');
 
   const getNavItems = (role: User['role']): NavItem[] => {
     switch (role) {

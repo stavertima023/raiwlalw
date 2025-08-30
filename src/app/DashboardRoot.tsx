@@ -21,7 +21,10 @@ type DashboardRootProps = {
 }
 
 export default function DashboardRoot({ initialUser }: DashboardRootProps) {
-  // Все хуки должны быть в начале компонента, до любых условных операторов
+  if (!initialUser) {
+    return null;
+  }
+
   const { toast } = useToast();
   const [errorCount, setErrorCount] = React.useState(0);
   const [lastErrorTime, setLastErrorTime] = React.useState(0);
@@ -114,7 +117,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
         duration: 5000, // Уменьшаем время показа
       });
     }
-  }, [errorCount, lastErrorTime, toast]);
+  }, [toast, errorCount, lastErrorTime]);
 
   // Сбрасываем счетчик ошибок при успешной загрузке
   React.useEffect(() => {
@@ -163,9 +166,9 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
         }
       },
       onSuccess: (data) => {
-        console.log(`✅ Заказы загружены успешно: ${data.length} шт. для ${initialUser?.role || 'неизвестно'}`);
+        console.log(`✅ Заказы загружены успешно: ${data.length} шт. для ${initialUser.role}`);
         // Показываем специальное уведомление для админа при загрузке большого количества заказов
-        if (initialUser?.role === 'Администратор' && data.length > 500) {
+        if (initialUser.role === 'Администратор' && data.length > 500) {
           toast({
             title: 'Заказы загружены',
             description: `Загружено ${data.length} заказов (все заказы в системе)`,
@@ -188,7 +191,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
   );
   
   const { data: expenses = [], error: expensesError, mutate: mutateExpenses } = useSWR<Expense[]>(
-    (isInitialized && initialUser?.role === 'Администратор') ? '/api/expenses' : null, 
+    (isInitialized && initialUser.role === 'Администратор') ? '/api/expenses' : null, 
     optimizedFetcher,
     {
       ...swrConfig,
@@ -201,7 +204,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
   );
 
   const { data: payouts = [], error: payoutsError, mutate: mutatePayouts, isLoading: payoutsLoading } = useSWR<PayoutWithOrders[]>(
-    (isInitialized && initialUser?.role && (initialUser.role === 'Администратор' || initialUser.role === 'Продавец')) ? '/api/payouts' : null, 
+    (isInitialized && (initialUser.role === 'Администратор' || initialUser.role === 'Продавец')) ? '/api/payouts' : null, 
     optimizedFetcher,
     {
       ...swrConfig,
@@ -218,7 +221,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
   );
 
   const { data: debts = [], error: debtsError, mutate: mutateDebts } = useSWR<Debt[]>(
-    (isInitialized && initialUser?.role === 'Администратор') ? '/api/debts' : null, 
+    (isInitialized && initialUser.role === 'Администратор') ? '/api/debts' : null, 
     optimizedFetcher,
     {
       ...swrConfig,
@@ -231,7 +234,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
   );
 
   const { data: users = [], error: usersError, mutate: mutateUsers } = useSWR<User[]>(
-    (isInitialized && initialUser?.role === 'Администратор') ? '/api/users' : null, 
+    (isInitialized && initialUser.role === 'Администратор') ? '/api/users' : null, 
     optimizedFetcher,
     {
       ...swrConfig,
@@ -305,8 +308,8 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ...newOrderData,
-          seller: initialUser?.username || '',
+      ...newOrderData,
+          seller: initialUser.username,
         }),
       });
 
@@ -345,7 +348,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
         variant: 'destructive',
       });
     }
-  }, [initialUser?.username, toast]);
+  }, [initialUser.username, toast]);
 
   const handleUpdateOrderStatus = React.useCallback(async (orderId: string, newStatus: OrderStatus) => {
     try {
@@ -504,7 +507,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
         },
         body: JSON.stringify({
           orderNumbers,
-          seller: initialUser?.username || '',
+          seller: initialUser.username,
           amount: totalAmount,
           orderCount: orderNumbers.length,
           status: 'pending',
@@ -538,7 +541,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
         variant: 'destructive',
       });
     }
-  }, [initialUser?.username, orders, toast]);
+  }, [initialUser.username, orders, toast]);
 
   // Вспомогательные функции
   const findOrder = React.useCallback((orderNumber: string) => {
@@ -566,14 +569,9 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
     </div>
   ));
 
-  // Теперь проверяем initialUser после всех хуков
-  if (!initialUser) {
-    return null;
-  }
-
   // Рендеринг в зависимости от роли пользователя
   if (initialUser.role === 'Продавец') {
-    return (
+  return (
       <AppLayout currentUser={initialUser}>
         {(activeView: string) => (
           <Dashboard
@@ -606,32 +604,60 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
         )}
       </AppLayout>
     );
-  }
+        }
 
   if (initialUser.role === 'Администратор') {
-    return (
+          return (
       <AppLayout currentUser={initialUser}>
         {(activeView: string) => {
-          // Показываем ошибки загрузки для администратора
-          if (ordersError || expensesError || payoutsError || debtsError || usersError) {
+          // Показываем специальный индикатор загрузки для админа
+          if (ordersLoading && initialUser.role === 'Администратор') {
             return (
-              <div className="space-y-4">
-                <Card className="border-destructive">
+              <div className="flex items-center justify-center min-h-[400px]">
+                <Card className="w-full max-w-md">
                   <CardHeader>
-                    <CardTitle className="text-destructive">Ошибки загрузки данных</CardTitle>
+                    <CardTitle>Загрузка всех заказов</CardTitle>
                     <CardDescription>
-                      Некоторые данные не удалось загрузить. Проверьте подключение к базе данных.
+                      Загружаем все заказы из базы данных. Это может занять некоторое время...
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-2 text-sm">
-                      {ordersError && <div>❌ Заказы: {ordersError.message}</div>}
-                      {expensesError && <div>❌ Расходы: {expensesError.message}</div>}
-                      {payoutsError && <div>❌ Выводы: {payoutsError.message}</div>}
-                      {debtsError && <div>❌ Долги: {debtsError.message}</div>}
-                      {usersError && <div>❌ Пользователи: {usersError.message}</div>}
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                     </div>
-                    <div className="flex gap-2 mt-4">
+                    <p className="text-sm text-muted-foreground text-center mt-4">
+                      Пожалуйста, подождите...
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            );
+          }
+
+          // Показываем ошибку загрузки
+          if (ordersError) {
+            return (
+              <div className="flex items-center justify-center min-h-[400px]">
+                <Card className="w-full max-w-md">
+                  <CardHeader>
+                    <CardTitle>Ошибка загрузки заказов</CardTitle>
+                    <CardDescription>
+                      Не удалось загрузить заказы. Попробуйте обновить данные.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="text-sm text-muted-foreground">
+                      {ordersError.message.includes('500') && (
+                        <p>Ошибка сервера. Возможно, проблема с базой данных.</p>
+                      )}
+                      {ordersError.message.includes('401') && (
+                        <p>Ошибка авторизации. Необходимо войти заново.</p>
+                      )}
+                      {!ordersError.message.includes('500') && !ordersError.message.includes('401') && (
+                        <p>Проблема с подключением к серверу.</p>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
                       <Button onClick={handleRefreshAll} className="flex-1">
                         Обновить данные
                       </Button>
@@ -671,7 +697,7 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
                 <ExpensesList 
                   allExpenses={safeExpenses} 
                   allUsers={safeUsers}
-                  onAddExpense={handleAddExpense}
+                        onAddExpense={handleAddExpense}
                   currentUser={initialUser}
                   debts={safeDebts}
                   onDebtUpdate={handleDebtUpdate}

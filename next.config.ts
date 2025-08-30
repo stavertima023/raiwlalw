@@ -3,10 +3,10 @@ import type {NextConfig} from 'next';
 const nextConfig: NextConfig = {
   /* config options here */
   typescript: {
-    ignoreBuildErrors: true, // Temporarily disable for Vercel deployment
+    ignoreBuildErrors: true,
   },
   eslint: {
-    ignoreDuringBuilds: true, // Temporarily disable for Vercel deployment
+    ignoreDuringBuilds: true,
   },
   images: {
     remotePatterns: [
@@ -16,6 +16,16 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'kong-production-efec.up.railway.app',
+        port: '',
+        pathname: '/**',
+      },
+      // Optional S3/MinIO public endpoint (set at runtime via env)
+      ...(process.env.S3_PUBLIC_HOSTNAME
+        ? [{ protocol: process.env.S3_PUBLIC_PROTOCOL || 'https', hostname: process.env.S3_PUBLIC_HOSTNAME, port: '', pathname: '/**' }]
+        : []),
       // Allow images from dedicated photo Supabase domain
       ...(process.env.PHOTO_SUPABASE_URL
         ? (() => {

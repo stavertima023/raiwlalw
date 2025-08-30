@@ -15,7 +15,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 // Client for frontend (with anon key, respects RLS)
 export const supabase = (supabaseUrl && supabaseAnonKey)
   ? createClient(supabaseUrl, supabaseAnonKey)
-  : undefined;
+  : (undefined as any);
 
 // Client for backend/API routes (with service key, bypasses RLS)
 if (!supabaseServiceKey) {
@@ -34,16 +34,16 @@ export const supabaseAdmin = supabaseServiceKey
           apikey: supabaseServiceKey,
           'x-api-key': supabaseServiceKey,
         },
-        fetch: (input: RequestInfo | URL, init?: RequestInit) => {
+        fetch: (input: any, init?: any) => {
           try {
-            const originalUrl = typeof input === 'string' ? input : (input as Request)?.url;
+            const originalUrl = typeof input === 'string' ? input : input?.url;
             const url = new URL(originalUrl, supabaseUrl);
             if (url.pathname.startsWith('/storage') || url.pathname.includes('/storage/v1')) {
               url.searchParams.set('apikey', supabaseServiceKey!);
               return fetch(url.toString(), init);
             }
-          } catch {}
-          return fetch(input, init);
+          } catch (_) {}
+          return fetch(input as any, init);
         },
       },
     })
@@ -62,16 +62,16 @@ export const supabaseStorageAdmin = (supabaseServiceKey && supabaseUrl)
           apikey: supabaseAnonKey,
           'x-api-key': supabaseAnonKey,
         },
-        fetch: (input: RequestInfo | URL, init?: RequestInit) => {
+        fetch: (input: any, init?: any) => {
           try {
-            const originalUrl = typeof input === 'string' ? input : (input as Request)?.url;
+            const originalUrl = typeof input === 'string' ? input : input?.url;
             const url = new URL(originalUrl, supabaseUrl);
             if (url.pathname.startsWith('/storage') || url.pathname.includes('/storage/v1')) {
               url.searchParams.set('apikey', supabaseAnonKey!);
               return fetch(url.toString(), init);
             }
-          } catch {}
-          return fetch(input, init);
+          } catch (_) {}
+          return fetch(input as any, init);
         },
       },
     })
@@ -89,16 +89,16 @@ export const supabaseStorageAdminServiceApikey = (supabaseServiceKey && supabase
           apikey: supabaseServiceKey,
           'x-api-key': supabaseServiceKey,
         },
-        fetch: (input: RequestInfo | URL, init?: RequestInit) => {
+        fetch: (input: any, init?: any) => {
           try {
-            const originalUrl = typeof input === 'string' ? input : (input as Request)?.url;
+            const originalUrl = typeof input === 'string' ? input : input?.url;
             const url = new URL(originalUrl, supabaseUrl);
             if (url.pathname.startsWith('/storage') || url.pathname.includes('/storage/v1')) {
               url.searchParams.set('apikey', supabaseServiceKey!);
               return fetch(url.toString(), init);
             }
-          } catch {}
-          return fetch(input, init);
+          } catch (_) {}
+          return fetch(input as any, init);
         },
       },
     })
