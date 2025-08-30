@@ -1,6 +1,7 @@
 // Minimal shims to satisfy type checking in environments without Node types
-declare const process: any;
-declare const global: any;
+declare const process: { env: Record<string, string | undefined> };
+declare const global: { Buffer?: typeof Buffer };
+
 import { supabaseAdmin, supabaseStorageAdmin, supabaseStorageAdminServiceApikey, photoSupabaseStorageAdmin } from '@/lib/supabaseClient';
 
 export type UploadedPhoto = {
@@ -20,7 +21,7 @@ export async function ensureBucketPublic(bucketName: string = DEFAULT_BUCKET) {
   if (!client) throw new Error('Supabase admin client not available');
   try {
     // Try create bucket (idempotent-ish): if exists, ignore error
-    // @ts-ignore createBucket typing may vary
+    // @ts-expect-error createBucket typing may vary
     const { error } = await client.storage.createBucket(bucketName, {
       public: true,
       fileSizeLimit: 10 * 1024 * 1024, // 10MB per file
@@ -30,21 +31,21 @@ export async function ensureBucketPublic(bucketName: string = DEFAULT_BUCKET) {
       throw error;
     }
     // Ensure it's public even if it already existed
-    // @ts-ignore updateBucket typing may vary
+    // @ts-expect-error updateBucket typing may vary
     await client.storage.updateBucket(bucketName, { public: true });
-  } catch (_) {
+  } catch {
     // No-op if exists
   }
 }
 
-export function decodeBase64Image(base64: string): { buffer: any; contentType: string; ext: string } {
+export function decodeBase64Image(base64: string): { buffer: Buffer | Uint8Array; contentType: string; ext: string } {
   const matches = base64.match(/^data:(.+);base64,(.*)$/);
   if (!matches || matches.length !== 3) {
     throw new Error('Invalid base64 image');
   }
   const contentType = matches[1];
   const data = matches[2];
-  const buffer = (global as any).Buffer ? (global as any).Buffer.from(data, 'base64') : new Uint8Array([]);
+  const buffer = (global as { Buffer?: typeof Buffer }).Buffer ? Buffer.from(data, 'base64') : new Uint8Array([]);
   const ext = contentType.split('/')[1] || 'jpg';
   return { buffer, contentType, ext };
 }
@@ -74,7 +75,7 @@ export async function uploadBase64ToStorage(options: {
   await ensureBucketPublic(bucket);
 
   // Try primary (apikey=anon) first
-  let { error: uploadError } = await (primary as any).storage
+  let { error: uploadError } = await (primary as { storage: { from: (bucket: string) => { upload: (path: string, buffer: Buffer | Uint8Array, options: any) => Promise<{ error: any }> } } }).storage
     .from(bucket)
     .upload(path, buffer, {
       contentType,
@@ -84,7 +85,7 @@ export async function uploadBase64ToStorage(options: {
   // If unauthorized, retry with apikey=service
   if (uploadError && String(uploadError.message).toLowerCase().includes('invalid')) {
     if (secondary && secondary !== primary) {
-      const retry = await (secondary as any).storage
+      const retry = await (secondary as { storage: { from: (bucket: string) => { upload: (path: string, buffer: Buffer | Uint8Array, options: any) => Promise<{ error: any }> } } }).storage
         .from(bucket)
         .upload(path, buffer, {
           contentType,
@@ -93,14 +94,14 @@ export async function uploadBase64ToStorage(options: {
         });
       uploadError = retry.error;
       if (!uploadError) {
-        const { data: publicUrlData } = (secondary as any).storage.from(bucket).getPublicUrl(path);
+        const { data: publicUrlData } = (secondary as { storage: { from: (bucket: string) => { getPublicUrl: (path: string) => { data: { publicUrl: string } } } } }).storage.from(bucket).getPublicUrl(path);
         return { path, publicUrl: publicUrlData.publicUrl };
       }
     }
   }
   if (uploadError) throw uploadError;
 
-  const { data: publicUrlData } = (primary as any).storage.from(bucket).getPublicUrl(path);
+  const { data: publicUrlData } = (primary as { storage: { from: (bucket: string) => { getPublicUrl: (path: string) => { data: { publicUrl: string } } } } }).storage.from(bucket).getPublicUrl(path);
   const publicUrl = publicUrlData.publicUrl;
   return { path, publicUrl };
 }
