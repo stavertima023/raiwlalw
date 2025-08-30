@@ -2,87 +2,76 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
 import { getSession } from '@/lib/session';
 
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: { orderId: string } }
-) {
-  console.log('🔄 PATCH /api/orders/[orderId]/printer-check - начало обработки запроса');
-  
+export async function PATCH(request: Request, { params }: { params: Promise<{ orderId: string }> }) {
   try {
-    // Проверяем сессию
-    const session = await getSession();
-    if (!session.isLoggedIn || !session.user) {
-      console.log('❌ Пользователь не авторизован');
-      return NextResponse.json(
-        { error: 'Требуется авторизация' },
-        { status: 401 }
-      );
+    const { orderId } = await params;
+    console.log(`🔄 Обновление отметки принтовщика для заказа ${orderId}...`);
+    
+    const body = await request.json();
+    const { checked } = body;
+    
+    console.log('📋 Тело запроса:', { orderId, checked });
+    
+    // Проверяем доступность Supabase
+    if (!supabaseAdmin) {
+      console.error('❌ SupabaseAdmin недоступен');
+      return Response.json({ message: 'Сервис недоступен' }, { status: 503 });
+    }
+
+    // Получаем сессию
+    let session;
+    try {
+      session = await getSession();
+      console.log('📋 Сессия получена:', { 
+        isLoggedIn: session.isLoggedIn, 
+        hasUser: !!session.user,
+        userRole: session.user?.role 
+      });
+    } catch (sessionError) {
+      console.error('❌ Ошибка получения сессии:', sessionError);
+      return Response.json({ message: 'Ошибка авторизации' }, { status: 401 });
+    }
+
+    const { user } = session;
+
+    if (!user || !session.isLoggedIn) {
+      console.error('❌ Пользователь не авторизован');
+      return Response.json({ message: 'Пользователь не авторизован' }, { status: 401 });
     }
 
     // Проверяем роль пользователя
-    if (session.user.role !== 'Принтовщик') {
-      console.log('❌ Недостаточно прав доступа, роль:', session.user.role);
-      return NextResponse.json(
-        { error: 'Только принтовщики могут изменять отметки заказов' },
-        { status: 403 }
-      );
+    if (user.role !== 'Принтовщик') {
+      console.error('❌ Доступ запрещен для роли:', user.role);
+      return Response.json({ message: 'Доступ запрещен: только принтовщики могут отмечать заказы' }, { status: 403 });
     }
 
-    // Получаем orderId из параметров
-    const orderId = params.orderId;
-    console.log('📋 ID заказа:', orderId);
+    console.log('✅ Пользователь авторизован:', { username: user.username, role: user.role });
 
-    // Парсим тело запроса
-    const body = await req.json();
-    const { checked } = body;
-
-    if (typeof checked !== 'boolean') {
-      console.log('❌ Неверный тип данных для checked:', typeof checked);
-      return NextResponse.json(
-        { error: 'Поле checked должно быть булевым значением' },
-        { status: 400 }
-      );
-    }
-
-    console.log('✅ Обновляем отметку принтовщика для заказа', orderId, 'на:', checked);
-
-    // Обновляем заказ в базе данных
+    // Обновляем отметку принтовщика
+    console.log(`🔍 Выполняем обновление отметки принтовщика для заказа ${orderId}...`);
     const { data, error } = await supabaseAdmin
       .from('orders')
       .update({ printerChecked: checked })
       .eq('id', orderId)
-      .select('id, orderNumber, printerChecked')
+      .select('id, printerChecked')
       .single();
 
     if (error) {
-      console.error('❌ Ошибка обновления заказа в БД:', error);
-      return NextResponse.json(
-        { error: 'Не удалось обновить отметку заказа', details: error.message },
-        { status: 500 }
-      );
+      console.error(`❌ Ошибка обновления отметки принтовщика для заказа ${orderId}:`, error);
+      return Response.json({ 
+        message: 'Ошибка обновления отметки', 
+        error: error.message 
+      }, { status: 500 });
     }
 
-    if (!data) {
-      console.log('❌ Заказ не найден:', orderId);
-      return NextResponse.json(
-        { error: 'Заказ не найден' },
-        { status: 404 }
-      );
-    }
-
-    console.log('✅ Отметка успешно обновлена:', data);
-
-    return NextResponse.json({
-      success: true,
-      message: 'Отметка принтовщика обновлена',
-      order: data
-    });
-
-  } catch (error) {
-    console.error('❌ Ошибка обработки запроса PATCH /api/orders/[orderId]/printer-check:', error);
-    return NextResponse.json(
-      { error: 'Внутренняя ошибка сервера' },
-      { status: 500 }
-    );
+    console.log(`✅ Отметка принтовщика для заказа ${orderId} успешно обновлена:`, data);
+    return Response.json(data);
+    
+  } catch (error: any) {
+    console.error('❌ Критическая ошибка API обновления отметки принтовщика:', error);
+    return Response.json({ 
+      message: 'Ошибка обновления отметки', 
+      error: error.message
+    }, { status: 500 });
   }
 }

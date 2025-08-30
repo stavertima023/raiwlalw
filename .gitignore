@@ -50,3 +50,6 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+
+# Sensitive files with API keys
+VERCEL_ENV_VALUES.md
