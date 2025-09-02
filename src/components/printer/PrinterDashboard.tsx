@@ -12,6 +12,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RefreshCw, AlertCircle, CheckCircle, Send, Check, X, Search, ArrowUpAZ, ArrowDownAZ } from 'lucide-react';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { ChevronDown } from 'lucide-react';
 import { LoadingIndicator } from '@/components/ui/loading-indicator';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -345,8 +347,14 @@ export function PrinterDashboard({
   });
   
   const [searchTerm, setSearchTerm] = React.useState('');
+  const [shipmentSearch, setShipmentSearch] = React.useState('');
   const [sellerFilter, setSellerFilter] = React.useState<string>('all');
-  const [productTypeFilter, setProductTypeFilter] = React.useState<string>('all');
+  const [productTypeFilters, setProductTypeFilters] = React.useState<string[]>([]);
+  const [productTypePopoverOpen, setProductTypePopoverOpen] = React.useState(false);
+
+  const uniqueProductTypes = React.useMemo(() => {
+    return Array.from(new Set(allOrders.map(o => o.productType).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+  }, [allOrders]);
 
   // Защита от ошибок и стабилизация
   const [error, setError] = React.useState<string | null>(null);
@@ -376,9 +384,11 @@ export function PrinterDashboard({
       // Добавляем поиск по номеру заказа
       const searchMatch = searchTerm === '' || 
         order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase());
+      // Поиск по номеру отправления
+      const shipmentMatch = shipmentSearch === '' || (order.shipmentNumber || '').toLowerCase().includes(shipmentSearch.toLowerCase());
       const sellerMatch = sellerFilter === 'all' || (order.seller || '') === sellerFilter;
-      const productTypeFilterMatch = productTypeFilter === 'all' || order.productType === productTypeFilter;
-      return statusMatch && productTypeMatch && orderNumberMatch && searchMatch && sellerMatch && productTypeFilterMatch;
+      const productTypeMultiMatch = productTypeFilters.length === 0 || productTypeFilters.includes(order.productType);
+      return statusMatch && productTypeMatch && orderNumberMatch && searchMatch && shipmentMatch && sellerMatch && productTypeMultiMatch;
     });
     return base;
     } catch (err) {
@@ -386,7 +396,7 @@ export function PrinterDashboard({
       setError('Ошибка при фильтрации заказов');
       return [];
     }
-  }, [allOrders, filters, searchTerm, sellerFilter, productTypeFilter]);
+  }, [allOrders, filters, searchTerm, shipmentSearch, sellerFilter, productTypeFilters]);
 
   const ordersForProduction = React.useMemo(() => {
     try {
@@ -471,6 +481,15 @@ export function PrinterDashboard({
                 className="pl-10"
               />
             </div>
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Поиск по номеру отправления..."
+                value={shipmentSearch}
+                onChange={(e) => setShipmentSearch(e.target.value)}
+                className="pl-10"
+              />
+            </div>
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Продавец:</span>
               <Select value={sellerFilter} onValueChange={setSellerFilter}>
@@ -488,20 +507,42 @@ export function PrinterDashboard({
               </Select>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Тип:</span>
-              <Select value={productTypeFilter} onValueChange={setProductTypeFilter}>
-                <SelectTrigger className="w-full sm:w-[220px]">
-                  <SelectValue placeholder="Все типы" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Все типы</SelectItem>
-                  {Array.from(new Set(allOrders.map(o => o.productType).filter(Boolean)))
-                    .sort((a, b) => a.localeCompare(b))
-                    .map(type => (
-                      <SelectItem key={type} value={type}>{type}</SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+              <span className="text-sm text-muted-foreground">Типы:</span>
+              <Popover open={productTypePopoverOpen} onOpenChange={setProductTypePopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="justify-between w-full sm:w-[220px]">
+                    {productTypeFilters.length === 0 ? 'Все типы' : `Выбрано: ${productTypeFilters.length}`}
+                    <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[260px] p-2">
+                  <div className="max-h-56 overflow-y-auto pr-1">
+                    {uniqueProductTypes.map(type => {
+                      const checked = productTypeFilters.includes(type);
+                      return (
+                        <label key={type} className="flex items-center gap-2 py-1 cursor-pointer">
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(c) => {
+                              setProductTypeFilters(prev => {
+                                const isChecked = !!c;
+                                if (isChecked && !prev.includes(type)) return [...prev, type];
+                                if (!isChecked) return prev.filter(t => t !== type);
+                                return prev;
+                              });
+                            }}
+                          />
+                          <span className="text-sm">{type}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <div className="flex justify-between gap-2 mt-2">
+                    <Button size="sm" variant="secondary" onClick={() => setProductTypeFilters([])}>Сбросить</Button>
+                    <Button size="sm" onClick={() => setProductTypePopoverOpen(false)}>Готово</Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
           </CardContent>
         </Card>
@@ -596,6 +637,15 @@ export function PrinterDashboard({
                 className="pl-10"
               />
             </div>
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Введите номер отправления для поиска..."
+                value={shipmentSearch}
+                onChange={(e) => setShipmentSearch(e.target.value)}
+                className="pl-10"
+              />
+            </div>
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Продавец:</span>
               <Select value={sellerFilter} onValueChange={setSellerFilter}>
@@ -613,20 +663,42 @@ export function PrinterDashboard({
               </Select>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Тип:</span>
-              <Select value={productTypeFilter} onValueChange={setProductTypeFilter}>
-                <SelectTrigger className="w-[220px]">
-                  <SelectValue placeholder="Все типы" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Все типы</SelectItem>
-                  {Array.from(new Set(allOrders.map(o => o.productType).filter(Boolean)))
-                    .sort((a, b) => a.localeCompare(b))
-                    .map(type => (
-                      <SelectItem key={type} value={type}>{type}</SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+              <span className="text-sm text-muted-foreground">Типы:</span>
+              <Popover open={productTypePopoverOpen} onOpenChange={setProductTypePopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="justify-between w-[220px]">
+                    {productTypeFilters.length === 0 ? 'Все типы' : `Выбрано: ${productTypeFilters.length}`}
+                    <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[260px] p-2">
+                  <div className="max-h-56 overflow-y-auto pr-1">
+                    {uniqueProductTypes.map(type => {
+                      const checked = productTypeFilters.includes(type);
+                      return (
+                        <label key={type} className="flex items-center gap-2 py-1 cursor-pointer">
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(c) => {
+                              setProductTypeFilters(prev => {
+                                const isChecked = !!c;
+                                if (isChecked && !prev.includes(type)) return [...prev, type];
+                                if (!isChecked) return prev.filter(t => t !== type);
+                                return prev;
+                              });
+                            }}
+                          />
+                          <span className="text-sm">{type}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <div className="flex justify-between gap-2 mt-2">
+                    <Button size="sm" variant="secondary" onClick={() => setProductTypeFilters([])}>Сбросить</Button>
+                    <Button size="sm" onClick={() => setProductTypePopoverOpen(false)}>Готово</Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
         </CardContent>

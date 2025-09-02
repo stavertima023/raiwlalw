@@ -19,6 +19,9 @@ export const ProductTypeEnum = z.enum([
   'шч',
   'лб',
   'лч',
+  'зс',
+  'зб',
+  'зч',
   'другое',
 ]);
 export type ProductType = z.infer<typeof ProductTypeEnum>;
