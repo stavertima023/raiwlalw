@@ -83,8 +83,8 @@ export async function GET(request: NextRequest) {
       query = query.limit(400);
       console.log(`📊 Ограничиваем до 400 заказов для ${user.role}`);
     } else if (user.role === 'Продавец') {
-      query = query.limit(200);
-      console.log(`📊 Ограничиваем до 200 заказов для ${user.role}`);
+      query = query.limit(300);
+      console.log(`📊 Ограничиваем до 300 заказов для ${user.role}`);
     } else if (user.role === 'Администратор') {
       // Для админа загружаем ВСЕ заказы без ограничений (но без фотографий)
       console.log(`📊 Загружаем ВСЕ заказы для Администратора (без фотографий)`);
