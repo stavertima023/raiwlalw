@@ -71,6 +71,9 @@ export const ExpenseCategoryEnum = z.enum([
   'Ткань',
   'Курьер',
   'Расходники швейки',
+  'Просмотры',
+  'ВБ',
+  'Компенсация',
   'Другое',
 ]);
 export type ExpenseCategory = z.infer<typeof ExpenseCategoryEnum>;
