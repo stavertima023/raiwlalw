@@ -601,9 +601,9 @@ export function PrinterDashboard({
     );
   }
 
-  // Десктопная версия - стандартная
+  // Десктопная версия - оптимизированная для полной ширины экрана
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full max-w-none">
        <Card>
         <CardHeader>
           <CardTitle>Рабочая область Принтовщика</CardTitle>
@@ -621,35 +621,35 @@ export function PrinterDashboard({
         showCacheStatus={true}
       />
 
-      {/* Поиск по номеру заказа */}
+      {/* Поиск по номеру заказа - компактная версия */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">Поиск и сортировка</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="relative flex-1">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Введите номер заказа для поиска..."
+                placeholder="Номер заказа..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
             </div>
-            <div className="relative flex-1">
+            <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Введите номер отправления для поиска..."
+                placeholder="Номер отправления..."
                 value={shipmentSearch}
                 onChange={(e) => setShipmentSearch(e.target.value)}
                 className="pl-10"
               />
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Продавец:</span>
+              <span className="text-sm text-muted-foreground whitespace-nowrap">Продавец:</span>
               <Select value={sellerFilter} onValueChange={setSellerFilter}>
-                <SelectTrigger className="w-[220px]">
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Все продавцы" />
                 </SelectTrigger>
                 <SelectContent>
@@ -663,11 +663,11 @@ export function PrinterDashboard({
               </Select>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Типы:</span>
+              <span className="text-sm text-muted-foreground whitespace-nowrap">Типы:</span>
               <Popover open={productTypePopoverOpen} onOpenChange={setProductTypePopoverOpen}>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="justify-between w-[220px]">
-                    {productTypeFilters.length === 0 ? 'Все типы' : `Выбрано: ${productTypeFilters.length}`}
+                  <Button variant="outline" className="justify-between w-full">
+                    {productTypeFilters.length === 0 ? 'Все типы' : `${productTypeFilters.length}`}
                     <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
                   </Button>
                 </PopoverTrigger>

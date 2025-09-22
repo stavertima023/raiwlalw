@@ -119,7 +119,7 @@ const OrderPhotosSimple = React.memo<{ photos: string[]; size: number }>(({ phot
 
   return (
     <div className="flex gap-1">
-      {photos.map((photo, index) => (
+      {photos.slice(0, 3).map((photo, index) => (
         <div key={index} className="relative">
           <Dialog>
             <DialogTrigger asChild>
@@ -619,46 +619,48 @@ const OrderTableRow = React.memo<{
 
   return (
     <TableRow key={order.id}>
-      <TableCell className="font-medium">{order.orderNumber}</TableCell>
-      <TableCell>{order.shipmentNumber || '–'}</TableCell>
+      <TableCell className="font-medium text-sm">{order.orderNumber}</TableCell>
+      <TableCell className="text-sm">{order.shipmentNumber || '–'}</TableCell>
       <TableCell>
         <StatusBadge status={order.status} useLargeLayout={useLargeLayout} />
       </TableCell>
-      <TableCell>{order.productType}</TableCell>
+      <TableCell className="text-sm">{order.productType}</TableCell>
       {currentUser?.role === 'Принтовщик' ? (
         <>
-          <TableCell className="text-right">{order.price.toLocaleString('ru-RU')} ₽</TableCell>
-          <TableCell>{order.seller}</TableCell>
-          <TableCell>{order.size}</TableCell>
+          <TableCell className="text-right text-sm">{order.price.toLocaleString('ru-RU')} ₽</TableCell>
+          <TableCell className="text-sm">{order.seller}</TableCell>
+          <TableCell className="text-sm">{order.size}</TableCell>
         </>
       ) : (
         <>
-          <TableCell>{order.size}</TableCell>
-          <TableCell>{order.seller}</TableCell>
-          <TableCell className="text-right">{order.price.toLocaleString('ru-RU')} ₽</TableCell>
+          <TableCell className="text-sm">{order.size}</TableCell>
+          <TableCell className="text-sm">{order.seller}</TableCell>
+          <TableCell className="text-right text-sm">{order.price.toLocaleString('ru-RU')} ₽</TableCell>
         </>
       )}
       <TableCell>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {/* Чекбокс принтовщика */}
           {currentUser?.role === 'Принтовщик' && onPrinterCheckUpdate && (
             <Checkbox
               checked={order.printerChecked || false}
               onCheckedChange={(checked) => onPrinterCheckUpdate(order.id!, !!checked)}
               disabled={updatingCheckbox === order.id}
-              className="w-4 h-4"
+              className="w-4 h-4 flex-shrink-0"
             />
           )}
           <OrderPhotosSimple photos={order.photos || []} size={photoSize} />
         </div>
       </TableCell>
-      <TableCell>{order.comment}</TableCell>
+      <TableCell className="text-sm max-w-[150px] truncate" title={order.comment}>
+        {order.comment || '–'}
+      </TableCell>
       {currentUser?.role === 'Принтовщик' && (
-        <TableCell>
-          {order.ready_at ? format(new Date(order.ready_at), 'dd.MM.yyyy HH:mm', { locale: ru }) : '–'}
+        <TableCell className="text-sm">
+          {order.ready_at ? format(new Date(order.ready_at), 'dd.MM HH:mm', { locale: ru }) : '–'}
         </TableCell>
       )}
-      <TableCell>{format(new Date(order.orderDate), 'dd.MM.yyyy HH:mm', { locale: ru })}</TableCell>
+      <TableCell className="text-sm">{format(new Date(order.orderDate), 'dd.MM HH:mm', { locale: ru })}</TableCell>
       <TableCell>{renderActionsCell(order)}</TableCell>
     </TableRow>
   );
@@ -675,10 +677,10 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
   showSearch = false,
   isLoading = false
 }) => {
-  // Увеличиваем размер фото для принтовщика в ПК версии в 2 раза
+  // Оптимизированный размер фото для принтовщика на ПК
   const photoSize = useLargeLayout 
-    ? (currentUser?.role === 'Принтовщик' ? 200 : 100) 
-    : (currentUser?.role === 'Принтовщик' ? 120 : 60);
+    ? (currentUser?.role === 'Принтовщик' ? 120 : 100) 
+    : (currentUser?.role === 'Принтовщик' ? 80 : 60);
   const [currentPage, setCurrentPage] = React.useState(1);
   const [isMobile, setIsMobile] = React.useState(false);
   const [updatingCheckbox, setUpdatingCheckbox] = React.useState<string | null>(null);
@@ -971,41 +973,41 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
     );
   }
 
-  // Десктопная версия (без изменений)
+  // Десктопная версия (оптимизированная для принтовщика)
   return (
     <div className="space-y-4">
       <SearchComponent />
       
-      <div className="rounded-md border">
-        <Table>
+      <div className="rounded-md border overflow-x-auto">
+        <Table className="min-w-full">
           <TableHeader>
             <TableRow>
-              <TableHead>Номер заказа</TableHead>
-              <TableHead>Номер отправления</TableHead>
-              <TableHead>Статус</TableHead>
-              <TableHead>Тип товара</TableHead>
+              <TableHead className="w-[120px]">Номер заказа</TableHead>
+              <TableHead className="w-[100px]">Отправление</TableHead>
+              <TableHead className="w-[80px]">Статус</TableHead>
+              <TableHead className="w-[80px]">Тип</TableHead>
               {currentUser?.role === 'Принтовщик' ? (
                 <>
-                  <TableHead className="text-right">Цена</TableHead>
-                  <TableHead>Продавец</TableHead>
-                  <TableHead>Размер</TableHead>
+                  <TableHead className="w-[80px] text-right">Цена</TableHead>
+                  <TableHead className="w-[100px]">Продавец</TableHead>
+                  <TableHead className="w-[60px]">Размер</TableHead>
                 </>
               ) : (
                 <>
-                  <TableHead>Размер</TableHead>
-                  <TableHead>Продавец</TableHead>
-                  <TableHead className="text-right">Цена</TableHead>
+                  <TableHead className="w-[60px]">Размер</TableHead>
+                  <TableHead className="w-[100px]">Продавец</TableHead>
+                  <TableHead className="w-[80px] text-right">Цена</TableHead>
                 </>
               )}
-              <TableHead>
+              <TableHead className="w-[200px]">
                 {currentUser?.role === 'Принтовщик' ? 'Отметка / Фото' : 'Фото'}
               </TableHead>
-              <TableHead>Комментарий</TableHead>
+              <TableHead className="w-[150px]">Комментарий</TableHead>
               {currentUser?.role === 'Принтовщик' && (
-                <TableHead>Время готовности</TableHead>
+                <TableHead className="w-[120px]">Готовность</TableHead>
               )}
-              <TableHead>Дата</TableHead>
-              <TableHead>Действия</TableHead>
+              <TableHead className="w-[120px]">Дата</TableHead>
+              <TableHead className="w-[80px]">Действия</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
