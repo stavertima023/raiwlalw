@@ -97,7 +97,13 @@ export function EditOrderDialog({
           <span className="sr-only">Редактировать</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <DialogContent 
+        className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto"
+        onOpenAutoFocus={(e) => {
+          // Предотвращаем автофокус и автовыделение первого поля (номер отправления)
+          e.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Редактирование заказа</DialogTitle>
           <DialogDescription>
