@@ -53,28 +53,23 @@ export async function PATCH(request: Request, { params }: { params: { orderId: s
       return NextResponse.json({ message: 'Доступ запрещен' }, { status: 403 });
     }
 
-    // Обрабатываем фото: объединяем существующие URL с новыми загрузками
+    // Обрабатываем фото: используем список из формы как финальный (без обязательного добавления старых из БД)
     const incomingPhotos = Array.isArray(parsed.photos) ? parsed.photos : [];
-    const existingUrls: string[] = Array.isArray(currentOrder.photos)
-      ? (currentOrder.photos as string[]).filter((p) => typeof p === 'string' && !p.startsWith('data:'))
-      : [];
     const inputUrls = incomingPhotos.filter((p) => typeof p === 'string' && !p.startsWith('data:'));
     const base64List = incomingPhotos.filter((p) => typeof p === 'string' && p.startsWith('data:'));
 
-    const mergedStart = [...existingUrls, ...inputUrls];
-    const uploadedUrls: string[] = [];
+    const finalPhotos: string[] = [...inputUrls].slice(0, 3);
     let index = 0;
     for (const b64 of base64List) {
-      if (mergedStart.length + uploadedUrls.length >= 3) break;
+      if (finalPhotos.length >= 3) break;
       try {
         const uploaded = await uploadBase64ToStorage({ base64: b64, orderId, seller: currentOrder.seller, index });
-        uploadedUrls.push(uploaded.publicUrl);
+        finalPhotos.push(uploaded.publicUrl);
         index += 1;
       } catch (_) {
         // пропускаем неудачные загрузки
       }
     }
-    const finalPhotos = [...mergedStart, ...uploadedUrls].slice(0, 3);
 
     const updatePayload: any = {
       shipmentNumber: parsed.shipmentNumber,

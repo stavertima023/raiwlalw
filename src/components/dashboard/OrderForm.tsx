@@ -124,11 +124,8 @@ export function OrderForm({ onSave, initialData, disabledFields }: OrderFormProp
         
         form.setValue('photos', newPhotos);
         
-        if (cleanedResults.length < results.length) {
-          alert(`Успешно загружено ${cleanedResults.length} из ${results.length} изображений. Некоторые изображения были отфильтрованы как невалидные.`);
-        } else {
-          alert(`Успешно загружено ${cleanedResults.length} изображений!`);
-        }
+        // Убираем уведомления об успешной загрузке для продавца
+        console.log(`Загружено изображений: ${cleanedResults.length}${cleanedResults.length < results.length ? ` из ${results.length} (некоторые были отфильтрованы)` : ''}`);
       } else {
         alert('Не удалось загрузить ни одного изображения. Попробуйте выбрать другие файлы или уменьшить их размер.');
       }
