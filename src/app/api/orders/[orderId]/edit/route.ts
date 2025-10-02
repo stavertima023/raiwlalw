@@ -53,25 +53,28 @@ export async function PATCH(request: Request, { params }: { params: { orderId: s
       return NextResponse.json({ message: 'Доступ запрещен' }, { status: 403 });
     }
 
-    // Обрабатываем фото: допускаем как уже-URL, так и base64
+    // Обрабатываем фото: объединяем существующие URL с новыми загрузками
     const incomingPhotos = Array.isArray(parsed.photos) ? parsed.photos : [];
-    const finalPhotos: string[] = [];
+    const existingUrls: string[] = Array.isArray(currentOrder.photos)
+      ? (currentOrder.photos as string[]).filter((p) => typeof p === 'string' && !p.startsWith('data:'))
+      : [];
+    const inputUrls = incomingPhotos.filter((p) => typeof p === 'string' && !p.startsWith('data:'));
+    const base64List = incomingPhotos.filter((p) => typeof p === 'string' && p.startsWith('data:'));
+
+    const mergedStart = [...existingUrls, ...inputUrls];
+    const uploadedUrls: string[] = [];
     let index = 0;
-    for (const p of incomingPhotos) {
-      if (typeof p === 'string' && p.startsWith('data:')) {
-        try {
-          const uploaded = await uploadBase64ToStorage({ base64: p, orderId, seller: currentOrder.seller, index });
-          finalPhotos.push(uploaded.publicUrl);
-          index += 1;
-        } catch (e) {
-          // пропускаем неудачные загрузки, оставим без фото
-        }
-      } else if (typeof p === 'string') {
-        // Уже URL
-        finalPhotos.push(p);
+    for (const b64 of base64List) {
+      if (mergedStart.length + uploadedUrls.length >= 3) break;
+      try {
+        const uploaded = await uploadBase64ToStorage({ base64: b64, orderId, seller: currentOrder.seller, index });
+        uploadedUrls.push(uploaded.publicUrl);
+        index += 1;
+      } catch (_) {
+        // пропускаем неудачные загрузки
       }
-      if (finalPhotos.length >= 3) break;
     }
+    const finalPhotos = [...mergedStart, ...uploadedUrls].slice(0, 3);
 
     const updatePayload: any = {
       shipmentNumber: parsed.shipmentNumber,
@@ -79,12 +82,7 @@ export async function PATCH(request: Request, { params }: { params: { orderId: s
       size: parsed.size,
       comment: parsed.comment || '',
     };
-    if (finalPhotos.length > 0) {
-      updatePayload.photos = finalPhotos;
-    } else if (incomingPhotos.length === 0) {
-      // если массив пустой — очищаем фотографии
-      updatePayload.photos = [];
-    }
+    updatePayload.photos = finalPhotos;
 
     const { data: updated, error: updateError } = await supabaseAdmin
       .from('orders')

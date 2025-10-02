@@ -178,8 +178,12 @@ export function OrderForm({ onSave, initialData, disabledFields }: OrderFormProp
       return;
     }
     
-    // Очищаем и валидируем фотографии
-    const cleanedPhotos = cleanImageArray(data.photos || []);
+    // Очищаем и валидируем фотографии: сохраняем уже существующие URL и валидируем только base64
+    const inputPhotos = (data.photos || []).filter((p) => typeof p === 'string');
+    const urlPhotos = inputPhotos.filter((p) => !p.startsWith('data:'));
+    const base64Photos = inputPhotos.filter((p) => p.startsWith('data:'));
+    const cleanedBase64 = cleanImageArray(base64Photos);
+    const cleanedPhotos = [...urlPhotos, ...cleanedBase64].slice(0, 3);
     
     // Очищаем пробелы в строковых полях
     const cleanedData = {
