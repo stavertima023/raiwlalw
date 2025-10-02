@@ -45,9 +45,10 @@ type OrderFormValues = z.infer<typeof FormSchema>;
 type OrderFormProps = {
   onSave: (data: OrderFormValues) => void;
   initialData?: Partial<OrderFormValues>;
+  disabledFields?: { orderNumber?: boolean; price?: boolean };
 };
 
-export function OrderForm({ onSave, initialData }: OrderFormProps) {
+export function OrderForm({ onSave, initialData, disabledFields }: OrderFormProps) {
   const [isUploading, setIsUploading] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -202,7 +203,7 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
                             <FormItem>
                                 <FormLabel>Номер заказа</FormLabel>
                                 <FormControl>
-                <Input placeholder="WB-12345" {...field} />
+                <Input placeholder="WB-12345" {...field} disabled={!!disabledFields?.orderNumber} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -278,6 +279,7 @@ export function OrderForm({ onSave, initialData }: OrderFormProps) {
                   {...field}
                   value={field.value || ''}
                   onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                  disabled={!!disabledFields?.price}
                 />
                         </FormControl>
                         <FormMessage />
