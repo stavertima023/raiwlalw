@@ -33,7 +33,6 @@ import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { LoadingIndicator } from '@/components/ui/loading-indicator';
 import { useToast } from '@/hooks/use-toast';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface PayoutsListProps {
   allPayouts: PayoutWithOrders[];
