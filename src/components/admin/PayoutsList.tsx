@@ -27,12 +27,13 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Eye, Package, TrendingUp, Calculator, RefreshCw } from 'lucide-react';
+import { Eye, Package, TrendingUp, Calculator, RefreshCw, CalendarRange } from 'lucide-react';
 import type { Payout, PayoutStatus, User, PayoutWithOrders } from '@/lib/types';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { LoadingIndicator } from '@/components/ui/loading-indicator';
 import { useToast } from '@/hooks/use-toast';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface PayoutsListProps {
   allPayouts: PayoutWithOrders[];
@@ -298,6 +299,8 @@ export const PayoutsList: React.FC<PayoutsListProps> = ({
   isLoading = false
 }) => {
   const { toast } = useToast();
+  const [reportOpen, setReportOpen] = React.useState(false);
+  const [reportDate, setReportDate] = React.useState<string>('');
   const [filters, setFilters] = React.useState({
     status: 'all' as PayoutStatus | 'all',
     seller: 'all' as string | 'all',
@@ -324,6 +327,96 @@ export const PayoutsList: React.FC<PayoutsListProps> = ({
 
   const sellerUsers = allUsers.filter(u => u.role === 'Продавец');
 
+  // ==== Report (per day) calculations ====
+  const reportData = React.useMemo(() => {
+    if (!reportDate) {
+      return null;
+    }
+
+    const target = new Date(reportDate);
+    const start = new Date(target);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(target);
+    end.setHours(23, 59, 59, 999);
+
+    const payoutsOfDay = allPayouts
+      .filter(p => {
+        const d = new Date(p.date);
+        return d >= start && d <= end;
+      })
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    const totalAmount = payoutsOfDay.reduce((sum, p) => sum + (p.amount || 0), 0);
+    const totalOrders = payoutsOfDay.reduce(
+      (sum, p) => sum + (p.orderCount || p.orderNumbers?.length || 0),
+      0
+    );
+    const averageCheck = totalOrders > 0 ? totalAmount / totalOrders : 0;
+
+    // Aggregate product types using available stats, fallback to orders
+    const productTypeStats: Record<string, number> = {};
+    for (const p of payoutsOfDay) {
+      if (p.productTypeStats && Object.keys(p.productTypeStats).length > 0) {
+        for (const [type, count] of Object.entries(p.productTypeStats)) {
+          productTypeStats[type] = (productTypeStats[type] || 0) + (count || 0);
+        }
+      } else if (p.orders && p.orders.length > 0) {
+        for (const o of p.orders) {
+          const key = (o.productType || '').toLowerCase();
+          if (!key) continue;
+          productTypeStats[key] = (productTypeStats[key] || 0) + 1;
+        }
+      }
+    }
+
+    // Build flat orders list (sorted by payout date asc)
+    type FlatOrder = {
+      payoutId: string;
+      payoutDate: Date;
+      orderNumber: string;
+      price?: number;
+      productType?: string;
+      size?: string;
+      seller?: string;
+    };
+    const orders: FlatOrder[] = [];
+    for (const p of payoutsOfDay) {
+      if (p.orders && p.orders.length > 0) {
+        for (const o of p.orders) {
+          orders.push({
+            payoutId: p.id!,
+            payoutDate: new Date(p.date),
+            orderNumber: o.orderNumber,
+            price: o.price,
+            productType: o.productType,
+            size: o.size,
+            seller: o.seller,
+          });
+        }
+      } else if (p.orderNumbers && p.orderNumbers.length > 0) {
+        for (const num of p.orderNumbers) {
+          orders.push({
+            payoutId: p.id!,
+            payoutDate: new Date(p.date),
+            orderNumber: num,
+          });
+        }
+      }
+    }
+
+    // Sort already by payoutDate asc (built that way), keep stable orderNumbers order
+
+    return {
+      date: start,
+      payouts: payoutsOfDay,
+      totalAmount,
+      totalOrders,
+      averageCheck,
+      productTypeStats,
+      orders,
+    };
+  }, [reportDate, allPayouts]);
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -333,12 +426,143 @@ export const PayoutsList: React.FC<PayoutsListProps> = ({
             Управление выплатами и выводами средств с подробной статистикой
           </p>
         </div>
-        {onRefresh && (
-          <Button onClick={onRefresh} variant="default" disabled={isLoading} className="bg-blue-600 hover:bg-blue-700">
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            {isLoading ? 'Обновление...' : 'Обновить данные'}
-          </Button>
-        )}
+        <div className="flex gap-2">
+          <Dialog open={reportOpen} onOpenChange={setReportOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <CalendarRange className="h-4 w-4 mr-2" />
+                Отчет
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-3xl">
+              <DialogHeader>
+                <DialogTitle>Отчет по выводам за день</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm text-muted-foreground">Дата:</label>
+                  <input
+                    type="date"
+                    value={reportDate}
+                    onChange={(e) => setReportDate(e.target.value)}
+                    className="flex h-9 w-[200px] rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  />
+                </div>
+
+                {reportData ? (
+                  <div className="space-y-4">
+                    {/* Summary */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-sm">Общая сумма</CardTitle>
+                        </CardHeader>
+                        <CardContent className="text-lg font-bold">
+                          {reportData.totalAmount.toLocaleString('ru-RU')} ₽
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-sm">Средний чек</CardTitle>
+                        </CardHeader>
+                        <CardContent className="text-lg font-bold">
+                          {reportData.averageCheck.toFixed(0)} ₽
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-sm">Кол-во заказов</CardTitle>
+                        </CardHeader>
+                        <CardContent className="text-lg font-bold">
+                          {reportData.totalOrders}
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-sm">Выводов за день</CardTitle>
+                        </CardHeader>
+                        <CardContent className="text-lg font-bold">
+                          {reportData.payouts.length}
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Product types */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base flex items-center">
+                          <Package className="h-4 w-4 mr-2" />
+                          Количество по типам
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {Object.keys(reportData.productTypeStats).length > 0 ? (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {Object.entries(reportData.productTypeStats)
+                              .sort((a, b) => b[1] - a[1])
+                              .map(([type, count]) => (
+                                <div key={type} className="flex justify-between items-center p-2 border rounded">
+                                  <span className="font-medium">{type.toUpperCase()}</span>
+                                  <Badge variant="secondary">{count} шт.</Badge>
+                                </div>
+                              ))}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-muted-foreground">Нет данных по типам</div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Orders list */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Список заказов (по времени добавления в выводы)</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {reportData.orders.length > 0 ? (
+                          <ScrollArea className="h-[320px]">
+                            <div className="space-y-2 pr-2">
+                              {reportData.orders.map((o, idx) => (
+                                <div key={`${o.payoutId}-${o.orderNumber}-${idx}`} className="flex justify-between items-center p-2 border rounded">
+                                  <div>
+                                    <div className="font-medium">#{o.orderNumber}</div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {format(o.payoutDate, 'dd.MM.yyyy HH:mm', { locale: ru })}
+                                    </div>
+                                  </div>
+                                  <div className="text-right text-sm">
+                                    {o.price != null ? (
+                                      <div className="font-medium">{o.price.toLocaleString('ru-RU')} ₽</div>
+                                    ) : (
+                                      <div className="text-muted-foreground">—</div>
+                                    )}
+                                    {(o.productType || o.size) && (
+                                      <div className="text-xs text-muted-foreground">{o.productType} {o.size}</div>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </ScrollArea>
+                        ) : (
+                          <div className="text-sm text-muted-foreground">Заказы не найдены</div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">Выберите дату, чтобы увидеть отчет.</div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+          {onRefresh && (
+            <Button onClick={onRefresh} variant="default" disabled={isLoading} className="bg-blue-600 hover:bg-blue-700">
+              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              {isLoading ? 'Обновление...' : 'Обновить данные'}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Индикатор загрузки */}
