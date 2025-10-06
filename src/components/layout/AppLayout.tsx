@@ -39,6 +39,7 @@ export function AppLayout({ children, currentUser }: AppLayoutProps) {
           { id: 'admin-payouts', label: 'Выводы', icon: <Banknote className="h-4 w-4" /> },
           { id: 'admin-analytics', label: 'Аналитика', icon: <BarChart3 className="h-4 w-4" /> },
           { id: 'admin-ai-analytics', label: 'AI Аналитика', icon: <Brain className="h-4 w-4" /> },
+          { id: 'admin-edit', label: 'Редактирование', icon: <Printer className="h-4 w-4" /> },
         ];
       case 'Принтовщик':
         return [{ id: 'printer-dashboard', label: 'Панель принтовщика', icon: <Printer className="h-4 w-4" /> }];

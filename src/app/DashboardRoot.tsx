@@ -13,6 +13,7 @@ import { ExpensesList } from '@/components/admin/ExpensesList';
 import { PayoutsList } from '@/components/admin/PayoutsList';
 import AIAnalytics from '@/components/admin/AIAnalytics';
 import { Analytics } from '@/components/admin/Analytics';
+import { AdminEdit } from '@/components/admin/AdminEdit';
 import { optimizedFetcher, swrConfig, cacheManager, getCacheStatus } from '@/lib/cache';
 import { Button } from '@/components/ui/button';
 
@@ -728,6 +729,13 @@ export default function DashboardRoot({ initialUser }: DashboardRootProps) {
                 <AIAnalytics 
                   orders={safeOrders} 
                   expenses={safeExpenses}
+                />
+              );
+            case 'admin-edit':
+              return (
+                <AdminEdit
+                  orders={safeOrders}
+                  onUpdateStatus={handleUpdateOrderStatus}
                 />
               );
             default:
