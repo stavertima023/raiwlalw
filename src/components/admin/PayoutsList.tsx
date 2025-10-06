@@ -411,6 +411,13 @@ export const PayoutsList: React.FC<PayoutsListProps> = ({
 
     // Sort already by payoutDate asc (built that way), keep stable orderNumbers order
 
+    // Calculate total cost by product types mapping
+    const thousandSet = new Set(['фб', 'фч', 'лб', 'лч', 'шч']);
+    const costForType = (t: string) => (thousandSet.has(t.toLowerCase()) ? 1000 : 2000);
+    const totalCost = Object.entries(productTypeStats).reduce((sum, [type, count]) => {
+      return sum + costForType(type) * (count || 0);
+    }, 0);
+
     return {
       date: start,
       payouts: payoutsOfDay,
@@ -419,6 +426,7 @@ export const PayoutsList: React.FC<PayoutsListProps> = ({
       averageCheck,
       productTypeStats,
       orders,
+      totalCost,
     };
   }, [reportDate, reportStatus, allPayouts]);
 
@@ -477,7 +485,7 @@ export const PayoutsList: React.FC<PayoutsListProps> = ({
                 {reportData ? (
                   <div className="space-y-4">
                     {/* Summary */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                       <Card>
                         <CardHeader>
                           <CardTitle className="text-sm">Общая сумма</CardTitle>
@@ -508,6 +516,14 @@ export const PayoutsList: React.FC<PayoutsListProps> = ({
                         </CardHeader>
                         <CardContent className="text-lg font-bold">
                           {reportData.payouts.length}
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-sm">Себестоимость (всего)</CardTitle>
+                        </CardHeader>
+                        <CardContent className="text-lg font-bold">
+                          {reportData.totalCost.toLocaleString('ru-RU')} ₽
                         </CardContent>
                       </Card>
                     </div>
