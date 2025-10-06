@@ -300,6 +300,7 @@ export const PayoutsList: React.FC<PayoutsListProps> = ({
   const { toast } = useToast();
   const [reportOpen, setReportOpen] = React.useState(false);
   const [reportDate, setReportDate] = React.useState<string>('');
+  const [reportStatus, setReportStatus] = React.useState<PayoutStatus | 'all'>('all');
   const [filters, setFilters] = React.useState({
     status: 'all' as PayoutStatus | 'all',
     seller: 'all' as string | 'all',
@@ -338,12 +339,17 @@ export const PayoutsList: React.FC<PayoutsListProps> = ({
     const end = new Date(target);
     end.setHours(23, 59, 59, 999);
 
-    const payoutsOfDay = allPayouts
+    let payoutsOfDay = allPayouts
       .filter(p => {
         const d = new Date(p.date);
         return d >= start && d <= end;
-      })
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      });
+
+    if (reportStatus !== 'all') {
+      payoutsOfDay = payoutsOfDay.filter(p => p.status === reportStatus);
+    }
+
+    payoutsOfDay = payoutsOfDay.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     const totalAmount = payoutsOfDay.reduce((sum, p) => sum + (p.amount || 0), 0);
     const totalOrders = payoutsOfDay.reduce(
@@ -414,7 +420,7 @@ export const PayoutsList: React.FC<PayoutsListProps> = ({
       productTypeStats,
       orders,
     };
-  }, [reportDate, allPayouts]);
+  }, [reportDate, reportStatus, allPayouts]);
 
   return (
     <div className="space-y-6">
@@ -438,14 +444,34 @@ export const PayoutsList: React.FC<PayoutsListProps> = ({
                 <DialogTitle>Отчет по выводам за день</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <label className="text-sm text-muted-foreground">Дата:</label>
-                  <input
-                    type="date"
-                    value={reportDate}
-                    onChange={(e) => setReportDate(e.target.value)}
-                    className="flex h-9 w-[200px] rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  />
+                <div className="flex items-center gap-4 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-muted-foreground">Дата:</label>
+                    <input
+                      type="date"
+                      value={reportDate}
+                      onChange={(e) => setReportDate(e.target.value)}
+                      className="flex h-9 w-[200px] rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-muted-foreground">Статус:</label>
+                    <Select
+                      value={reportStatus}
+                      onValueChange={(v) => setReportStatus(v as PayoutStatus | 'all')}
+                    >
+                      <SelectTrigger className="w-[200px]">
+                        <SelectValue placeholder="Выберите статус" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Все статусы</SelectItem>
+                        <SelectItem value="pending">Ожидает</SelectItem>
+                        <SelectItem value="processing">Обрабатывается</SelectItem>
+                        <SelectItem value="completed">Завершен</SelectItem>
+                        <SelectItem value="cancelled">Отменен</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 {reportData ? (
