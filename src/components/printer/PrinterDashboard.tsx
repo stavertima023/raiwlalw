@@ -351,6 +351,7 @@ export function PrinterDashboard({
   const [sellerFilter, setSellerFilter] = React.useState<string>('all');
   const [productTypeFilters, setProductTypeFilters] = React.useState<string[]>([]);
   const [productTypePopoverOpen, setProductTypePopoverOpen] = React.useState(false);
+  const [pvzFilter, setPvzFilter] = React.useState<string>('all');
 
   const uniqueProductTypes = React.useMemo(() => {
     return Array.from(new Set(allOrders.map(o => o.productType).filter(Boolean))).sort((a, b) => a.localeCompare(b));
@@ -373,6 +374,16 @@ export function PrinterDashboard({
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  // Функция определения ПВЗ по номеру отправления
+  const getPvzType = React.useCallback((shipmentNumber: string | undefined | null): string => {
+    if (!shipmentNumber || shipmentNumber.trim() === '') return 'other';
+    const firstChar = shipmentNumber.trim().charAt(0).toUpperCase();
+    if (firstChar === 'P' || firstChar === '5') return 'avito-yandex';
+    if (firstChar === '8') return 'russian-post';
+    if (firstChar === '2') return 'sdek';
+    return 'other';
+  }, []);
+
   // Стабилизированная фильтрация с защитой от ошибок
   const filteredOrders = React.useMemo(() => {
     try {
@@ -388,7 +399,9 @@ export function PrinterDashboard({
       const shipmentMatch = shipmentSearch === '' || (order.shipmentNumber || '').toLowerCase().includes(shipmentSearch.toLowerCase());
       const sellerMatch = sellerFilter === 'all' || (order.seller || '') === sellerFilter;
       const productTypeMultiMatch = productTypeFilters.length === 0 || productTypeFilters.includes(order.productType);
-      return statusMatch && productTypeMatch && orderNumberMatch && searchMatch && shipmentMatch && sellerMatch && productTypeMultiMatch;
+      // Фильтр по ПВЗ
+      const pvzMatch = pvzFilter === 'all' || getPvzType(order.shipmentNumber) === pvzFilter;
+      return statusMatch && productTypeMatch && orderNumberMatch && searchMatch && shipmentMatch && sellerMatch && productTypeMultiMatch && pvzMatch;
     });
     return base;
     } catch (err) {
@@ -396,7 +409,7 @@ export function PrinterDashboard({
       setError('Ошибка при фильтрации заказов');
       return [];
     }
-  }, [allOrders, filters, searchTerm, shipmentSearch, sellerFilter, productTypeFilters]);
+  }, [allOrders, filters, searchTerm, shipmentSearch, sellerFilter, productTypeFilters, pvzFilter, getPvzType]);
 
   const ordersForProduction = React.useMemo(() => {
     try {
@@ -544,6 +557,21 @@ export function PrinterDashboard({
                 </PopoverContent>
               </Popover>
             </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">ПВЗ:</span>
+              <Select value={pvzFilter} onValueChange={setPvzFilter}>
+                <SelectTrigger className="w-full sm:w-[220px]">
+                  <SelectValue placeholder="Все ПВЗ" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все ПВЗ</SelectItem>
+                  <SelectItem value="avito-yandex">Авито/Яндекс</SelectItem>
+                  <SelectItem value="russian-post">Почта России</SelectItem>
+                  <SelectItem value="sdek">Сдэк</SelectItem>
+                  <SelectItem value="other">Прочее</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </CardContent>
         </Card>
 
@@ -627,7 +655,7 @@ export function PrinterDashboard({
           <CardTitle className="text-lg">Поиск и сортировка</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
@@ -699,6 +727,21 @@ export function PrinterDashboard({
                   </div>
                 </PopoverContent>
               </Popover>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground whitespace-nowrap">ПВЗ:</span>
+              <Select value={pvzFilter} onValueChange={setPvzFilter}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Все ПВЗ" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все ПВЗ</SelectItem>
+                  <SelectItem value="avito-yandex">Авито/Яндекс</SelectItem>
+                  <SelectItem value="russian-post">Почта России</SelectItem>
+                  <SelectItem value="sdek">Сдэк</SelectItem>
+                  <SelectItem value="other">Прочее</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardContent>
