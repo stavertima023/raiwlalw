@@ -47,6 +47,8 @@ import {
   Edit,
   Check,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import type { Order, OrderStatus, User } from '@/lib/types';
 import { format } from 'date-fns';
@@ -102,6 +104,61 @@ StatusBadge.displayName = 'StatusBadge';
 
 // Простой компонент фотографий (как у продавцов)
 const OrderPhotosSimple = React.memo<{ photos: string[]; size: number }>(({ photos, size }) => {
+  const [currentPhotoIndex, setCurrentPhotoIndex] = React.useState(0);
+  const [isOpen, setIsOpen] = React.useState(false);
+  const [touchStart, setTouchStart] = React.useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = React.useState<number | null>(null);
+
+  // Минимальное расстояние для свайпа
+  const minSwipeDistance = 50;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    if (isLeftSwipe && currentPhotoIndex < photos.length - 1) {
+      setCurrentPhotoIndex(currentPhotoIndex + 1);
+    }
+    if (isRightSwipe && currentPhotoIndex > 0) {
+      setCurrentPhotoIndex(currentPhotoIndex - 1);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowLeft' && currentPhotoIndex > 0) {
+      setCurrentPhotoIndex(currentPhotoIndex - 1);
+    } else if (e.key === 'ArrowRight' && currentPhotoIndex < photos.length - 1) {
+      setCurrentPhotoIndex(currentPhotoIndex + 1);
+    } else if (e.key === 'Escape') {
+      setIsOpen(false);
+    }
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (open) {
+      setCurrentPhotoIndex(0);
+    }
+  };
+
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    // Закрываем только если клик был на backdrop, а не на изображении
+    if (e.target === e.currentTarget) {
+      setIsOpen(false);
+    }
+  };
+
   if (!photos || photos.length === 0) {
     return (
       <div className="flex gap-1">
@@ -119,81 +176,137 @@ const OrderPhotosSimple = React.memo<{ photos: string[]; size: number }>(({ phot
   }
 
   return (
-    <div className="flex gap-1">
-      {photos.slice(0, 3).map((photo, index) => (
-        <div key={index} className="relative">
-          <Dialog>
-            <DialogTrigger asChild>
-              <button className="block group">
-                <Image
-                  src={photo}
-                  alt={`Фото ${index + 1}`}
-                  width={size}
-                  height={size}
-                  className="rounded object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                  style={{ width: size, height: size }}
-                  loading="lazy"
-                  quality={90}
-                  sizes={`${size}px`}
-                />
-                {/* Индикатор клика */}
-                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all flex items-center justify-center rounded">
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity text-white text-xs">
-                    Просмотр
-                  </div>
+    <>
+      <div className="flex gap-1">
+        {photos.slice(0, 3).map((photo, index) => (
+          <div key={index} className="relative">
+            <button 
+              className="block group"
+              onClick={() => {
+                setCurrentPhotoIndex(index);
+                setIsOpen(true);
+              }}
+            >
+              <Image
+                src={photo}
+                alt={`Фото ${index + 1}`}
+                width={size}
+                height={size}
+                className="rounded object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                style={{ width: size, height: size }}
+                loading="lazy"
+                quality={90}
+                sizes={`${size}px`}
+              />
+              {/* Индикатор клика */}
+              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all flex items-center justify-center rounded">
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity text-white text-xs">
+                  Просмотр
                 </div>
-              </button>
-            </DialogTrigger>
-            <DialogContent className="max-w-[95vw] max-h-[80vh] p-4 sm:max-w-2xl md:max-w-3xl" onPointerDownOutside={(e) => e.preventDefault()}>
-              <DialogHeader>
-                <DialogTitle className="flex items-center justify-between">
-                  <span>Фото {index + 1}</span>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-8 w-8 p-0 border-2 hover:bg-red-50 hover:border-red-300">
-                      <X className="h-4 w-4 text-red-600" />
-                    </Button>
-                  </DialogTrigger>
-                </DialogTitle>
-              </DialogHeader>
-              <div className="flex justify-center items-center">
-                <Image
-                  src={photo}
-                  alt={`Фото ${index + 1}`}
-                  width={800}
-                  height={800}
-                  className="rounded-md object-contain max-w-full max-h-[60vh]"
-                  loading="eager"
-                  priority={index === 0}
-                  quality={100}
-                  sizes="(max-width: 768px) 90vw, 800px"
-                />
               </div>
-              {/* Навигация по фото если их несколько */}
-              {photos.length > 1 && (
-                <div className="flex justify-center gap-2 mt-4">
-                  {photos.map((_, photoIndex) => (
-                    <div
-                      key={photoIndex}
-                      className={`w-2 h-2 rounded-full ${
-                        photoIndex === index ? 'bg-blue-500' : 'bg-gray-300'
-                      }`}
-                    />
-                  ))}
-                </div>
-              )}
-            </DialogContent>
-          </Dialog>
-        </div>
-      ))}
-      {photos.length < 3 && (
-        <div
-          className="bg-muted rounded border-2 border-dashed border-muted-foreground/25 flex items-center justify-center"
-          style={{ width: size, height: size }}
+            </button>
+          </div>
+        ))}
+        {photos.length < 3 && (
+          <div
+            className="bg-muted rounded border-2 border-dashed border-muted-foreground/25 flex items-center justify-center"
+            style={{ width: size, height: size }}
+          >
+            <span className="text-xs text-muted-foreground">Фото {photos.length + 1}</span>
+          </div>
+        )}
+      </div>
+      <Dialog open={isOpen} onOpenChange={handleDialogOpenChange}>
+        <DialogContent 
+          className="max-w-[95vw] max-h-[95vh] p-0 sm:max-w-2xl md:max-w-3xl" 
+          onPointerDownOutside={(e) => {
+            if (e.target === e.currentTarget) {
+              setIsOpen(false);
+            }
+          }}
+          onKeyDown={handleKeyDown}
         >
-          <span className="text-xs text-muted-foreground">Фото {photos.length + 1}</span>
-        </div>
-      )}
-    </div>
+          <DialogHeader className="px-4 pt-4 pb-2">
+            <DialogTitle className="flex items-center justify-between">
+              <span>Фото {currentPhotoIndex + 1} из {photos.length}</span>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="h-8 w-8 p-0 border-2 hover:bg-red-50 hover:border-red-300"
+                onClick={() => setIsOpen(false)}
+              >
+                <X className="h-4 w-4 text-red-600" />
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+          <div 
+            className="flex justify-center items-center relative min-h-[60vh] bg-black/5"
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
+            onClick={handleBackdropClick}
+          >
+            <div className="relative" onClick={(e) => e.stopPropagation()}>
+              <Image
+                src={photos[currentPhotoIndex]}
+                alt={`Фото ${currentPhotoIndex + 1}`}
+                width={800}
+                height={800}
+                className="rounded-md object-contain max-w-full max-h-[70vh]"
+                loading="eager"
+                priority={currentPhotoIndex === 0}
+                quality={100}
+                sizes="(max-width: 768px) 90vw, 800px"
+              />
+            </div>
+            {/* Навигационные стрелки для ПК */}
+            {photos.length > 1 && (
+              <>
+                {currentPhotoIndex > 0 && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCurrentPhotoIndex(currentPhotoIndex - 1);
+                    }}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-opacity z-10"
+                    aria-label="Предыдущее фото"
+                  >
+                    <ChevronLeft className="h-6 w-6" />
+                  </button>
+                )}
+                {currentPhotoIndex < photos.length - 1 && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCurrentPhotoIndex(currentPhotoIndex + 1);
+                    }}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-opacity z-10"
+                    aria-label="Следующее фото"
+                  >
+                    <ChevronRight className="h-6 w-6" />
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+          {/* Навигация по фото если их несколько */}
+          {photos.length > 1 && (
+            <div className="flex justify-center gap-2 pb-4 px-4">
+              {photos.map((_, photoIndex) => (
+                <button
+                  key={photoIndex}
+                  onClick={() => setCurrentPhotoIndex(photoIndex)}
+                  className={`w-2 h-2 rounded-full transition-colors ${
+                    photoIndex === currentPhotoIndex ? 'bg-blue-500' : 'bg-gray-300'
+                  }`}
+                  aria-label={`Перейти к фото ${photoIndex + 1}`}
+                />
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 });
 OrderPhotosSimple.displayName = 'OrderPhotosSimple';
@@ -420,7 +533,8 @@ const OrderTableRow = React.memo<{
   updatingCheckbox?: string | null;
   useLargeLayout?: boolean;
   photoSize: number;
-}>(({ order, currentUser, onUpdateStatus, onPrinterCheckUpdate, updatingCheckbox, useLargeLayout, photoSize }) => {
+  isMobile?: boolean;
+}>(({ order, currentUser, onUpdateStatus, onPrinterCheckUpdate, updatingCheckbox, useLargeLayout, photoSize, isMobile }) => {
   const renderPrinterActions = React.useCallback((order: Order) => {
     if (order.status === 'Добавлен') {
       return (
@@ -663,7 +777,7 @@ const OrderTableRow = React.memo<{
           <OrderPhotosSimple photos={order.photos || []} size={photoSize} />
         </div>
       </TableCell>
-      <TableCell className="text-sm max-w-[150px] truncate" title={order.comment}>
+      <TableCell className={`text-sm max-w-[150px] ${currentUser?.role === 'Принтовщик' && !isMobile ? 'whitespace-normal break-words' : 'truncate'}`} title={order.comment || undefined}>
         {order.comment || '–'}
       </TableCell>
       {currentUser?.role === 'Принтовщик' && (
@@ -688,10 +802,10 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
   showSearch = false,
   isLoading = false
 }) => {
-  // Оптимизированный размер фото для принтовщика на ПК
+  // Оптимизированный размер фото для принтовщика на ПК (увеличен в 2 раза)
   const photoSize = useLargeLayout 
-    ? (currentUser?.role === 'Принтовщик' ? 120 : 100) 
-    : (currentUser?.role === 'Принтовщик' ? 80 : 60);
+    ? (currentUser?.role === 'Принтовщик' ? 240 : 100) 
+    : (currentUser?.role === 'Принтовщик' ? 160 : 60);
   const [currentPage, setCurrentPage] = React.useState(1);
   const [isMobile, setIsMobile] = React.useState(false);
   const [updatingCheckbox, setUpdatingCheckbox] = React.useState<string | null>(null);
@@ -1032,6 +1146,7 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
                 updatingCheckbox={updatingCheckbox}
                 useLargeLayout={useLargeLayout}
                 photoSize={photoSize}
+                isMobile={isMobile}
               />
             ))}
           </TableBody>
