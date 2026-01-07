@@ -380,7 +380,7 @@ export function PrinterDashboard({
     const firstChar = shipmentNumber.trim().charAt(0).toUpperCase();
     if (firstChar === 'P' || firstChar === '5') return 'avito-yandex';
     if (firstChar === '8') return 'russian-post';
-    if (firstChar === '2') return 'sdek';
+    if (firstChar === '1') return 'sdek';
     return 'other';
   }, []);
 
