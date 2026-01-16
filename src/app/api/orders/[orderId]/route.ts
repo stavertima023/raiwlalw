@@ -78,7 +78,7 @@ export async function PATCH(request: Request, { params }: { params: { orderId: s
       .from('orders')
       .update({ status })
       .eq('id', orderId)
-      .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment, ready_at')
+      .select('id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment, ready_at, on_warehouse')
       .single();
 
     if (error) {

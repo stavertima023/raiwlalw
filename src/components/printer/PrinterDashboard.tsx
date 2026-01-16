@@ -11,7 +11,9 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { RefreshCw, AlertCircle, CheckCircle, Send, Check, X, Search, ArrowUpAZ, ArrowDownAZ } from 'lucide-react';
+import { RefreshCw, AlertCircle, CheckCircle, Send, Check, X, Search, ArrowUpAZ, ArrowDownAZ, Warehouse, PackageCheck } from 'lucide-react';
+import { AddToWarehouseDialog } from './AddToWarehouseDialog';
+import useSWR from 'swr';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { ChevronDown } from 'lucide-react';
 import { LoadingIndicator } from '@/components/ui/loading-indicator';
@@ -41,7 +43,9 @@ const MobilePrinterView = React.memo<{
   isLoading: boolean;
   title: string;
   description: string;
-}>(({ orders, currentUser, onUpdateStatus, isLoading, title, description }) => {
+  onUseFromWarehouse?: (orderId: string) => void;
+  showWarehouseActions?: boolean;
+}>(({ orders, currentUser, onUpdateStatus, isLoading, title, description, onUseFromWarehouse, showWarehouseActions }) => {
   const { toast } = useToast();
   const [error, setError] = React.useState<string | null>(null);
   const [updatingCheckbox, setUpdatingCheckbox] = React.useState<string | null>(null);
@@ -302,26 +306,40 @@ const MobilePrinterView = React.memo<{
 
               {/* Действия для принтовщика */}
               <div className="flex gap-2 pt-2">
-                {order.status === 'Добавлен' && (
+                {showWarehouseActions && onUseFromWarehouse && order.on_warehouse ? (
                   <Button
                     size="sm"
-                    onClick={() => handleStatusUpdate(order.id!, 'Готов')}
+                    variant="default"
+                    onClick={() => onUseFromWarehouse(order.id!)}
                     className="flex-1"
                   >
-                    <Check className="h-4 w-4 mr-1" />
-                    Готов
+                    <PackageCheck className="h-4 w-4 mr-1" />
+                    Использовать
                   </Button>
-                )}
-                {order.status === 'Готов' && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleStatusUpdate(order.id!, 'Отправлен')}
-                    className="flex-1"
-                  >
-                    <Send className="h-4 w-4 mr-1" />
-                    Отправить
-                  </Button>
+                ) : (
+                  <>
+                    {order.status === 'Добавлен' && (
+                      <Button
+                        size="sm"
+                        onClick={() => handleStatusUpdate(order.id!, 'Готов')}
+                        className="flex-1"
+                      >
+                        <Check className="h-4 w-4 mr-1" />
+                        Готов
+                      </Button>
+                    )}
+                    {order.status === 'Готов' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleStatusUpdate(order.id!, 'Отправлен')}
+                        className="flex-1"
+                      >
+                        <Send className="h-4 w-4 mr-1" />
+                        Отправить
+                      </Button>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -352,6 +370,50 @@ export function PrinterDashboard({
   const [productTypeFilters, setProductTypeFilters] = React.useState<string[]>([]);
   const [productTypePopoverOpen, setProductTypePopoverOpen] = React.useState(false);
   const [pvzFilter, setPvzFilter] = React.useState<string>('all');
+  const { toast } = useToast();
+
+  // Загружаем заказы на складе
+  const { data: warehouseOrders = [], mutate: mutateWarehouse } = useSWR<Order[]>(
+    '/api/warehouse/orders',
+    async (url) => {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Ошибка загрузки заказов со склада');
+      return res.json();
+    },
+    { refreshInterval: 30000 } // Обновляем каждые 30 секунд
+  );
+
+  // Функция для использования заказа со склада
+  const handleUseFromWarehouse = React.useCallback(async (orderId: string) => {
+    try {
+      const response = await fetch('/api/warehouse/use', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ orderId }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Ошибка использования заказа');
+      }
+
+      toast({
+        title: 'Заказ использован',
+        description: 'Заказ успешно убран со склада',
+      });
+
+      // Обновляем список заказов на складе
+      mutateWarehouse();
+    } catch (error: any) {
+      toast({
+        title: 'Ошибка',
+        description: error.message || 'Не удалось использовать заказ',
+        variant: 'destructive',
+      });
+    }
+  }, [toast, mutateWarehouse]);
 
   const uniqueProductTypes = React.useMemo(() => {
     return Array.from(new Set(allOrders.map(o => o.productType).filter(Boolean))).sort((a, b) => a.localeCompare(b));
@@ -575,9 +637,16 @@ export function PrinterDashboard({
           </CardContent>
         </Card>
 
+        {/* Кнопка пополнить склад */}
+        <Card>
+          <CardContent className="p-4">
+            <AddToWarehouseDialog onSuccess={() => mutateWarehouse()} />
+          </CardContent>
+        </Card>
+
         {/* Мобильные вкладки */}
         <Tabs defaultValue="production" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 gap-1 p-1">
+          <TabsList className="grid w-full grid-cols-4 gap-1 p-1">
             <TabsTrigger value="production" className="text-xs px-2 py-1">
               Изготовление
               <Badge variant="secondary" className="ml-1 text-xs">{ordersForProduction.length}</Badge>
@@ -585,6 +654,10 @@ export function PrinterDashboard({
             <TabsTrigger value="shipment" className="text-xs px-2 py-1">
               Отправка
               <Badge variant="secondary" className="ml-1 text-xs">{ordersForShipment.length}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="warehouse" className="text-xs px-2 py-1">
+              Склад
+              <Badge variant="secondary" className="ml-1 text-xs">{warehouseOrders.length}</Badge>
             </TabsTrigger>
             <TabsTrigger value="all" className="text-xs px-2 py-1">
               Все
@@ -614,6 +687,18 @@ export function PrinterDashboard({
             />
           </TabsContent>
           
+          <TabsContent value="warehouse">
+            <MobilePrinterView
+              orders={warehouseOrders}
+              currentUser={currentUser}
+              onUpdateStatus={onUpdateStatus}
+              isLoading={isLoading}
+              title="Склад"
+              description="Заказы на складе"
+              onUseFromWarehouse={handleUseFromWarehouse}
+              showWarehouseActions={true}
+            />
+          </TabsContent>
           <TabsContent value="all">
             <MobilePrinterView
               orders={filteredOrders} // Убираем .slice(0, 50) - ограничение теперь на уровне API
@@ -747,8 +832,15 @@ export function PrinterDashboard({
         </CardContent>
       </Card>
       
+       {/* Кнопка пополнить склад */}
+       <Card>
+         <CardContent className="p-4">
+           <AddToWarehouseDialog onSuccess={() => mutateWarehouse()} />
+         </CardContent>
+       </Card>
+
        <Tabs defaultValue="production" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 gap-1 p-1">
+        <TabsList className="grid w-full grid-cols-4 gap-1 p-1">
           <TabsTrigger value="production" className="text-xs px-2 py-1">
             <span className="hidden sm:inline">На изготовление</span>
             <span className="sm:hidden">Изготовление</span>
@@ -758,6 +850,11 @@ export function PrinterDashboard({
             <span className="hidden sm:inline">На отправку</span>
             <span className="sm:hidden">Отправка</span>
             <Badge variant="secondary" className="ml-1 text-xs">{ordersForShipment.length}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="warehouse" className="text-xs px-2 py-1">
+            <span className="hidden sm:inline">Склад</span>
+            <span className="sm:hidden">Склад</span>
+            <Badge variant="secondary" className="ml-1 text-xs">{warehouseOrders.length}</Badge>
           </TabsTrigger>
           <TabsTrigger value="all" className="text-xs px-2 py-1">
             Все заказы
@@ -778,6 +875,16 @@ export function PrinterDashboard({
                 currentUser={currentUser} 
                 onUpdateStatus={onUpdateStatus}
                 isLoading={isLoading}
+            />
+        </TabsContent>
+        <TabsContent value="warehouse">
+             <OrderTable 
+                orders={warehouseOrders} 
+                currentUser={currentUser} 
+                onUpdateStatus={onUpdateStatus}
+                isLoading={isLoading}
+                onUseFromWarehouse={handleUseFromWarehouse}
+                showWarehouseActions={true}
             />
         </TabsContent>
         <TabsContent value="all">

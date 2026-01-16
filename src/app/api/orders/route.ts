@@ -58,13 +58,13 @@ export async function GET(request: NextRequest) {
     let selectFields;
     if (user.role === 'Администратор') {
       // Для админа НЕ загружаем фотографии вообще
-      selectFields = 'id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, comment, ready_at, printerChecked';
+      selectFields = 'id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, comment, ready_at, printerChecked, on_warehouse';
     } else if (user.role === 'Продавец') {
       // Для продавцов фото будут только у последних 50 записей
-      selectFields = 'id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment, ready_at, printerChecked';
+      selectFields = 'id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment, ready_at, printerChecked, on_warehouse';
     } else {
       // Для Принтовщика без изменений (все фото)
-      selectFields = 'id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment, ready_at, printerChecked';
+      selectFields = 'id, orderDate, orderNumber, shipmentNumber, status, productType, size, seller, price, cost, photos, comment, ready_at, printerChecked, on_warehouse';
     }
     
     let query = supabaseAdmin

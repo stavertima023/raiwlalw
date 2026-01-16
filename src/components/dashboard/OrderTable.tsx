@@ -49,6 +49,7 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  PackageCheck,
 } from 'lucide-react';
 import type { Order, OrderStatus, User } from '@/lib/types';
 import { format } from 'date-fns';
@@ -73,6 +74,8 @@ interface OrderTableProps {
   onSearchChange?: (value: string) => void;
   showSearch?: boolean;
   isLoading?: boolean;
+  onUseFromWarehouse?: (orderId: string) => void;
+  showWarehouseActions?: boolean;
 }
 
 const statusConfig: Record<
@@ -534,7 +537,9 @@ const OrderTableRow = React.memo<{
   useLargeLayout?: boolean;
   photoSize: number;
   isMobile?: boolean;
-}>(({ order, currentUser, onUpdateStatus, onPrinterCheckUpdate, updatingCheckbox, useLargeLayout, photoSize, isMobile }) => {
+  onUseFromWarehouse?: (orderId: string) => void;
+  showWarehouseActions?: boolean;
+}>(({ order, currentUser, onUpdateStatus, onPrinterCheckUpdate, updatingCheckbox, useLargeLayout, photoSize, isMobile, onUseFromWarehouse, showWarehouseActions }) => {
   const renderPrinterActions = React.useCallback((order: Order) => {
     if (order.status === 'Добавлен') {
       return (
@@ -734,13 +739,28 @@ const OrderTableRow = React.memo<{
   }, [onUpdateStatus]);
 
   const renderActionsCell = React.useCallback((order: Order) => {
+    // Если это раздел склада, показываем кнопку "Использовать"
+    if (showWarehouseActions && onUseFromWarehouse && order.on_warehouse) {
+      return (
+        <Button
+          size="icon"
+          variant="default"
+          onClick={() => onUseFromWarehouse(order.id!)}
+          title="Использовать заказ со склада"
+        >
+          <PackageCheck className="h-4 w-4" />
+          <span className="sr-only">Использовать</span>
+        </Button>
+      );
+    }
+
     if (currentUser?.role === 'Принтовщик') {
       return renderPrinterActions(order);
     } else if (currentUser?.role === 'Продавец') {
       return renderSellerActions(order);
     }
     return null;
-  }, [currentUser?.role, renderPrinterActions, renderSellerActions]);
+  }, [currentUser?.role, renderPrinterActions, renderSellerActions, showWarehouseActions, onUseFromWarehouse]);
 
   return (
     <TableRow key={order.id}>
@@ -800,7 +820,9 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
   searchTerm = '', 
   onSearchChange, 
   showSearch = false,
-  isLoading = false
+  isLoading = false,
+  onUseFromWarehouse,
+  showWarehouseActions = false
 }) => {
   // Оптимизированный размер фото для принтовщика на ПК (увеличен в 2 раза)
   const photoSize = useLargeLayout 
@@ -1147,6 +1169,8 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
                 useLargeLayout={useLargeLayout}
                 photoSize={photoSize}
                 isMobile={isMobile}
+                onUseFromWarehouse={onUseFromWarehouse}
+                showWarehouseActions={showWarehouseActions}
               />
             ))}
           </TableBody>
