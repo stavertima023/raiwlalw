@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RefreshCw, AlertCircle, CheckCircle, Send, Check, X, Search, ArrowUpAZ, ArrowDownAZ, Warehouse, PackageCheck } from 'lucide-react';
 import { AddToWarehouseDialog } from './AddToWarehouseDialog';
+import { AddManualWarehouseOrderDialog } from './AddManualWarehouseOrderDialog';
 import useSWR from 'swr';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { ChevronDown } from 'lucide-react';
@@ -637,10 +638,11 @@ export function PrinterDashboard({
           </CardContent>
         </Card>
 
-        {/* Кнопка пополнить склад */}
+        {/* Кнопки пополнить склад */}
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-4 flex gap-2 flex-wrap">
             <AddToWarehouseDialog onSuccess={() => mutateWarehouse()} />
+            <AddManualWarehouseOrderDialog onSuccess={() => mutateWarehouse()} />
           </CardContent>
         </Card>
 
@@ -832,10 +834,11 @@ export function PrinterDashboard({
         </CardContent>
       </Card>
       
-       {/* Кнопка пополнить склад */}
+       {/* Кнопки пополнить склад */}
        <Card>
-         <CardContent className="p-4">
+         <CardContent className="p-4 flex gap-2">
            <AddToWarehouseDialog onSuccess={() => mutateWarehouse()} />
+           <AddManualWarehouseOrderDialog onSuccess={() => mutateWarehouse()} />
          </CardContent>
        </Card>
 
