@@ -211,32 +211,42 @@ export function AddToWarehouseDialog({ onSuccess }: AddToWarehouseDialogProps) {
               {checkResult.found.length > 0 && (
                 <div className="space-y-2">
                   <div className="text-sm font-medium text-green-600">Найдено заказов:</div>
-                  <div className="grid grid-cols-1 gap-2 max-h-[200px] overflow-y-auto">
+                  <div className="max-h-[400px] overflow-y-auto space-y-3 pr-2">
                     {checkResult.found.map((order) => (
-                      <div key={order.id} className="flex items-center gap-2 p-2 border rounded bg-green-50">
+                      <div key={order.id} className="flex gap-3 p-3 border rounded bg-green-50">
                         <div className="flex-shrink-0">
                           {order.photos && order.photos.length > 0 ? (
                             <Image
                               src={order.photos[0]}
                               alt={`Фото заказа ${order.shipmentNumber}`}
-                              width={40}
-                              height={40}
+                              width={120}
+                              height={120}
                               className="rounded object-cover"
-                              style={{ width: 40, height: 40 }}
+                              style={{ width: 120, height: 120 }}
                             />
                           ) : (
-                            <div className="w-10 h-10 bg-gray-200 rounded flex items-center justify-center text-xs">
+                            <div className="w-[120px] h-[120px] bg-gray-200 rounded flex items-center justify-center text-xs text-center p-2">
                               Нет фото
                             </div>
                           )}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium truncate">
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <div className="text-sm font-medium">
                             {order.shipmentNumber}
                           </div>
-                          <div className="text-xs text-muted-foreground truncate">
-                            {order.productType} {order.size} • {order.price ? `${order.price} ₽` : 'Без цены'}
+                          <div className="text-xs text-muted-foreground">
+                            {order.productType} {order.size}
                           </div>
+                          {order.price && (
+                            <div className="text-sm font-medium">
+                              {order.price} ₽
+                            </div>
+                          )}
+                          {order.comment && (
+                            <div className="text-xs text-muted-foreground truncate" title={order.comment}>
+                              {order.comment}
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -248,7 +258,7 @@ export function AddToWarehouseDialog({ onSuccess }: AddToWarehouseDialogProps) {
               {checkResult.notFound.length > 0 && (
                 <div className="space-y-2">
                   <div className="text-sm font-medium text-red-600">Не найдено:</div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="max-h-[200px] overflow-y-auto flex flex-wrap gap-2 pr-2">
                     {checkResult.notFound.map((number) => (
                       <div
                         key={number}
