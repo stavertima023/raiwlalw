@@ -76,6 +76,7 @@ interface OrderTableProps {
   isLoading?: boolean;
   onUseFromWarehouse?: (orderId: string) => void;
   showWarehouseActions?: boolean;
+  useLargePhotos?: boolean;
 }
 
 const statusConfig: Record<
@@ -822,14 +823,15 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
   showSearch = false,
   isLoading = false,
   onUseFromWarehouse,
-  showWarehouseActions = false
+  showWarehouseActions = false,
+  useLargePhotos = false
 }) => {
   // Оптимизированный размер фото для принтовщика на ПК (увеличен в 2 раза)
-  // Для склада фото увеличены еще в 2 раза
+  // Для склада и разделов Изготовление/Отправка фото увеличены еще в 2 раза
   const basePhotoSize = useLargeLayout 
     ? (currentUser?.role === 'Принтовщик' ? 240 : 100) 
     : (currentUser?.role === 'Принтовщик' ? 160 : 60);
-  const photoSize = showWarehouseActions ? basePhotoSize * 2 : basePhotoSize;
+  const photoSize = (showWarehouseActions || useLargePhotos) ? basePhotoSize * 2 : basePhotoSize;
   const [currentPage, setCurrentPage] = React.useState(1);
   const [isMobile, setIsMobile] = React.useState(false);
   const [updatingCheckbox, setUpdatingCheckbox] = React.useState<string | null>(null);

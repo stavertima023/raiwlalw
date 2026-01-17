@@ -46,7 +46,8 @@ const MobilePrinterView = React.memo<{
   description: string;
   onUseFromWarehouse?: (orderId: string) => void;
   showWarehouseActions?: boolean;
-}>(({ orders, currentUser, onUpdateStatus, isLoading, title, description, onUseFromWarehouse, showWarehouseActions }) => {
+  useLargePhotos?: boolean;
+}>(({ orders, currentUser, onUpdateStatus, isLoading, title, description, onUseFromWarehouse, showWarehouseActions, useLargePhotos }) => {
   const { toast } = useToast();
   const [error, setError] = React.useState<string | null>(null);
   const [updatingCheckbox, setUpdatingCheckbox] = React.useState<string | null>(null);
@@ -220,7 +221,7 @@ const MobilePrinterView = React.memo<{
                           <img
                             src={photo}
                             alt={`Фото ${index + 1}`}
-                            className={`${showWarehouseActions ? 'w-32 h-32' : 'w-16 h-16'} object-cover rounded-md border transition-transform group-hover:scale-105`}
+                            className={`${showWarehouseActions || useLargePhotos ? 'w-32 h-32' : 'w-16 h-16'} object-cover rounded-md border transition-transform group-hover:scale-105`}
                             loading="lazy"
                           />
                           {order.photos.length > 1 && index === 0 && (
@@ -503,6 +504,31 @@ export function PrinterDashboard({
     }
   }, [filteredOrders]);
 
+  // Применяем те же фильтры к заказам склада
+  const filteredWarehouseOrders = React.useMemo(() => {
+    try {
+      return warehouseOrders.filter(order => {
+        const statusMatch = filters.status === 'all' || order.status === filters.status;
+        const productTypeMatch = filters.productType === 'all' || order.productType === filters.productType;
+        const orderNumberMatch = filters.orderNumber === '' || 
+          order.orderNumber.toLowerCase().includes(filters.orderNumber.toLowerCase());
+        // Добавляем поиск по номеру заказа
+        const searchMatch = searchTerm === '' || 
+          order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase());
+        // Поиск по номеру отправления
+        const shipmentMatch = shipmentSearch === '' || (order.shipmentNumber || '').toLowerCase().includes(shipmentSearch.toLowerCase());
+        const sellerMatch = sellerFilter === 'all' || (order.seller || '') === sellerFilter;
+        const productTypeMultiMatch = productTypeFilters.length === 0 || productTypeFilters.includes(order.productType);
+        // Фильтр по ПВЗ
+        const pvzMatch = pvzFilter === 'all' || getPvzType(order.shipmentNumber) === pvzFilter;
+        return statusMatch && productTypeMatch && orderNumberMatch && searchMatch && shipmentMatch && sellerMatch && productTypeMultiMatch && pvzMatch;
+      });
+    } catch (err) {
+      console.error('Ошибка фильтрации заказов склада:', err);
+      return [];
+    }
+  }, [warehouseOrders, filters, searchTerm, shipmentSearch, sellerFilter, productTypeFilters, pvzFilter, getPvzType]);
+
   // Обработка ошибок загрузки
   if (isLoading && allOrders.length === 0) {
     return (
@@ -659,7 +685,7 @@ export function PrinterDashboard({
             </TabsTrigger>
             <TabsTrigger value="warehouse" className="text-xs px-2 py-1">
               Склад
-              <Badge variant="secondary" className="ml-1 text-xs">{warehouseOrders.length}</Badge>
+              <Badge variant="secondary" className="ml-1 text-xs">{filteredWarehouseOrders.length}</Badge>
             </TabsTrigger>
             <TabsTrigger value="all" className="text-xs px-2 py-1">
               Все
@@ -675,6 +701,7 @@ export function PrinterDashboard({
               isLoading={isLoading}
               title="Заказы на изготовление"
               description="Заказы, требующие изготовления"
+              useLargePhotos={true}
             />
           </TabsContent>
           
@@ -686,12 +713,13 @@ export function PrinterDashboard({
               isLoading={isLoading}
               title="Заказы на отправку"
               description="Готовые заказы для отправки"
+              useLargePhotos={true}
             />
           </TabsContent>
           
           <TabsContent value="warehouse">
             <MobilePrinterView
-              orders={warehouseOrders}
+              orders={filteredWarehouseOrders}
               currentUser={currentUser}
               onUpdateStatus={onUpdateStatus}
               isLoading={isLoading}
@@ -857,7 +885,7 @@ export function PrinterDashboard({
           <TabsTrigger value="warehouse" className="text-xs px-2 py-1">
             <span className="hidden sm:inline">Склад</span>
             <span className="sm:hidden">Склад</span>
-            <Badge variant="secondary" className="ml-1 text-xs">{warehouseOrders.length}</Badge>
+            <Badge variant="secondary" className="ml-1 text-xs">{filteredWarehouseOrders.length}</Badge>
           </TabsTrigger>
           <TabsTrigger value="all" className="text-xs px-2 py-1">
             Все заказы
@@ -870,6 +898,7 @@ export function PrinterDashboard({
                 currentUser={currentUser} 
                 onUpdateStatus={onUpdateStatus}
                 isLoading={isLoading}
+                useLargePhotos={true}
             />
         </TabsContent>
         <TabsContent value="shipment">
@@ -878,11 +907,12 @@ export function PrinterDashboard({
                 currentUser={currentUser} 
                 onUpdateStatus={onUpdateStatus}
                 isLoading={isLoading}
+                useLargePhotos={true}
             />
         </TabsContent>
         <TabsContent value="warehouse">
              <OrderTable 
-                orders={warehouseOrders} 
+                orders={filteredWarehouseOrders} 
                 currentUser={currentUser} 
                 onUpdateStatus={onUpdateStatus}
                 isLoading={isLoading}
