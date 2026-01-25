@@ -457,28 +457,6 @@ const createRenderActionsCell = (
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button size="icon" variant="outline">
-                <XCircle className="h-4 w-4" />
-                <span className="sr-only">Возврат</span>
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Вы собираетесь оформить возврат для заказа #{order.orderNumber}.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Закрыть</AlertDialogCancel>
-                <AlertDialogAction onClick={() => onUpdateStatus?.(order.id!, 'Возврат')}>
-                  Подтвердить возврат
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
         </div>
       );
     }
@@ -674,28 +652,6 @@ const OrderTableRow = React.memo<{
                 <AlertDialogCancel>Закрыть</AlertDialogCancel>
                 <AlertDialogAction onClick={() => onUpdateStatus?.(order.id!, 'Исполнен')}>
                   Подтвердить
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button size="icon" variant="outline">
-                <XCircle className="h-4 w-4" />
-                <span className="sr-only">Возврат</span>
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Вы собираетесь оформить возврат для заказа #{order.orderNumber}.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Закрыть</AlertDialogCancel>
-                <AlertDialogAction onClick={() => onUpdateStatus?.(order.id!, 'Возврат')}>
-                  Подтвердить возврат
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

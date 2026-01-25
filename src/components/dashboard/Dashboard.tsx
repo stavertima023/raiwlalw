@@ -5,7 +5,6 @@ import * as React from 'react';
 import { Order, OrderStatus, User } from '@/lib/types';
 import { OrderTable } from './OrderTable';
 import { PayoutDialog } from './PayoutDialog';
-import { ReturnOrderDialog } from './ReturnOrderDialog';
 import { CancelOrderDialog } from './CancelOrderDialog';
 import { AddOrderDialog } from './AddOrderDialog';
 import { Button } from '@/components/ui/button';
@@ -85,14 +84,6 @@ export function Dashboard({
               Создать выплату
             </Button>
           </PayoutDialog>
-          <ReturnOrderDialog 
-            onConfirmReturn={onReturnOrder}
-            findOrder={findOrder}
-          >
-            <Button variant="outline" className="w-full">
-              Возврат заказа
-            </Button>
-          </ReturnOrderDialog>
         </div>
       </div>
 
@@ -119,14 +110,6 @@ export function Dashboard({
                   Создать выплату
                 </Button>
               </PayoutDialog>
-              <ReturnOrderDialog 
-                onConfirmReturn={onReturnOrder}
-                findOrder={findOrder}
-              >
-                <Button variant="outline" className="w-full">
-                  Возврат заказа
-                </Button>
-              </ReturnOrderDialog>
             </div>
           </div>
         </div>
