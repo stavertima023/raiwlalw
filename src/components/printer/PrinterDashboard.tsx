@@ -744,9 +744,9 @@ export function PrinterDashboard({
     );
   }
 
-  // Десктопная версия - оптимизированная для полной ширины экрана
+  // Десктопная версия - оптимизированная для полной ширины экрана (таблица влезает в ширину)
   return (
-    <div className="space-y-6 w-full max-w-none">
+    <div className="space-y-6 w-full max-w-none min-w-0">
        <Card>
         <CardHeader>
           <CardTitle>Рабочая область Принтовщика</CardTitle>
@@ -870,7 +870,7 @@ export function PrinterDashboard({
          </CardContent>
        </Card>
 
-       <Tabs defaultValue="production" className="w-full">
+       <Tabs defaultValue="production" className="w-full min-w-0">
         <TabsList className="grid w-full grid-cols-4 gap-1 p-1">
           <TabsTrigger value="production" className="text-xs px-2 py-1">
             <span className="hidden sm:inline">На изготовление</span>
