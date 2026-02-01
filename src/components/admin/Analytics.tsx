@@ -58,7 +58,7 @@ export function Analytics({ orders, users, expenses, payouts }: AnalyticsProps) 
   const [dateTo, setDateTo] = React.useState('');
   const [selectedSeller, setSelectedSeller] = React.useState<string>('all');
 
-  // Filter orders based on date range and seller
+  // Filter orders based on date range and seller (чёткая фильтрация по периоду)
   const filteredOrders = React.useMemo(() => {
     let filtered = [...orders];
 
@@ -67,9 +67,9 @@ export function Analytics({ orders, users, expenses, payouts }: AnalyticsProps) 
       filtered = filtered.filter(order => order.seller === selectedSeller);
     }
 
-    // Filter by date range
+    // Filter by date range — локальная полночь для корректного периода
     if (dateFrom) {
-      const fromDate = new Date(dateFrom);
+      const fromDate = new Date(dateFrom + 'T00:00:00.000');
       filtered = filtered.filter(order => {
         const orderDate = new Date(order.orderDate);
         return orderDate >= fromDate;
@@ -77,8 +77,7 @@ export function Analytics({ orders, users, expenses, payouts }: AnalyticsProps) 
     }
 
     if (dateTo) {
-      const toDate = new Date(dateTo);
-      toDate.setHours(23, 59, 59, 999); // End of day
+      const toDate = new Date(dateTo + 'T23:59:59.999');
       filtered = filtered.filter(order => {
         const orderDate = new Date(order.orderDate);
         return orderDate <= toDate;
@@ -193,6 +192,17 @@ export function Analytics({ orders, users, expenses, payouts }: AnalyticsProps) 
     const user = users.find(u => u.username === username);
     return user ? user.name : username;
   };
+
+  // Подсчёт заказов по продавцам за выбранный период
+  const ordersBySeller = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    filteredOrders.forEach(order => {
+      const seller = order.seller || '—';
+      counts[seller] = (counts[seller] || 0) + 1;
+    });
+    // Сортируем по убыванию количества
+    return Object.entries(counts).sort(([, a], [, b]) => b - a);
+  }, [filteredOrders]);
 
   const resetFilters = () => {
     setDateFrom('');
@@ -576,6 +586,47 @@ export function Analytics({ orders, users, expenses, payouts }: AnalyticsProps) 
                   </TableCell>
                 </TableRow>
               ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Заказы по продавцам за выбранный период */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Заказы по продавцам за период
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            {dateFrom || dateTo
+              ? `Период: ${dateFrom || '…'} — ${dateTo || '…'}`
+              : 'Все заказы (выберите период для фильтрации)'}
+          </p>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Продавец</TableHead>
+                <TableHead className="text-right">Заказов</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {ordersBySeller.length > 0 ? (
+                ordersBySeller.map(([sellerUsername, count]) => (
+                  <TableRow key={sellerUsername}>
+                    <TableCell>{getSellerName(sellerUsername)}</TableCell>
+                    <TableCell className="text-right font-medium">{count}</TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={2} className="text-center text-muted-foreground">
+                    Нет заказов за выбранный период
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>

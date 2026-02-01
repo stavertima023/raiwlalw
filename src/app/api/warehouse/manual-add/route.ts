@@ -53,6 +53,7 @@ export async function POST(request: Request) {
       cost: validated.price ? Math.round(validated.price * 0.5) : 0,
       status: 'Возврат' as const,
       on_warehouse: true,
+      manual_warehouse: true, // Не показывать в списке админа и аналитике
       comment: validated.comment || '',
       photos: [] as string[],
     };

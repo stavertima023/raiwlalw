@@ -72,6 +72,11 @@ export async function GET(request: NextRequest) {
       .select(selectFields)
       .order('orderDate', { ascending: false });
 
+    // Для админа — исключаем заказы, добавленные вручную на склад принтовщиком
+    if (user.role === 'Администратор') {
+      query = query.or('manual_warehouse.eq.false,manual_warehouse.is.null');
+    }
+
     // Фильтруем по роли
     if (user.role === 'Продавец') {
       query = query.eq('seller', user.username);

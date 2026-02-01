@@ -518,8 +518,7 @@ const OrderTableRow = React.memo<{
   isMobile?: boolean;
   onUseFromWarehouse?: (orderId: string) => void;
   showWarehouseActions?: boolean;
-  isPrinterCompact?: boolean;
-}>(({ order, currentUser, onUpdateStatus, onPrinterCheckUpdate, updatingCheckbox, useLargeLayout, photoSize, isMobile, onUseFromWarehouse, showWarehouseActions, isPrinterCompact }) => {
+}>(({ order, currentUser, onUpdateStatus, onPrinterCheckUpdate, updatingCheckbox, useLargeLayout, photoSize, isMobile, onUseFromWarehouse, showWarehouseActions }) => {
   const renderPrinterActions = React.useCallback((order: Order) => {
     if (order.status === 'Добавлен') {
       return (
@@ -720,34 +719,30 @@ const OrderTableRow = React.memo<{
     return null;
   }, [currentUser?.role, renderPrinterActions, renderSellerActions, showWarehouseActions, onUseFromWarehouse]);
 
-  const compact = isPrinterCompact ? 'min-w-0 overflow-hidden' : '';
-  const compactText = isPrinterCompact ? 'truncate block' : '';
-  const compactComment = isPrinterCompact ? 'text-xs whitespace-normal break-words line-clamp-2 max-h-8 overflow-hidden' : (currentUser?.role === 'Принтовщик' && !isMobile ? 'whitespace-normal break-words' : 'truncate');
-  const compactPhotoWrap = isPrinterCompact ? 'flex items-center gap-1 min-w-0 overflow-hidden' : 'flex items-center gap-2';
-
   return (
     <TableRow key={order.id}>
-      <TableCell className={cn('font-medium text-sm', compact, compactText)} title={order.orderNumber}>{order.orderNumber}</TableCell>
-      <TableCell className={cn('text-sm', compact, compactText)} title={order.shipmentNumber || undefined}>{order.shipmentNumber || '–'}</TableCell>
-      <TableCell className={compact}>
+      <TableCell className="font-medium text-sm">{order.orderNumber}</TableCell>
+      <TableCell className="text-sm">{order.shipmentNumber || '–'}</TableCell>
+      <TableCell>
         <StatusBadge status={order.status} useLargeLayout={useLargeLayout} />
       </TableCell>
-      <TableCell className={cn('text-sm', compact, compactText)} title={order.productType}>{order.productType}</TableCell>
+      <TableCell className="text-sm">{order.productType}</TableCell>
       {currentUser?.role === 'Принтовщик' ? (
         <>
-          <TableCell className={cn('text-right text-sm', compact, compactText)}>{order.price.toLocaleString('ru-RU')} ₽</TableCell>
-          <TableCell className={cn('text-sm', compact, compactText)} title={order.seller}>{order.seller}</TableCell>
-          <TableCell className={cn('text-sm', compact, compactText)} title={order.size}>{order.size}</TableCell>
+          <TableCell className="text-right text-sm">{order.price.toLocaleString('ru-RU')} ₽</TableCell>
+          <TableCell className="text-sm">{order.seller}</TableCell>
+          <TableCell className="text-sm">{order.size}</TableCell>
         </>
       ) : (
         <>
-          <TableCell className={cn('text-sm', compact, compactText)}>{order.size}</TableCell>
-          <TableCell className={cn('text-sm', compact, compactText)} title={order.seller}>{order.seller}</TableCell>
-          <TableCell className={cn('text-right text-sm', compact, compactText)}>{order.price.toLocaleString('ru-RU')} ₽</TableCell>
+          <TableCell className="text-sm">{order.size}</TableCell>
+          <TableCell className="text-sm">{order.seller}</TableCell>
+          <TableCell className="text-right text-sm">{order.price.toLocaleString('ru-RU')} ₽</TableCell>
         </>
       )}
-      <TableCell className={compact}>
-        <div className={compactPhotoWrap}>
+      <TableCell>
+        <div className="flex items-center gap-2">
+          {/* Чекбокс принтовщика */}
           {currentUser?.role === 'Принтовщик' && onPrinterCheckUpdate && (
             <Checkbox
               checked={order.printerChecked || false}
@@ -756,21 +751,19 @@ const OrderTableRow = React.memo<{
               className="w-4 h-4 flex-shrink-0"
             />
           )}
-          <div className="min-w-0 flex-shrink overflow-hidden">
-            <OrderPhotosSimple photos={order.photos || []} size={photoSize} />
-          </div>
+          <OrderPhotosSimple photos={order.photos || []} size={photoSize} />
         </div>
       </TableCell>
-      <TableCell className={cn('text-sm', compact, compactComment)} title={order.comment || undefined}>
+      <TableCell className={`text-sm max-w-[150px] ${currentUser?.role === 'Принтовщик' && !isMobile ? 'whitespace-normal break-words' : 'truncate'}`} title={order.comment || undefined}>
         {order.comment || '–'}
       </TableCell>
       {currentUser?.role === 'Принтовщик' && (
-        <TableCell className={cn('text-sm', compact, compactText)}>
+        <TableCell className="text-sm">
           {order.ready_at ? format(new Date(order.ready_at), 'dd.MM HH:mm', { locale: ru }) : '–'}
         </TableCell>
       )}
-      <TableCell className={cn('text-sm', compact, compactText)}>{format(new Date(order.orderDate), 'dd.MM HH:mm', { locale: ru })}</TableCell>
-      <TableCell className={cn(compact, 'whitespace-nowrap')}>{renderActionsCell(order)}</TableCell>
+      <TableCell className="text-sm">{format(new Date(order.orderDate), 'dd.MM HH:mm', { locale: ru })}</TableCell>
+      <TableCell>{renderActionsCell(order)}</TableCell>
     </TableRow>
   );
 });
@@ -794,11 +787,7 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
   const basePhotoSize = useLargeLayout 
     ? (currentUser?.role === 'Принтовщик' ? 240 : 100) 
     : (currentUser?.role === 'Принтовщик' ? 160 : 60);
-  let photoSize = (showWarehouseActions || useLargePhotos) ? basePhotoSize * 2 : basePhotoSize;
-  // В компактной таблице принтовщика (в ширину экрана) уменьшаем превью, чтобы всё помещалось
-  if (currentUser?.role === 'Принтовщик' && !isMobile) {
-    photoSize = Math.min(photoSize, 72);
-  }
+  const photoSize = (showWarehouseActions || useLargePhotos) ? basePhotoSize * 2 : basePhotoSize;
   const [currentPage, setCurrentPage] = React.useState(1);
   const [isMobile, setIsMobile] = React.useState(false);
   const [updatingCheckbox, setUpdatingCheckbox] = React.useState<string | null>(null);
@@ -1092,54 +1081,43 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
   }
 
   // Десктопная версия (оптимизированная для принтовщика)
-  const isPrinterView = currentUser?.role === 'Принтовщик';
-  // Для принтовщика — компактная таблица в ширину экрана (table-fixed + % колонок)
-  const tableLayout = isPrinterView ? 'table-fixed w-full' : 'min-w-full';
-  const wrapperClass = isPrinterView
-    ? 'rounded-md border w-full min-w-0 overflow-hidden'
-    : 'rounded-md border overflow-x-auto';
-
   return (
-    <div className="space-y-4 w-full min-w-0">
+    <div className="space-y-4">
       <SearchComponent />
       
-      <div className={wrapperClass}>
-        <Table className={tableLayout} style={isPrinterView ? { tableLayout: 'fixed' } : undefined}>
+      <div className="rounded-md border overflow-x-auto">
+        <Table className="min-w-full">
           <TableHeader>
-            <TableRow className={isPrinterView ? '[&_th]:px-2 [&_th]:py-1.5 [&_th]:text-xs' : ''}>
-              {isPrinterView ? (
+            <TableRow>
+              <TableHead className="w-[120px]">Номер заказа</TableHead>
+              <TableHead className="w-[100px]">Отправление</TableHead>
+              <TableHead className="w-[80px]">Статус</TableHead>
+              <TableHead className="w-[80px]">Тип</TableHead>
+              {currentUser?.role === 'Принтовщик' ? (
                 <>
-                  <TableHead className="w-[9%] min-w-0">Номер</TableHead>
-                  <TableHead className="w-[9%] min-w-0">Отправление</TableHead>
-                  <TableHead className="w-[6%] min-w-0">Статус</TableHead>
-                  <TableHead className="w-[6%] min-w-0">Тип</TableHead>
-                  <TableHead className="w-[5%] min-w-0 text-right">Цена</TableHead>
-                  <TableHead className="w-[8%] min-w-0">Продавец</TableHead>
-                  <TableHead className="w-[5%] min-w-0">Размер</TableHead>
-                  <TableHead className="w-[16%] min-w-0">Отметка / Фото</TableHead>
-                  <TableHead className="w-[12%] min-w-0">Комментарий</TableHead>
-                  <TableHead className="w-[8%] min-w-0">Готовность</TableHead>
-                  <TableHead className="w-[8%] min-w-0">Дата</TableHead>
-                  <TableHead className="w-[8%] min-w-0">Действия</TableHead>
+                  <TableHead className="w-[80px] text-right">Цена</TableHead>
+                  <TableHead className="w-[100px]">Продавец</TableHead>
+                  <TableHead className="w-[60px]">Размер</TableHead>
                 </>
               ) : (
                 <>
-                  <TableHead className="w-[120px]">Номер заказа</TableHead>
-                  <TableHead className="w-[100px]">Отправление</TableHead>
-                  <TableHead className="w-[80px]">Статус</TableHead>
-                  <TableHead className="w-[80px]">Тип</TableHead>
                   <TableHead className="w-[60px]">Размер</TableHead>
                   <TableHead className="w-[100px]">Продавец</TableHead>
                   <TableHead className="w-[80px] text-right">Цена</TableHead>
-                  <TableHead className="w-[200px]">Фото</TableHead>
-                  <TableHead className="w-[150px]">Комментарий</TableHead>
-                  <TableHead className="w-[120px]">Дата</TableHead>
-                  <TableHead className="w-[80px]">Действия</TableHead>
                 </>
               )}
+              <TableHead className="w-[200px]">
+                {currentUser?.role === 'Принтовщик' ? 'Отметка / Фото' : 'Фото'}
+              </TableHead>
+              <TableHead className="w-[150px]">Комментарий</TableHead>
+              {currentUser?.role === 'Принтовщик' && (
+                <TableHead className="w-[120px]">Готовность</TableHead>
+              )}
+              <TableHead className="w-[120px]">Дата</TableHead>
+              <TableHead className="w-[80px]">Действия</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody className={isPrinterView ? '[&_tr_td]:px-2 [&_tr_td]:py-1.5 [&_tr_td]:text-xs' : ''}>
+          <TableBody>
             {paginatedOrders.map((order) => (
               <OrderTableRow
                 key={order.id}
@@ -1153,7 +1131,6 @@ export const OrderTable: React.FC<OrderTableProps> = React.memo(({
                 isMobile={isMobile}
                 onUseFromWarehouse={onUseFromWarehouse}
                 showWarehouseActions={showWarehouseActions}
-                isPrinterCompact={isPrinterView}
               />
             ))}
           </TableBody>
