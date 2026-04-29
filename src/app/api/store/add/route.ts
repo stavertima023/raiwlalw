@@ -57,7 +57,7 @@ export async function POST(request: Request) {
     const { data: updated, error: updateError } = await supabaseAdmin
       .from('orders')
       .update({
-        status: 'Возврат',
+        status: 'Магазин',
         on_store: true,
         on_warehouse: false,
       })

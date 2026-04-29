@@ -47,7 +47,7 @@ export async function POST(request: Request) {
       seller: user.username,
       price: validated.price || 0,
       cost: validated.price ? Math.round(validated.price * 0.5) : 0,
-      status: 'Возврат' as const,
+      status: 'Магазин' as const,
       on_store: true,
       on_warehouse: false,
       manual_warehouse: true,

@@ -75,6 +75,10 @@ export function PayoutDialog({
         invalid.push({ number: order.orderNumber, reason: 'отменен' });
       } else if (order.status === 'Возврат') {
         invalid.push({ number: order.orderNumber, reason: 'возврат' });
+      } else if (order.status === 'Склад') {
+        invalid.push({ number: order.orderNumber, reason: 'на складе' });
+      } else if (order.status === 'Магазин') {
+        invalid.push({ number: order.orderNumber, reason: 'в магазине' });
       } else {
          invalid.push({ number: order.orderNumber, reason: `статус "${order.status}"` });
       }

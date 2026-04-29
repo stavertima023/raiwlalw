@@ -41,13 +41,20 @@ export function AdminEdit({ orders, onUpdateStatus }: AdminEditProps) {
 
   const foundOrders = found.filter((o): o is Order => !!o);
   const notFound = tokens.filter((num, i) => !found[i]);
-  const eligible = foundOrders.filter((o) => o.status === 'Отправлен');
-  const ineligible = foundOrders.filter((o) => o.status !== 'Отправлен');
+  const eligibleStatuses = React.useMemo<OrderStatus[]>(() => {
+    if (openKind === 'Возврат') return ['Отправлен', 'Склад', 'Магазин'];
+    return ['Отправлен'];
+  }, [openKind]);
+  const eligible = foundOrders.filter((o) => eligibleStatuses.includes(o.status));
+  const ineligible = foundOrders.filter((o) => !eligibleStatuses.includes(o.status));
+  const eligibleHint = openKind === 'Возврат'
+    ? 'Статус изменяется у заказов со статусом "Отправлен", "Склад" или "Магазин"'
+    : 'Статус изменяется только у заказов со статусом "Отправлен"';
 
   const handleApply = async () => {
     if (!openKind) return;
     if (eligible.length === 0) {
-      toast({ title: 'Нет подходящих заказов', description: 'Статус изменяется только у заказов со статусом "Отправлен"', variant: 'destructive' });
+      toast({ title: 'Нет подходящих заказов', description: eligibleHint, variant: 'destructive' });
       return;
     }
     try {
@@ -86,11 +93,11 @@ export function AdminEdit({ orders, onUpdateStatus }: AdminEditProps) {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="p-3 border rounded">
-              <div className="text-sm text-muted-foreground">Подходят (Отправлен):</div>
+              <div className="text-sm text-muted-foreground">Подходят:</div>
               <div className="font-medium">{eligible.length}</div>
             </div>
             <div className="p-3 border rounded">
-              <div className="text-sm text-muted-foreground">Неподходят (не Отправлен):</div>
+              <div className="text-sm text-muted-foreground">Неподходят:</div>
               <div className="font-medium">{ineligible.length}</div>
             </div>
             <div className="p-3 border rounded">
@@ -100,7 +107,7 @@ export function AdminEdit({ orders, onUpdateStatus }: AdminEditProps) {
           </div>
 
           {(ineligible.length > 0 || notFound.length > 0) && (
-            <div className="text-xs text-muted-foreground">Будут изменены только заказы со статусом "Отправлен".</div>
+            <div className="text-xs text-muted-foreground">{eligibleHint}.</div>
           )}
 
           <div className="flex justify-end gap-2">

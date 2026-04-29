@@ -91,6 +91,8 @@ const statusConfig: Record<
   Исполнен: { label: 'Исполнен', color: 'success'},
   Отменен: { label: 'Отменен', color: 'destructive' },
   Возврат: { label: 'Возврат', color: 'outline' },
+  Склад: { label: 'Склад', color: 'outline' },
+  Магазин: { label: 'Магазин', color: 'secondary' },
 };
 
 // Мемоизированный компонент статуса

@@ -59,11 +59,11 @@ export async function POST(request: Request) {
     const foundNumbers = orders.map(o => o.shipmentNumber);
     const notFoundNumbers = parsedNumbers.filter(n => !foundNumbers.includes(n));
 
-    // Обновляем заказы: меняем статус на "Возврат" и помечаем on_warehouse = true
+    // Обновляем заказы: меняем статус на "Склад" и помечаем on_warehouse = true
     const { data: updated, error: updateError } = await supabaseAdmin
       .from('orders')
       .update({ 
-        status: 'Возврат',
+        status: 'Склад',
         on_warehouse: true,
         on_store: false
       })

@@ -51,7 +51,7 @@ export async function POST(request: Request) {
       seller: user.username, // От имени принтовщика
       price: validated.price || 0,
       cost: validated.price ? Math.round(validated.price * 0.5) : 0,
-      status: 'Возврат' as const,
+      status: 'Склад' as const,
       on_warehouse: true,
       on_store: false,
       manual_warehouse: true, // Не показывать в списке админа и аналитике
