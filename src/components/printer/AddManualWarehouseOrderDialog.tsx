@@ -42,9 +42,14 @@ type ManualWarehouseOrderFormValues = z.infer<typeof ManualWarehouseOrderSchema>
 
 type AddManualWarehouseOrderDialogProps = {
   onSuccess?: () => void;
+  mode?: 'warehouse' | 'store';
 };
 
-export function AddManualWarehouseOrderDialog({ onSuccess }: AddManualWarehouseOrderDialogProps) {
+export function AddManualWarehouseOrderDialog({ onSuccess, mode = 'warehouse' }: AddManualWarehouseOrderDialogProps) {
+  const isStoreMode = mode === 'store';
+  const manualAddUrl = isStoreMode ? '/api/store/manual-add' : '/api/warehouse/manual-add';
+  const destinationWithPrep = isStoreMode ? 'в магазин' : 'на склад';
+
   const [isOpen, setIsOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isUploading, setIsUploading] = React.useState(false);
@@ -129,7 +134,7 @@ export function AddManualWarehouseOrderDialog({ onSuccess }: AddManualWarehouseO
 
     setIsSubmitting(true);
     try {
-      const response = await fetch('/api/warehouse/manual-add', {
+      const response = await fetch(manualAddUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -148,12 +153,12 @@ export function AddManualWarehouseOrderDialog({ onSuccess }: AddManualWarehouseO
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.message || 'Ошибка добавления заказа на склад');
+        throw new Error(result.message || `Ошибка добавления заказа ${destinationWithPrep}`);
       }
 
       toast({
         title: 'Успешно',
-        description: 'Заказ добавлен на склад',
+        description: `Заказ добавлен ${destinationWithPrep}`,
       });
 
       form.reset();
@@ -162,7 +167,7 @@ export function AddManualWarehouseOrderDialog({ onSuccess }: AddManualWarehouseO
     } catch (error: any) {
       toast({
         title: 'Ошибка',
-        description: error.message || 'Не удалось добавить заказ на склад',
+        description: error.message || `Не удалось добавить заказ ${destinationWithPrep}`,
         variant: 'destructive',
       });
     } finally {
@@ -175,12 +180,12 @@ export function AddManualWarehouseOrderDialog({ onSuccess }: AddManualWarehouseO
       <DialogTrigger asChild>
         <Button variant="outline">
           <PackagePlus className="h-4 w-4 mr-2" />
-          Добавить вручную
+          {isStoreMode ? 'Добавить в магазин вручную' : 'Добавить вручную'}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Добавить заказ на склад вручную</DialogTitle>
+          <DialogTitle>{isStoreMode ? 'Добавить заказ в магазин вручную' : 'Добавить заказ на склад вручную'}</DialogTitle>
           <DialogDescription>
             Заполните тип, размер и фото. Остальные поля необязательны.
           </DialogDescription>

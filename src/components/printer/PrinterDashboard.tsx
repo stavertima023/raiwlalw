@@ -46,8 +46,10 @@ const MobilePrinterView = React.memo<{
   description: string;
   onUseFromWarehouse?: (orderId: string) => void;
   showWarehouseActions?: boolean;
+  onUseFromStore?: (orderId: string) => void;
+  showStoreActions?: boolean;
   useLargePhotos?: boolean;
-}>(({ orders, currentUser, onUpdateStatus, isLoading, title, description, onUseFromWarehouse, showWarehouseActions, useLargePhotos }) => {
+}>(({ orders, currentUser, onUpdateStatus, isLoading, title, description, onUseFromWarehouse, showWarehouseActions, onUseFromStore, showStoreActions, useLargePhotos }) => {
   const { toast } = useToast();
   const [error, setError] = React.useState<string | null>(null);
   const [updatingCheckbox, setUpdatingCheckbox] = React.useState<string | null>(null);
@@ -318,6 +320,16 @@ const MobilePrinterView = React.memo<{
                     <PackageCheck className="h-4 w-4 mr-1" />
                     Использовать
                   </Button>
+                ) : showStoreActions && onUseFromStore && order.on_store ? (
+                  <Button
+                    size="sm"
+                    variant="default"
+                    onClick={() => onUseFromStore(order.id!)}
+                    className="flex-1"
+                  >
+                    <PackageCheck className="h-4 w-4 mr-1" />
+                    Использовать
+                  </Button>
                 ) : (
                   <>
                     {order.status === 'Добавлен' && (
@@ -384,6 +396,15 @@ export function PrinterDashboard({
     },
     { refreshInterval: 30000 } // Обновляем каждые 30 секунд
   );
+  const { data: storeOrders = [], mutate: mutateStore } = useSWR<Order[]>(
+    '/api/store/orders',
+    async (url) => {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Ошибка загрузки заказов из магазина');
+      return res.json();
+    },
+    { refreshInterval: 30000 }
+  );
 
   // Функция для использования заказа со склада
   const handleUseFromWarehouse = React.useCallback(async (orderId: string) => {
@@ -416,6 +437,35 @@ export function PrinterDashboard({
       });
     }
   }, [toast, mutateWarehouse]);
+  const handleUseFromStore = React.useCallback(async (orderId: string) => {
+    try {
+      const response = await fetch('/api/store/use', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ orderId }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Ошибка использования заказа');
+      }
+
+      toast({
+        title: 'Заказ использован',
+        description: 'Заказ успешно убран из магазина',
+      });
+
+      mutateStore();
+    } catch (error: any) {
+      toast({
+        title: 'Ошибка',
+        description: error.message || 'Не удалось использовать заказ',
+        variant: 'destructive',
+      });
+    }
+  }, [toast, mutateStore]);
 
   const uniqueProductTypes = React.useMemo(() => {
     return Array.from(new Set(allOrders.map(o => o.productType).filter(Boolean))).sort((a, b) => a.localeCompare(b));
@@ -528,6 +578,26 @@ export function PrinterDashboard({
       return [];
     }
   }, [warehouseOrders, filters, searchTerm, shipmentSearch, sellerFilter, productTypeFilters, pvzFilter, getPvzType]);
+  const filteredStoreOrders = React.useMemo(() => {
+    try {
+      return storeOrders.filter(order => {
+        const statusMatch = filters.status === 'all' || order.status === filters.status;
+        const productTypeMatch = filters.productType === 'all' || order.productType === filters.productType;
+        const orderNumberMatch = filters.orderNumber === '' ||
+          order.orderNumber.toLowerCase().includes(filters.orderNumber.toLowerCase());
+        const searchMatch = searchTerm === '' ||
+          order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase());
+        const shipmentMatch = shipmentSearch === '' || (order.shipmentNumber || '').toLowerCase().includes(shipmentSearch.toLowerCase());
+        const sellerMatch = sellerFilter === 'all' || (order.seller || '') === sellerFilter;
+        const productTypeMultiMatch = productTypeFilters.length === 0 || productTypeFilters.includes(order.productType);
+        const pvzMatch = pvzFilter === 'all' || getPvzType(order.shipmentNumber) === pvzFilter;
+        return statusMatch && productTypeMatch && orderNumberMatch && searchMatch && shipmentMatch && sellerMatch && productTypeMultiMatch && pvzMatch;
+      });
+    } catch (err) {
+      console.error('Ошибка фильтрации заказов магазина:', err);
+      return [];
+    }
+  }, [storeOrders, filters, searchTerm, shipmentSearch, sellerFilter, productTypeFilters, pvzFilter, getPvzType]);
 
   // Обработка ошибок загрузки
   if (isLoading && allOrders.length === 0) {
@@ -664,17 +734,19 @@ export function PrinterDashboard({
           </CardContent>
         </Card>
 
-        {/* Кнопки пополнить склад */}
+        {/* Кнопки пополнения */}
         <Card>
           <CardContent className="p-4 flex gap-2 flex-wrap">
             <AddToWarehouseDialog onSuccess={() => mutateWarehouse()} />
             <AddManualWarehouseOrderDialog onSuccess={() => mutateWarehouse()} />
+            <AddToWarehouseDialog mode="store" onSuccess={() => mutateStore()} />
+            <AddManualWarehouseOrderDialog mode="store" onSuccess={() => mutateStore()} />
           </CardContent>
         </Card>
 
         {/* Мобильные вкладки */}
         <Tabs defaultValue="production" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 gap-1 p-1">
+          <TabsList className="grid w-full grid-cols-5 gap-1 p-1">
             <TabsTrigger value="production" className="text-xs px-2 py-1">
               Изготовление
               <Badge variant="secondary" className="ml-1 text-xs">{ordersForProduction.length}</Badge>
@@ -686,6 +758,10 @@ export function PrinterDashboard({
             <TabsTrigger value="warehouse" className="text-xs px-2 py-1">
               Склад
               <Badge variant="secondary" className="ml-1 text-xs">{filteredWarehouseOrders.length}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="store" className="text-xs px-2 py-1">
+              Магазин
+              <Badge variant="secondary" className="ml-1 text-xs">{filteredStoreOrders.length}</Badge>
             </TabsTrigger>
             <TabsTrigger value="all" className="text-xs px-2 py-1">
               Все
@@ -727,6 +803,18 @@ export function PrinterDashboard({
               description="Заказы на складе"
               onUseFromWarehouse={handleUseFromWarehouse}
               showWarehouseActions={true}
+            />
+          </TabsContent>
+          <TabsContent value="store">
+            <MobilePrinterView
+              orders={filteredStoreOrders}
+              currentUser={currentUser}
+              onUpdateStatus={onUpdateStatus}
+              isLoading={isLoading}
+              title="Магазин"
+              description="Вещи в магазине"
+              onUseFromStore={handleUseFromStore}
+              showStoreActions={true}
             />
           </TabsContent>
           <TabsContent value="all">
@@ -862,16 +950,18 @@ export function PrinterDashboard({
         </CardContent>
       </Card>
       
-       {/* Кнопки пополнить склад */}
+       {/* Кнопки пополнения */}
        <Card>
-         <CardContent className="p-4 flex gap-2">
+         <CardContent className="p-4 flex gap-2 flex-wrap">
            <AddToWarehouseDialog onSuccess={() => mutateWarehouse()} />
            <AddManualWarehouseOrderDialog onSuccess={() => mutateWarehouse()} />
+           <AddToWarehouseDialog mode="store" onSuccess={() => mutateStore()} />
+           <AddManualWarehouseOrderDialog mode="store" onSuccess={() => mutateStore()} />
          </CardContent>
        </Card>
 
        <Tabs defaultValue="production" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 gap-1 p-1">
+        <TabsList className="grid w-full grid-cols-5 gap-1 p-1">
           <TabsTrigger value="production" className="text-xs px-2 py-1">
             <span className="hidden sm:inline">На изготовление</span>
             <span className="sm:hidden">Изготовление</span>
@@ -886,6 +976,11 @@ export function PrinterDashboard({
             <span className="hidden sm:inline">Склад</span>
             <span className="sm:hidden">Склад</span>
             <Badge variant="secondary" className="ml-1 text-xs">{filteredWarehouseOrders.length}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="store" className="text-xs px-2 py-1">
+            <span className="hidden sm:inline">Магазин</span>
+            <span className="sm:hidden">Магазин</span>
+            <Badge variant="secondary" className="ml-1 text-xs">{filteredStoreOrders.length}</Badge>
           </TabsTrigger>
           <TabsTrigger value="all" className="text-xs px-2 py-1">
             Все заказы
@@ -918,6 +1013,16 @@ export function PrinterDashboard({
                 isLoading={isLoading}
                 onUseFromWarehouse={handleUseFromWarehouse}
                 showWarehouseActions={true}
+            />
+        </TabsContent>
+        <TabsContent value="store">
+             <OrderTable
+                orders={filteredStoreOrders}
+                currentUser={currentUser}
+                onUpdateStatus={onUpdateStatus}
+                isLoading={isLoading}
+                onUseFromStore={handleUseFromStore}
+                showStoreActions={true}
             />
         </TabsContent>
         <TabsContent value="all">

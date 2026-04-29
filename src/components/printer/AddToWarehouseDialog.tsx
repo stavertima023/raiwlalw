@@ -18,6 +18,7 @@ import type { Order } from '@/lib/types';
 
 type AddToWarehouseDialogProps = {
   onSuccess?: () => void;
+  mode?: 'warehouse' | 'store';
 };
 
 type CheckResult = {
@@ -28,7 +29,12 @@ type CheckResult = {
   requested: number;
 };
 
-export function AddToWarehouseDialog({ onSuccess }: AddToWarehouseDialogProps) {
+export function AddToWarehouseDialog({ onSuccess, mode = 'warehouse' }: AddToWarehouseDialogProps) {
+  const isStoreMode = mode === 'store';
+  const checkUrl = isStoreMode ? '/api/store/check' : '/api/warehouse/check';
+  const addUrl = isStoreMode ? '/api/store/add' : '/api/warehouse/add';
+  const destinationWithPrep = isStoreMode ? 'в магазин' : 'на склад';
+
   const [isOpen, setIsOpen] = React.useState(false);
   const [shipmentNumbers, setShipmentNumbers] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -82,7 +88,7 @@ export function AddToWarehouseDialog({ onSuccess }: AddToWarehouseDialogProps) {
     setIsChecking(true);
     setCheckResult(null);
     try {
-      const response = await fetch('/api/warehouse/check', {
+      const response = await fetch(checkUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -120,7 +126,7 @@ export function AddToWarehouseDialog({ onSuccess }: AddToWarehouseDialogProps) {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch('/api/warehouse/add', {
+      const response = await fetch(addUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -131,12 +137,12 @@ export function AddToWarehouseDialog({ onSuccess }: AddToWarehouseDialogProps) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Ошибка добавления на склад');
+        throw new Error(data.message || `Ошибка добавления ${destinationWithPrep}`);
       }
 
       toast({
         title: 'Успешно',
-        description: `Добавлено на склад: ${data.added} заказов${data.notFound && data.notFound.length > 0 ? `. Не найдено: ${data.notFound.length}` : ''}`,
+        description: `Добавлено ${destinationWithPrep}: ${data.added} заказов${data.notFound && data.notFound.length > 0 ? `. Не найдено: ${data.notFound.length}` : ''}`,
       });
 
       setShipmentNumbers('');
@@ -146,7 +152,7 @@ export function AddToWarehouseDialog({ onSuccess }: AddToWarehouseDialogProps) {
     } catch (error: any) {
       toast({
         title: 'Ошибка',
-        description: error.message || 'Не удалось добавить заказы на склад',
+        description: error.message || `Не удалось добавить заказы ${destinationWithPrep}`,
         variant: 'destructive',
       });
     } finally {
@@ -168,12 +174,12 @@ export function AddToWarehouseDialog({ onSuccess }: AddToWarehouseDialogProps) {
       <DialogTrigger asChild>
         <Button variant="outline">
           <PackagePlus className="h-4 w-4 mr-2" />
-          Пополнить склад
+          {isStoreMode ? 'Пополнить магазин' : 'Пополнить склад'}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto" onKeyDown={handleDialogKeyDown}>
         <DialogHeader>
-          <DialogTitle>Пополнить склад</DialogTitle>
+          <DialogTitle>{isStoreMode ? 'Пополнить магазин' : 'Пополнить склад'}</DialogTitle>
           <DialogDescription>
             Введите номера отправлений через пробел или с новой строки. Сканер штрих-кодов автоматически добавит пробел после каждого кода.
           </DialogDescription>
@@ -291,7 +297,7 @@ export function AddToWarehouseDialog({ onSuccess }: AddToWarehouseDialogProps) {
                 onClick={handleSubmit}
                 disabled={isSubmitting || isChecking || !shipmentNumbers.trim() || (checkResult && checkResult.foundCount === 0)}
               >
-                {isSubmitting ? 'Отправка...' : 'Отправить заказы на склад'}
+                {isSubmitting ? 'Отправка...' : `Отправить заказы ${destinationWithPrep}`}
               </Button>
             </div>
           </div>

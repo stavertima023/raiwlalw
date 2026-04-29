@@ -5,7 +5,7 @@ import { uploadBase64ToStorage } from '@/lib/storage';
 import { z } from 'zod';
 import { ProductTypeEnum, SizeEnum } from '@/lib/types';
 
-const ManualWarehouseOrderSchema = z.object({
+const ManualStoreOrderSchema = z.object({
   productType: ProductTypeEnum,
   size: SizeEnum,
   photos: z.array(z.string()).max(2).optional().default([]),
@@ -33,28 +33,24 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const validated = ManualWarehouseOrderSchema.parse(body);
+    const validated = ManualStoreOrderSchema.parse(body);
 
-    // Генерируем уникальный номер заказа, если не указан
-    const orderNumber = validated.orderNumber || `WH-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
-    
-    // Генерируем номер отправления, если не указан
-    const shipmentNumber = validated.shipmentNumber || `SHP-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+    const orderNumber = validated.orderNumber || `ST-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+    const shipmentNumber = validated.shipmentNumber || `SHP-ST-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
 
-    // Создаем заказ без фото сначала
-    const { photos: base64Photos, ...rest } = validated as any;
+    const { photos: base64Photos } = validated as any;
     const orderData = {
       orderNumber,
       shipmentNumber,
       productType: validated.productType,
       size: validated.size,
-      seller: user.username, // От имени принтовщика
+      seller: user.username,
       price: validated.price || 0,
       cost: validated.price ? Math.round(validated.price * 0.5) : 0,
       status: 'Возврат' as const,
-      on_warehouse: true,
-      on_store: false,
-      manual_warehouse: true, // Не показывать в списке админа и аналитике
+      on_store: true,
+      on_warehouse: false,
+      manual_warehouse: true,
       comment: validated.comment || '',
       photos: [] as string[],
     };
@@ -65,11 +61,8 @@ export async function POST(request: Request) {
       .select('id')
       .single();
 
-    if (createError) {
-      throw createError;
-    }
+    if (createError) throw createError;
 
-    // Загружаем фото, если есть
     if (Array.isArray(base64Photos) && base64Photos.length > 0) {
       const uploaded: string[] = [];
       let index = 0;
@@ -96,17 +89,19 @@ export async function POST(request: Request) {
       }
     }
 
-    // Получаем полный заказ для ответа
     const { data: finalOrder } = await supabaseAdmin
       .from('orders')
       .select('*')
       .eq('id', created.id)
       .single();
 
-    return NextResponse.json({
-      message: 'Заказ успешно добавлен на склад',
-      order: { ...finalOrder, orderDate: new Date(finalOrder.orderDate) }
-    }, { status: 201 });
+    return NextResponse.json(
+      {
+        message: 'Заказ успешно добавлен в магазин',
+        order: { ...finalOrder, orderDate: new Date(finalOrder.orderDate) },
+      },
+      { status: 201 }
+    );
   } catch (error: any) {
     if (error.name === 'ZodError') {
       return NextResponse.json({ message: 'Ошибка валидации данных', errors: error.errors }, { status: 400 });
