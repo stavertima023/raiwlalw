@@ -746,24 +746,24 @@ export function PrinterDashboard({
 
         {/* Мобильные вкладки */}
         <Tabs defaultValue="production" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 gap-1 p-1">
-            <TabsTrigger value="production" className="text-xs px-2 py-1">
+          <TabsList className="flex w-full flex-wrap h-auto gap-1 p-1">
+            <TabsTrigger value="production" className="text-xs px-2 py-1 basis-[calc(33.333%-0.34rem)] min-w-0">
               Изготовление
               <Badge variant="secondary" className="ml-1 text-xs">{ordersForProduction.length}</Badge>
             </TabsTrigger>
-            <TabsTrigger value="shipment" className="text-xs px-2 py-1">
+            <TabsTrigger value="shipment" className="text-xs px-2 py-1 basis-[calc(33.333%-0.34rem)] min-w-0">
               Отправка
               <Badge variant="secondary" className="ml-1 text-xs">{ordersForShipment.length}</Badge>
             </TabsTrigger>
-            <TabsTrigger value="warehouse" className="text-xs px-2 py-1">
+            <TabsTrigger value="warehouse" className="text-xs px-2 py-1 basis-[calc(33.333%-0.34rem)] min-w-0">
               Склад
               <Badge variant="secondary" className="ml-1 text-xs">{filteredWarehouseOrders.length}</Badge>
             </TabsTrigger>
-            <TabsTrigger value="store" className="text-xs px-2 py-1">
+            <TabsTrigger value="store" className="text-xs px-2 py-1 basis-[calc(50%-0.25rem)] min-w-0">
               Магазин
               <Badge variant="secondary" className="ml-1 text-xs">{filteredStoreOrders.length}</Badge>
             </TabsTrigger>
-            <TabsTrigger value="all" className="text-xs px-2 py-1">
+            <TabsTrigger value="all" className="text-xs px-2 py-1 basis-[calc(50%-0.25rem)] min-w-0">
               Все
               <Badge variant="secondary" className="ml-1 text-xs">{filteredOrders.length}</Badge>
             </TabsTrigger>
